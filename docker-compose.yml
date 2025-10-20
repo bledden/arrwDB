@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  # Vector Database API
+  vector-db-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vector-db-api
+    ports:
+      - "8000:8000"
+    environment:
+      - COHERE_API_KEY=${COHERE_API_KEY}
+      - VECTOR_DB_DATA_DIR=/app/data
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_WORKERS=4
+      - EMBEDDING_MODEL=embed-english-v3.0
+      - EMBEDDING_DIMENSION=1024
+      - TEMPORAL_HOST=temporal:7233
+      - TEMPORAL_NAMESPACE=default
+      - TEMPORAL_TASK_QUEUE=vector-db-task-queue
+    volumes:
+      - vector-db-data:/app/data
+    depends_on:
+      - temporal
+    networks:
+      - vector-db-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Temporal Server
+  temporal:
+    image: temporalio/auto-setup:latest
+    container_name: temporal
+    ports:
+      - "7233:7233"
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgres
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+    depends_on:
+      - postgres
+    networks:
+      - vector-db-network
+    volumes:
+      - temporal-data:/etc/temporal
+
+  # Temporal Worker
+  temporal-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: temporal-worker
+    command: python temporal/worker.py
+    environment:
+      - COHERE_API_KEY=${COHERE_API_KEY}
+      - VECTOR_DB_DATA_DIR=/app/data
+      - TEMPORAL_HOST=temporal:7233
+      - TEMPORAL_NAMESPACE=default
+      - TEMPORAL_TASK_QUEUE=vector-db-task-queue
+    volumes:
+      - vector-db-data:/app/data
+    depends_on:
+      - temporal
+      - vector-db-api
+    networks:
+      - vector-db-network
+    restart: unless-stopped
+
+  # Temporal Web UI
+  temporal-ui:
+    image: temporalio/ui:latest
+    container_name: temporal-ui
+    ports:
+      - "8080:8080"
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    depends_on:
+      - temporal
+    networks:
+      - vector-db-network
+
+  # PostgreSQL for Temporal
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=temporal
+      - POSTGRES_PASSWORD=temporal
+      - POSTGRES_DB=temporal
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - vector-db-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  vector-db-data:
+    driver: local
+  temporal-data:
+    driver: local
+  postgres-data:
+    driver: local
+
+networks:
+  vector-db-network:
+    driver: bridge

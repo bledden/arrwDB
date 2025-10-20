@@ -1,0 +1,259 @@
+"""
+API models (DTOs) for request and response serialization.
+
+These are separate from the domain models and handle API-level concerns
+like validation, documentation, and serialization.
+"""
+
+from pydantic import BaseModel, Field
+from typing import List, Optional
+from uuid import UUID
+from datetime import datetime
+
+
+# Request Models
+
+
+class CreateLibraryRequest(BaseModel):
+    """Request model for creating a library."""
+
+    name: str = Field(..., min_length=1, max_length=255, description="Library name")
+    description: Optional[str] = Field(None, description="Optional description")
+    index_type: str = Field(
+        default="brute_force",
+        pattern="^(brute_force|kd_tree|lsh|hnsw)$",
+        description="Index type: brute_force, kd_tree, lsh, or hnsw",
+    )
+    embedding_model: Optional[str] = Field(
+        None, description="Optional embedding model override"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "name": "Research Papers",
+                "description": "Collection of AI research papers",
+                "index_type": "hnsw",
+            }
+        }
+
+
+class AddDocumentRequest(BaseModel):
+    """Request model for adding a document with text chunks."""
+
+    title: str = Field(..., min_length=1, description="Document title")
+    texts: List[str] = Field(
+        ..., min_length=1, description="List of text chunks"
+    )
+    author: Optional[str] = Field(None, description="Document author")
+    document_type: str = Field(default="text", description="Type of document")
+    source_url: Optional[str] = Field(None, description="Source URL")
+    tags: List[str] = Field(default_factory=list, description="Tags")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "title": "Introduction to Machine Learning",
+                "texts": [
+                    "Machine learning is a subset of artificial intelligence...",
+                    "Supervised learning involves training with labeled data...",
+                ],
+                "author": "John Doe",
+                "tags": ["machine-learning", "ai"],
+            }
+        }
+
+
+class AddDocumentWithEmbeddingsRequest(BaseModel):
+    """Request model for adding a document with pre-computed embeddings."""
+
+    title: str = Field(..., min_length=1, description="Document title")
+    chunks: List["ChunkWithEmbedding"] = Field(
+        ..., min_length=1, description="List of text-embedding pairs"
+    )
+    author: Optional[str] = Field(None, description="Document author")
+    document_type: str = Field(default="text", description="Type of document")
+    source_url: Optional[str] = Field(None, description="Source URL")
+    tags: List[str] = Field(default_factory=list, description="Tags")
+
+
+class ChunkWithEmbedding(BaseModel):
+    """Model for a chunk with pre-computed embedding."""
+
+    text: str = Field(..., min_length=1, max_length=10000)
+    embedding: List[float] = Field(..., min_length=1)
+
+
+class SearchRequest(BaseModel):
+    """Request model for searching with text query."""
+
+    query: str = Field(..., min_length=1, description="Search query text")
+    k: int = Field(default=10, ge=1, le=100, description="Number of results")
+    distance_threshold: Optional[float] = Field(
+        None,
+        ge=0.0,
+        le=2.0,
+        description="Maximum distance threshold (0-2 for cosine)",
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "query": "What is machine learning?",
+                "k": 5,
+                "distance_threshold": 0.5,
+            }
+        }
+
+
+class SearchWithEmbeddingRequest(BaseModel):
+    """Request model for searching with embedding."""
+
+    embedding: List[float] = Field(..., min_length=1, description="Query embedding")
+    k: int = Field(default=10, ge=1, le=100, description="Number of results")
+    distance_threshold: Optional[float] = Field(
+        None,
+        ge=0.0,
+        le=2.0,
+        description="Maximum distance threshold (0-2 for cosine)",
+    )
+
+
+# Response Models
+
+
+class ChunkResponse(BaseModel):
+    """Response model for a chunk."""
+
+    id: UUID
+    text: str
+    embedding: List[float]
+    metadata: "ChunkMetadataResponse"
+
+    class Config:
+        from_attributes = True
+
+
+class ChunkMetadataResponse(BaseModel):
+    """Response model for chunk metadata."""
+
+    created_at: datetime
+    page_number: Optional[int]
+    chunk_index: int
+    source_document_id: UUID
+
+    class Config:
+        from_attributes = True
+
+
+class DocumentMetadataResponse(BaseModel):
+    """Response model for document metadata."""
+
+    title: str
+    author: Optional[str]
+    created_at: datetime
+    document_type: str
+    source_url: Optional[str]
+    tags: List[str]
+
+    class Config:
+        from_attributes = True
+
+
+class DocumentResponse(BaseModel):
+    """Response model for a document."""
+
+    id: UUID
+    chunks: List[ChunkResponse]
+    metadata: DocumentMetadataResponse
+
+    class Config:
+        from_attributes = True
+
+
+class LibraryMetadataResponse(BaseModel):
+    """Response model for library metadata."""
+
+    description: Optional[str]
+    created_at: datetime
+    index_type: str
+    embedding_dimension: int
+    embedding_model: str
+
+    class Config:
+        from_attributes = True
+
+
+class LibraryResponse(BaseModel):
+    """Response model for a library."""
+
+    id: UUID
+    name: str
+    documents: List[DocumentResponse]
+    metadata: LibraryMetadataResponse
+
+    class Config:
+        from_attributes = True
+
+
+class LibrarySummaryResponse(BaseModel):
+    """Response model for library summary (without documents)."""
+
+    id: UUID
+    name: str
+    num_documents: int
+    metadata: LibraryMetadataResponse
+
+    class Config:
+        from_attributes = True
+
+
+class SearchResultResponse(BaseModel):
+    """Response model for a search result."""
+
+    chunk: ChunkResponse
+    distance: float
+    document_id: UUID
+    document_title: str
+
+
+class SearchResponse(BaseModel):
+    """Response model for search results."""
+
+    results: List[SearchResultResponse]
+    query_time_ms: float
+    total_results: int
+
+
+class LibraryStatisticsResponse(BaseModel):
+    """Response model for library statistics."""
+
+    library_id: str
+    library_name: str
+    num_documents: int
+    num_chunks: int
+    embedding_dimension: int
+    index_type: str
+    vector_store_stats: dict
+    index_stats: dict
+
+
+class ErrorResponse(BaseModel):
+    """Response model for errors."""
+
+    error: str
+    detail: Optional[str] = None
+    error_type: str
+
+
+class HealthResponse(BaseModel):
+    """Response model for health check."""
+
+    status: str
+    version: str
+    timestamp: datetime
+
+
+# Update forward references
+AddDocumentWithEmbeddingsRequest.model_rebuild()
+ChunkResponse.model_rebuild()
