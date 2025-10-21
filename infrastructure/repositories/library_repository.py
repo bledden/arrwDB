@@ -116,7 +116,7 @@ class LibraryRepository:
                 raise ValueError(f"Library with ID {library.id} already exists")
 
             # Log to WAL before applying
-            self._wal.append(
+            self._wal.append_operation(
                 OperationType.CREATE_LIBRARY,
                 {
                     "library_id": str(library.id),
@@ -205,7 +205,7 @@ class LibraryRepository:
                 return False
 
             # Log to WAL before applying
-            self._wal.append(
+            self._wal.append_operation(
                 OperationType.DELETE_LIBRARY,
                 {"library_id": str(library_id)}
             )
