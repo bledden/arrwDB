@@ -28,8 +28,9 @@ class TestGetDataDir:
         # Clear cache
         get_data_dir.cache_clear()
 
-        with patch.dict(os.environ, {}, clear=True):
-            # Remove VECTOR_DB_DATA_DIR if present
+        # Patch settings to return default
+        from app.config import settings
+        with patch.object(settings, 'VECTOR_DB_DATA_DIR', './data'):
             result = get_data_dir()
             assert result == Path("./data").resolve()
 
@@ -39,7 +40,8 @@ class TestGetDataDir:
         get_data_dir.cache_clear()
 
         custom_dir = "/custom/data/dir"
-        with patch.dict(os.environ, {"VECTOR_DB_DATA_DIR": custom_dir}):
+        from app.config import settings
+        with patch.object(settings, 'VECTOR_DB_DATA_DIR', custom_dir):
             result = get_data_dir()
             assert result == Path(custom_dir).resolve()
 
@@ -53,7 +55,8 @@ class TestGetLibraryRepository:
         get_library_repository.cache_clear()
         get_data_dir.cache_clear()
 
-        with patch.dict(os.environ, {"VECTOR_DB_DATA_DIR": "/tmp/test_data"}):
+        from app.config import settings
+        with patch.object(settings, 'VECTOR_DB_DATA_DIR', "/tmp/test_data"):
             result = get_library_repository()
             assert isinstance(result, LibraryRepository)
             assert result._data_dir == Path("/tmp/test_data").resolve()
@@ -67,10 +70,8 @@ class TestGetEmbeddingService:
         # Clear cache
         get_embedding_service.cache_clear()
 
-        # Remove COHERE_API_KEY from environment
-        env_without_key = {k: v for k, v in os.environ.items() if k != "COHERE_API_KEY"}
-
-        with patch.dict(os.environ, env_without_key, clear=True):
+        from app.config import settings
+        with patch.object(settings, 'COHERE_API_KEY', None):
             with pytest.raises(ValueError) as exc_info:
                 get_embedding_service()
 
@@ -83,27 +84,27 @@ class TestGetEmbeddingService:
         # Clear cache
         get_embedding_service.cache_clear()
 
-        with patch.dict(os.environ, {
-            "COHERE_API_KEY": "test_key_12345",
-            "EMBEDDING_DIMENSION": "invalid_number"  # This will trigger ValueError
-        }):
-            with patch('cohere.Client'):
-                service = get_embedding_service()
-                # Should fall back to 1024 (which becomes None in the constructor due to line 72)
-                assert service.embedding_dimension == 1024
+        from app.config import settings
+        with patch.object(settings, 'COHERE_API_KEY', 'test_key_12345'):
+            with patch.object(settings, 'EMBEDDING_MODEL', 'embed-english-v3.0'):
+                with patch.object(settings, 'EMBEDDING_DIMENSION', 1024):
+                    with patch('cohere.Client'):
+                        service = get_embedding_service()
+                        # Should use 1024 (which becomes None in the constructor due to line 72)
+                        assert service.embedding_dimension == 1024
 
     def test_get_embedding_service_with_valid_dimension(self):
         """Test get_embedding_service with valid dimension."""
         # Clear cache
         get_embedding_service.cache_clear()
 
-        with patch.dict(os.environ, {
-            "COHERE_API_KEY": "test_key_12345",
-            "EMBEDDING_DIMENSION": "512"
-        }):
-            with patch('cohere.Client'):
-                service = get_embedding_service()
-                assert service.embedding_dimension == 512
+        from app.config import settings
+        with patch.object(settings, 'COHERE_API_KEY', 'test_key_12345'):
+            with patch.object(settings, 'EMBEDDING_MODEL', 'embed-english-v3.0'):
+                with patch.object(settings, 'EMBEDDING_DIMENSION', 512):
+                    with patch('cohere.Client'):
+                        service = get_embedding_service()
+                        assert service.embedding_dimension == 512
 
 
 class TestGetLibraryService:
