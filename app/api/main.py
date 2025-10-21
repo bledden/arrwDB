@@ -5,13 +5,16 @@ This module provides the main FastAPI application with all CRUD endpoints
 for libraries, documents, and chunks, plus search functionality.
 """
 
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.responses import JSONResponse
 from typing import List
 from uuid import UUID
 import time
 from datetime import datetime
 import logging
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.api.models import (
     CreateLibraryRequest,
@@ -36,10 +39,18 @@ from infrastructure.repositories.library_repository import (
     DimensionMismatchError,
 )
 from app.services.embedding_service import EmbeddingServiceError
+from app.config import settings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Initialize rate limiter
+limiter = Limiter(
+    key_func=get_remote_address,
+    enabled=settings.RATE_LIMIT_ENABLED,
+    storage_uri=settings.RATE_LIMIT_STORAGE_URI,
+)
 
 # Create FastAPI app
 app = FastAPI(
@@ -49,6 +60,12 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# Add rate limiter to app state
+app.state.limiter = limiter
+
+# Add rate limit exception handler
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 # Exception Handlers
@@ -250,7 +267,9 @@ def get_library_statistics(
     tags=["Documents"],
     summary="Add a document with text chunks",
 )
+@limiter.limit(settings.RATE_LIMIT_DOCUMENT_ADD)
 def add_document(
+    req: Request,
     library_id: UUID,
     request: AddDocumentRequest,
     service: LibraryService = Depends(get_library_service),
@@ -286,7 +305,9 @@ def add_document(
     tags=["Documents"],
     summary="Add a document with pre-computed embeddings",
 )
+@limiter.limit(settings.RATE_LIMIT_DOCUMENT_ADD)
 def add_document_with_embeddings(
+    req: Request,
     library_id: UUID,
     request: AddDocumentWithEmbeddingsRequest,
     service: LibraryService = Depends(get_library_service),
@@ -363,7 +384,9 @@ def delete_document(
     tags=["Search"],
     summary="Search with text query",
 )
+@limiter.limit(settings.RATE_LIMIT_SEARCH)
 def search(
+    req: Request,
     library_id: UUID,
     request: SearchRequest,
     service: LibraryService = Depends(get_library_service),
@@ -419,7 +442,9 @@ def search(
     tags=["Search"],
     summary="Search with embedding",
 )
+@limiter.limit(settings.RATE_LIMIT_SEARCH)
 def search_with_embedding(
+    req: Request,
     library_id: UUID,
     request: SearchWithEmbeddingRequest,
     service: LibraryService = Depends(get_library_service),
@@ -466,6 +491,31 @@ def search_with_embedding(
         query_time_ms=round(query_time_ms, 2),
         total_results=len(search_results),
     )
+
+
+# Startup event
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Log configuration summary on startup."""
+    logger.info("=" * 60)
+    logger.info("Vector Database API Starting")
+    logger.info("=" * 60)
+    logger.info(f"Server: {settings.API_HOST}:{settings.API_PORT}")
+    logger.info(f"Workers: {settings.workers}")
+    logger.info(f"Rate Limiting: {'Enabled' if settings.RATE_LIMIT_ENABLED else 'Disabled'}")
+    if settings.RATE_LIMIT_ENABLED:
+        logger.info(f"  - Search: {settings.RATE_LIMIT_SEARCH}")
+        logger.info(f"  - Document Add: {settings.RATE_LIMIT_DOCUMENT_ADD}")
+    logger.info(f"Embedding Dimension: {settings.EMBEDDING_DIMENSION}")
+    logger.info(f"Max Chunks/Document: {settings.MAX_CHUNKS_PER_DOCUMENT}")
+    logger.info(f"Max Text Length/Chunk: {settings.MAX_TEXT_LENGTH_PER_CHUNK}")
+    logger.info(f"Max Search Results: {settings.MAX_SEARCH_RESULTS}")
+    logger.info(f"Max Query Length: {settings.MAX_QUERY_LENGTH}")
+    if settings.workers > 1:
+        logger.warning("⚠️  Running with multiple workers. Be aware of in-memory state limitations.")
+    logger.info("=" * 60)
 
 
 # Root endpoint

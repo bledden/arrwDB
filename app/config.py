@@ -101,9 +101,30 @@ class Settings(BaseSettings):
     # Health checks: No limit (monitoring systems need unrestricted access)
     RATE_LIMIT_HEALTH: bool = False
 
+    # Storage backend for rate limiting (in-memory by default)
+    # For production with multiple workers, use Redis: "redis://localhost:6379"
+    RATE_LIMIT_STORAGE_URI: str = "memory://"
+
+    # Convenience aliases for API
+    @property
+    def RATE_LIMIT_DOCUMENT_ADD(self) -> str:
+        """Alias for document write rate limit."""
+        return self.RATE_LIMIT_WRITE
+
     # ============================================================
     # Input Size Limits
     # ============================================================
+
+    # Convenience properties to match API model expectations
+    @property
+    def MAX_TEXT_LENGTH_PER_CHUNK(self) -> int:
+        """Alias for max chunk length."""
+        return self.MAX_CHUNK_LENGTH
+
+    @property
+    def MAX_SEARCH_RESULTS(self) -> int:
+        """Alias for max results."""
+        return self.MAX_RESULTS_K
 
     # Document limits
     # 1000 chunks = ~200 pages of text (typical academic paper or book chapter)

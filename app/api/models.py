@@ -5,10 +5,11 @@ These are separate from the domain models and handle API-level concerns
 like validation, documentation, and serialization.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
+from app.config import settings
 
 
 # Request Models
@@ -50,6 +51,27 @@ class AddDocumentRequest(BaseModel):
     source_url: Optional[str] = Field(None, description="Source URL")
     tags: List[str] = Field(default_factory=list, description="Tags")
 
+    @field_validator("texts")
+    @classmethod
+    def validate_texts_count(cls, v: List[str]) -> List[str]:
+        """Enforce maximum number of chunks per document."""
+        if len(v) > settings.MAX_CHUNKS_PER_DOCUMENT:
+            raise ValueError(
+                f"Too many chunks: {len(v)}. Maximum allowed: {settings.MAX_CHUNKS_PER_DOCUMENT}"
+            )
+        return v
+
+    @field_validator("texts")
+    @classmethod
+    def validate_text_length(cls, v: List[str]) -> List[str]:
+        """Enforce maximum text length per chunk."""
+        for i, text in enumerate(v):
+            if len(text) > settings.MAX_TEXT_LENGTH_PER_CHUNK:
+                raise ValueError(
+                    f"Chunk {i} too long: {len(text)} chars. Maximum allowed: {settings.MAX_TEXT_LENGTH_PER_CHUNK}"
+                )
+        return v
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -76,25 +98,65 @@ class AddDocumentWithEmbeddingsRequest(BaseModel):
     source_url: Optional[str] = Field(None, description="Source URL")
     tags: List[str] = Field(default_factory=list, description="Tags")
 
+    @field_validator("chunks")
+    @classmethod
+    def validate_chunks_count(cls, v: List["ChunkWithEmbedding"]) -> List["ChunkWithEmbedding"]:
+        """Enforce maximum number of chunks per document."""
+        if len(v) > settings.MAX_CHUNKS_PER_DOCUMENT:
+            raise ValueError(
+                f"Too many chunks: {len(v)}. Maximum allowed: {settings.MAX_CHUNKS_PER_DOCUMENT}"
+            )
+        return v
+
 
 class ChunkWithEmbedding(BaseModel):
     """Model for a chunk with pre-computed embedding."""
 
-    text: str = Field(..., min_length=1, max_length=10000)
+    text: str = Field(..., min_length=1)
     embedding: List[float] = Field(..., min_length=1)
+
+    @field_validator("text")
+    @classmethod
+    def validate_text_length(cls, v: str) -> str:
+        """Enforce maximum text length per chunk."""
+        if len(v) > settings.MAX_TEXT_LENGTH_PER_CHUNK:
+            raise ValueError(
+                f"Text too long: {len(v)} chars. Maximum allowed: {settings.MAX_TEXT_LENGTH_PER_CHUNK}"
+            )
+        return v
 
 
 class SearchRequest(BaseModel):
     """Request model for searching with text query."""
 
     query: str = Field(..., min_length=1, description="Search query text")
-    k: int = Field(default=10, ge=1, le=100, description="Number of results")
+    k: int = Field(default=10, ge=1, description="Number of results")
     distance_threshold: Optional[float] = Field(
         None,
         ge=0.0,
         le=2.0,
         description="Maximum distance threshold (0-2 for cosine)",
     )
+
+    @field_validator("k")
+    @classmethod
+    def validate_k(cls, v: int) -> int:
+        """Enforce maximum search results limit."""
+        if v > settings.MAX_SEARCH_RESULTS:
+            raise ValueError(
+                f"Too many results requested: {v}. Maximum allowed: {settings.MAX_SEARCH_RESULTS}"
+            )
+        return v
+
+    @field_validator("query")
+    @classmethod
+    def validate_query_length(cls, v: str) -> str:
+        """Enforce maximum query length."""
+        if len(v) > settings.MAX_QUERY_LENGTH:
+            raise ValueError(
+                f"Query too long: {len(v)} chars. Maximum allowed: {settings.MAX_QUERY_LENGTH}"
+            )
+        return v
 
     class Config:
         json_schema_extra = {
@@ -110,13 +172,23 @@ class SearchWithEmbeddingRequest(BaseModel):
     """Request model for searching with embedding."""
 
     embedding: List[float] = Field(..., min_length=1, description="Query embedding")
-    k: int = Field(default=10, ge=1, le=100, description="Number of results")
+    k: int = Field(default=10, ge=1, description="Number of results")
     distance_threshold: Optional[float] = Field(
         None,
         ge=0.0,
         le=2.0,
         description="Maximum distance threshold (0-2 for cosine)",
     )
+
+    @field_validator("k")
+    @classmethod
+    def validate_k(cls, v: int) -> int:
+        """Enforce maximum search results limit."""
+        if v > settings.MAX_SEARCH_RESULTS:
+            raise ValueError(
+                f"Too many results requested: {v}. Maximum allowed: {settings.MAX_SEARCH_RESULTS}"
+            )
+        return v
 
 
 # Response Models
