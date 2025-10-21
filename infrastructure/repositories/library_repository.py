@@ -495,7 +495,7 @@ class LibraryRepository:
         """Load state from disk (snapshot + WAL replay)."""
         try:
             # Try to load latest snapshot
-            state = self._snapshot_manager.load_latest()
+            state = self._snapshot_manager.load_latest_snapshot()
             if state:
                 # Restore state from snapshot
                 self._libraries = {UUID(k): Library(**v) for k, v in state.get("libraries", {}).items()}
