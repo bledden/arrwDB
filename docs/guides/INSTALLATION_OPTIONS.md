@@ -92,14 +92,14 @@ SAI/
 
 ### Installation Steps
 
-**Method 1: Clone and Remove Tests (Recommended)**
+**Method 1: Sparse Checkout (Recommended - No Bandwidth Waste!)**
 ```bash
-# Clone with shallow history for faster download
-git clone --depth 1 --single-branch --branch main https://github.com/bledden/SAI.git
+# Clone with sparse checkout - tests never downloaded!
+git clone --filter=blob:none --sparse https://github.com/bledden/SAI.git
 cd SAI
 
-# Remove test directory
-rm -rf tests/
+# Configure to checkout everything except tests
+git sparse-checkout set '/*' '!tests'
 
 # Create virtual environment
 python3 -m venv venv
@@ -116,28 +116,39 @@ cp .env.example .env
 python run_api.py
 ```
 
-**Method 2: Sparse Checkout (Advanced)**
+**Why This Is Better**: The tests directory is **never downloaded**, saving bandwidth and disk space. No wasted downloads!
+
+**Method 2: Partial Clone with Blobless Filter (Alternative)**
 ```bash
-# Initialize git repository
-git init SAI
+# Clone without downloading file blobs initially
+git clone --filter=blob:none --no-checkout https://github.com/bledden/SAI.git
 cd SAI
 
-# Configure sparse checkout
-git config core.sparseCheckout true
+# Enable sparse checkout
+git sparse-checkout init --cone
 
-# Specify what to include
-cat > .git/info/sparse-checkout << EOF
-/*
-!tests/
-EOF
+# Checkout everything except tests
+git sparse-checkout set '/*' '!tests'
 
-# Add remote and pull
-git remote add origin https://github.com/bledden/SAI.git
-git pull origin main
+# Now checkout the working tree
+git checkout main
 
 # Continue with installation...
 pip install fastapi uvicorn pydantic numpy cohere python-dotenv slowapi
 ```
+
+**Method 3: Simple Clone + Remove (Fallback for Old Git)**
+```bash
+# For Git versions < 2.25 that don't support sparse checkout
+git clone --depth 1 https://github.com/bledden/SAI.git
+cd SAI
+rm -rf tests/  # Less efficient - tests already downloaded
+
+# Continue with installation...
+pip install fastapi uvicorn pydantic numpy cohere python-dotenv slowapi
+```
+
+**Note**: Method 1 is most efficient - it never downloads the 8,482 lines of test code!
 
 ### What You Get
 - ✅ Complete production code (2,096 lines)
@@ -160,14 +171,17 @@ SAI/
 └── docs/                  # Documentation
 ```
 
-### Disk Space Comparison
-| Installation | Lines of Code | Disk Space | Clone Time* |
-|--------------|---------------|------------|-------------|
-| Full | 10,578 | ~15 MB | ~5-10 sec |
-| Lightweight | 2,096 | ~3 MB | ~2-3 sec |
-| **Savings** | **80% less** | **80% less** | **60% faster** |
+### Disk Space & Bandwidth Comparison
+| Installation | Lines of Code | Disk Space | Bandwidth Used | Clone Time* |
+|--------------|---------------|------------|----------------|-------------|
+| Full | 10,578 | ~15 MB | ~15 MB | ~5-10 sec |
+| Lightweight (sparse) | 2,096 | ~3 MB | ~3 MB | ~2-3 sec |
+| Lightweight (rm -rf) | 2,096 | ~3 MB | ~15 MB (wasted!) | ~5-10 sec |
+| **Savings (sparse)** | **80% less** | **80% less** | **80% less** | **60% faster** |
 
 *Approximate, depends on network speed
+
+**Important**: Use sparse checkout (Method 1) to avoid downloading tests entirely. The `rm -rf` method still wastes bandwidth downloading files you'll delete!
 
 ---
 

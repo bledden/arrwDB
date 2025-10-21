@@ -627,14 +627,15 @@ cd SAI
 
 **Option B: Lightweight Installation (Production/Learning - 75% Smaller)**
 ```bash
-# Clone repository, exclude tests directory (saves ~8,482 lines)
-git clone --depth 1 --single-branch --branch main https://github.com/bledden/SAI.git
+# Clone with sparse checkout to exclude tests (no bandwidth waste!)
+git clone --filter=blob:none --sparse https://github.com/bledden/SAI.git
 cd SAI
 
-# Remove test directory to save space
-rm -rf tests/
+# Configure to checkout everything except tests
+git sparse-checkout set '/*' '!tests'
 
 # Repository is now ~2,096 lines instead of ~10,578 lines (80% smaller)
+# Tests directory was never downloaded - saving bandwidth!
 ```
 
 **Note**: The test suite is **4x larger** than the production code (8,482 test lines vs 2,096 production lines). If you only need to run the API or learn from the code, the lightweight installation is sufficient.
