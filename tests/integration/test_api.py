@@ -118,7 +118,7 @@ class TestLibraryEndpoints:
 
     def test_create_library(self, client, sample_library_request):
         """Test creating a library."""
-        response = client.post("/libraries", json=sample_library_request)
+        response = client.post("/v1/libraries", json=sample_library_request)
 
         assert response.status_code == 201
         data = response.json()
@@ -128,7 +128,7 @@ class TestLibraryEndpoints:
 
     def test_list_libraries_empty(self, client):
         """Test listing libraries when none exist."""
-        response = client.get("/libraries")
+        response = client.get("/v1/libraries")
 
         assert response.status_code == 200
         data = response.json()
@@ -137,11 +137,11 @@ class TestLibraryEndpoints:
     def test_list_libraries_with_data(self, client, sample_library_request):
         """Test listing libraries after creating one."""
         # Create a library
-        create_response = client.post("/libraries", json=sample_library_request)
+        create_response = client.post("/v1/libraries", json=sample_library_request)
         assert create_response.status_code == 201
 
         # List libraries
-        list_response = client.get("/libraries")
+        list_response = client.get("/v1/libraries")
         assert list_response.status_code == 200
         libraries = list_response.json()
 
@@ -151,11 +151,11 @@ class TestLibraryEndpoints:
     def test_get_library(self, client, sample_library_request):
         """Test getting a library by ID."""
         # Create library
-        create_response = client.post("/libraries", json=sample_library_request)
+        create_response = client.post("/v1/libraries", json=sample_library_request)
         library_id = create_response.json()["id"]
 
         # Get library
-        get_response = client.get(f"/libraries/{library_id}")
+        get_response = client.get(f"/v1/libraries/{library_id}")
         assert get_response.status_code == 200
         data = get_response.json()
         assert data["id"] == library_id
@@ -164,7 +164,7 @@ class TestLibraryEndpoints:
     def test_get_nonexistent_library(self, client):
         """Test getting a library that doesn't exist."""
         fake_id = str(uuid4())
-        response = client.get(f"/libraries/{fake_id}")
+        response = client.get(f"/v1/libraries/{fake_id}")
 
         assert response.status_code == 404
         data = response.json()
@@ -173,32 +173,32 @@ class TestLibraryEndpoints:
     def test_delete_library(self, client, sample_library_request):
         """Test deleting a library."""
         # Create library
-        create_response = client.post("/libraries", json=sample_library_request)
+        create_response = client.post("/v1/libraries", json=sample_library_request)
         library_id = create_response.json()["id"]
 
         # Delete library
-        delete_response = client.delete(f"/libraries/{library_id}")
+        delete_response = client.delete(f"/v1/libraries/{library_id}")
         assert delete_response.status_code == 204
 
         # Verify it's gone
-        get_response = client.get(f"/libraries/{library_id}")
+        get_response = client.get(f"/v1/libraries/{library_id}")
         assert get_response.status_code == 404
 
     def test_delete_nonexistent_library(self, client):
         """Test deleting a library that doesn't exist."""
         fake_id = str(uuid4())
-        response = client.delete(f"/libraries/{fake_id}")
+        response = client.delete(f"/v1/libraries/{fake_id}")
 
         assert response.status_code == 404
 
     def test_get_library_statistics(self, client, sample_library_request):
         """Test getting library statistics."""
         # Create library
-        create_response = client.post("/libraries", json=sample_library_request)
+        create_response = client.post("/v1/libraries", json=sample_library_request)
         library_id = create_response.json()["id"]
 
         # Get statistics
-        stats_response = client.get(f"/libraries/{library_id}/statistics")
+        stats_response = client.get(f"/v1/libraries/{library_id}/statistics")
         assert stats_response.status_code == 200
 
         stats = stats_response.json()
@@ -216,12 +216,12 @@ class TestDocumentEndpoints:
     def test_add_document_with_text(self, client, sample_library_request, sample_document_request):
         """Test adding a document with text (auto-embedding)."""
         # Create library
-        lib_response = client.post("/libraries", json=sample_library_request)
+        lib_response = client.post("/v1/libraries", json=sample_library_request)
         library_id = lib_response.json()["id"]
 
         # Add document
         doc_response = client.post(
-            f"/libraries/{library_id}/documents",
+            f"/v1/libraries/{library_id}/documents",
             json=sample_document_request
         )
 
@@ -239,12 +239,12 @@ class TestDocumentEndpoints:
     ):
         """Test adding a document with pre-computed embeddings."""
         # Create library
-        lib_response = client.post("/libraries", json=sample_library_request)
+        lib_response = client.post("/v1/libraries", json=sample_library_request)
         library_id = lib_response.json()["id"]
 
         # Add document with embeddings
         doc_response = client.post(
-            f"/libraries/{library_id}/documents/with-embeddings",
+            f"/v1/libraries/{library_id}/documents/with-embeddings",
             json=sample_document_with_embeddings_request
         )
 
@@ -257,7 +257,7 @@ class TestDocumentEndpoints:
         """Test adding document to non-existent library."""
         fake_id = str(uuid4())
         response = client.post(
-            f"/libraries/{fake_id}/documents",
+            f"/v1/libraries/{fake_id}/documents",
             json=sample_document_request
         )
 
@@ -271,7 +271,7 @@ class TestDocumentEndpoints:
     ):
         """Test adding document with wrong embedding dimension raises error."""
         # Create library
-        lib_response = client.post("/libraries", json=sample_library_request)
+        lib_response = client.post("/v1/libraries", json=sample_library_request)
         library_id = lib_response.json()["id"]
 
         # Try to add document with wrong dimension
@@ -284,7 +284,7 @@ class TestDocumentEndpoints:
         }
 
         response = client.post(
-            f"/libraries/{library_id}/documents/with-embeddings",
+            f"/v1/libraries/{library_id}/documents/with-embeddings",
             json=wrong_request
         )
 
@@ -294,17 +294,17 @@ class TestDocumentEndpoints:
     def test_get_document(self, client, sample_library_request, sample_document_request):
         """Test getting a document by ID."""
         # Create library and document
-        lib_response = client.post("/libraries", json=sample_library_request)
+        lib_response = client.post("/v1/libraries", json=sample_library_request)
         library_id = lib_response.json()["id"]
 
         doc_response = client.post(
-            f"/libraries/{library_id}/documents",
+            f"/v1/libraries/{library_id}/documents",
             json=sample_document_request
         )
         document_id = doc_response.json()["id"]
 
         # Get document
-        get_response = client.get(f"/documents/{document_id}")
+        get_response = client.get(f"/v1/documents/{document_id}")
         assert get_response.status_code == 200
         doc = get_response.json()
         assert doc["id"] == document_id
@@ -312,7 +312,7 @@ class TestDocumentEndpoints:
     def test_get_nonexistent_document(self, client):
         """Test getting non-existent document."""
         fake_id = str(uuid4())
-        response = client.get(f"/documents/{fake_id}")
+        response = client.get(f"/v1/documents/{fake_id}")
 
         assert response.status_code == 404
         assert response.json()["error_type"] == "DocumentNotFoundError"
@@ -320,27 +320,27 @@ class TestDocumentEndpoints:
     def test_delete_document(self, client, sample_library_request, sample_document_request):
         """Test deleting a document."""
         # Create library and document
-        lib_response = client.post("/libraries", json=sample_library_request)
+        lib_response = client.post("/v1/libraries", json=sample_library_request)
         library_id = lib_response.json()["id"]
 
         doc_response = client.post(
-            f"/libraries/{library_id}/documents",
+            f"/v1/libraries/{library_id}/documents",
             json=sample_document_request
         )
         document_id = doc_response.json()["id"]
 
         # Delete document
-        delete_response = client.delete(f"/documents/{document_id}")
+        delete_response = client.delete(f"/v1/documents/{document_id}")
         assert delete_response.status_code == 204
 
         # Verify it's gone
-        get_response = client.get(f"/documents/{document_id}")
+        get_response = client.get(f"/v1/documents/{document_id}")
         assert get_response.status_code == 404
 
     def test_delete_nonexistent_document(self, client):
         """Test deleting non-existent document."""
         fake_id = str(uuid4())
-        response = client.delete(f"/documents/{fake_id}")
+        response = client.delete(f"/v1/documents/{fake_id}")
 
         assert response.status_code == 404
 
@@ -352,11 +352,11 @@ class TestSearchEndpoints:
     def test_search_with_text(self, client, sample_library_request, sample_document_request):
         """Test searching with text query."""
         # Create library and document
-        lib_response = client.post("/libraries", json=sample_library_request)
+        lib_response = client.post("/v1/libraries", json=sample_library_request)
         library_id = lib_response.json()["id"]
 
         client.post(
-            f"/libraries/{library_id}/documents",
+            f"/v1/libraries/{library_id}/documents",
             json=sample_document_request
         )
 
@@ -366,7 +366,7 @@ class TestSearchEndpoints:
             "k": 5,
         }
         search_response = client.post(
-            f"/libraries/{library_id}/search",
+            f"/v1/libraries/{library_id}/search",
             json=search_request
         )
 
@@ -385,11 +385,11 @@ class TestSearchEndpoints:
     ):
         """Test searching with pre-computed embedding."""
         # Create library and document
-        lib_response = client.post("/libraries", json=sample_library_request)
+        lib_response = client.post("/v1/libraries", json=sample_library_request)
         library_id = lib_response.json()["id"]
 
         client.post(
-            f"/libraries/{library_id}/documents/with-embeddings",
+            f"/v1/libraries/{library_id}/documents/with-embeddings",
             json=sample_document_with_embeddings_request
         )
 
@@ -400,7 +400,7 @@ class TestSearchEndpoints:
             "k": 5,
         }
         search_response = client.post(
-            f"/libraries/{library_id}/search/embedding",
+            f"/v1/libraries/{library_id}/search/embedding",
             json=search_request
         )
 
@@ -412,7 +412,7 @@ class TestSearchEndpoints:
 
     def test_search_empty_library(self, client, sample_library_request):
         """Test searching an empty library."""
-        lib_response = client.post("/libraries", json=sample_library_request)
+        lib_response = client.post("/v1/libraries", json=sample_library_request)
         library_id = lib_response.json()["id"]
 
         search_request = {
@@ -420,7 +420,7 @@ class TestSearchEndpoints:
             "k": 5,
         }
         search_response = client.post(
-            f"/libraries/{library_id}/search",
+            f"/v1/libraries/{library_id}/search",
             json=search_request
         )
 
@@ -436,11 +436,11 @@ class TestSearchEndpoints:
     ):
         """Test search with distance threshold filtering."""
         # Create library and document
-        lib_response = client.post("/libraries", json=sample_library_request)
+        lib_response = client.post("/v1/libraries", json=sample_library_request)
         library_id = lib_response.json()["id"]
 
         client.post(
-            f"/libraries/{library_id}/documents/with-embeddings",
+            f"/v1/libraries/{library_id}/documents/with-embeddings",
             json=sample_document_with_embeddings_request
         )
 
@@ -452,7 +452,7 @@ class TestSearchEndpoints:
             "distance_threshold": 0.01,  # Very restrictive
         }
         search_response = client.post(
-            f"/libraries/{library_id}/search/embedding",
+            f"/v1/libraries/{library_id}/search/embedding",
             json=search_request
         )
 
@@ -469,7 +469,7 @@ class TestEndToEndWorkflows:
     def test_complete_workflow(self, client, sample_library_request, sample_document_request):
         """Test a complete workflow from library creation to search."""
         # 1. Create library
-        lib_response = client.post("/libraries", json=sample_library_request)
+        lib_response = client.post("/v1/libraries", json=sample_library_request)
         assert lib_response.status_code == 201
         library_id = lib_response.json()["id"]
 
@@ -479,14 +479,14 @@ class TestEndToEndWorkflows:
             doc_request = sample_document_request.copy()
             doc_request["title"] = f"Document {i}"
             doc_response = client.post(
-                f"/libraries/{library_id}/documents",
+                f"/v1/libraries/{library_id}/documents",
                 json=doc_request
             )
             assert doc_response.status_code == 201
             doc_ids.append(doc_response.json()["id"])
 
         # 3. Check statistics
-        stats_response = client.get(f"/libraries/{library_id}/statistics")
+        stats_response = client.get(f"/v1/libraries/{library_id}/statistics")
         assert stats_response.status_code == 200
         stats = stats_response.json()
         assert stats["num_documents"] == 3
@@ -494,7 +494,7 @@ class TestEndToEndWorkflows:
 
         # 4. Search
         search_response = client.post(
-            f"/libraries/{library_id}/search",
+            f"/v1/libraries/{library_id}/search",
             json={"query": "chunk 1", "k": 5}
         )
         assert search_response.status_code == 200
@@ -502,16 +502,16 @@ class TestEndToEndWorkflows:
         assert len(results["results"]) > 0
 
         # 5. Delete one document
-        delete_response = client.delete(f"/documents/{doc_ids[0]}")
+        delete_response = client.delete(f"/v1/documents/{doc_ids[0]}")
         assert delete_response.status_code == 204
 
         # 6. Verify statistics updated
-        stats_response = client.get(f"/libraries/{library_id}/statistics")
+        stats_response = client.get(f"/v1/libraries/{library_id}/statistics")
         stats = stats_response.json()
         assert stats["num_documents"] == 2
 
         # 7. Delete library
-        delete_lib_response = client.delete(f"/libraries/{library_id}")
+        delete_lib_response = client.delete(f"/v1/libraries/{library_id}")
         assert delete_lib_response.status_code == 204
 
     def test_multiple_libraries_isolation(self, client, sample_library_request, sample_document_request):
@@ -519,25 +519,25 @@ class TestEndToEndWorkflows:
         # Create two libraries
         lib1_request = sample_library_request.copy()
         lib1_request["name"] = "Library 1"
-        lib1_response = client.post("/libraries", json=lib1_request)
+        lib1_response = client.post("/v1/libraries", json=lib1_request)
         lib1_id = lib1_response.json()["id"]
 
         lib2_request = sample_library_request.copy()
         lib2_request["name"] = "Library 2"
-        lib2_response = client.post("/libraries", json=lib2_request)
+        lib2_response = client.post("/v1/libraries", json=lib2_request)
         lib2_id = lib2_response.json()["id"]
 
         # Add document to library 1
         doc_response = client.post(
-            f"/libraries/{lib1_id}/documents",
+            f"/v1/libraries/{lib1_id}/documents",
             json=sample_document_request
         )
         assert doc_response.status_code == 201
 
         # Verify library 1 has documents
-        stats1 = client.get(f"/libraries/{lib1_id}/statistics").json()
+        stats1 = client.get(f"/v1/libraries/{lib1_id}/statistics").json()
         assert stats1["num_documents"] == 1
 
         # Verify library 2 is still empty
-        stats2 = client.get(f"/libraries/{lib2_id}/statistics").json()
+        stats2 = client.get(f"/v1/libraries/{lib2_id}/statistics").json()
         assert stats2["num_documents"] == 0

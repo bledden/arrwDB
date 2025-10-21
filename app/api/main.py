@@ -5,7 +5,7 @@ This module provides the main FastAPI application with all CRUD endpoints
 for libraries, documents, and chunks, plus search functionality.
 """
 
-from fastapi import FastAPI, HTTPException, Depends, status, Request
+from fastapi import FastAPI, HTTPException, Depends, status, Request, APIRouter
 from fastapi.responses import JSONResponse
 from typing import List
 from uuid import UUID
@@ -52,11 +52,15 @@ limiter = Limiter(
     storage_uri=settings.RATE_LIMIT_STORAGE_URI,
 )
 
+# API Version
+API_VERSION = "1.0.0"
+API_V1_PREFIX = "/v1"
+
 # Create FastAPI app
 app = FastAPI(
     title="Vector Database API",
     description="Production-grade REST API for vector similarity search with multiple indexing algorithms",
-    version="1.0.0",
+    version=API_VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
 )
@@ -66,6 +70,9 @@ app.state.limiter = limiter
 
 # Add rate limit exception handler
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Create v1 API router
+v1_router = APIRouter(prefix=API_V1_PREFIX)
 
 
 # Exception Handlers
@@ -143,14 +150,14 @@ async def value_error_handler(request, exc):
 async def health_check():
     """Check if the API is running."""
     return HealthResponse(
-        status="healthy", version="1.0.0", timestamp=datetime.utcnow()
+        status="healthy", version=API_VERSION, timestamp=datetime.utcnow()
     )
 
 
 # Library Endpoints
 
 
-@app.post(
+@v1_router.post(
     "/libraries",
     response_model=LibraryResponse,
     status_code=status.HTTP_201_CREATED,
@@ -178,7 +185,7 @@ def create_library(
     return library
 
 
-@app.get(
+@v1_router.get(
     "/libraries",
     response_model=List[LibrarySummaryResponse],
     tags=["Libraries"],
@@ -207,7 +214,7 @@ def list_libraries(
     return summaries
 
 
-@app.get(
+@v1_router.get(
     "/libraries/{library_id}",
     response_model=LibraryResponse,
     tags=["Libraries"],
@@ -223,7 +230,7 @@ def get_library(
     return service.get_library(library_id)
 
 
-@app.delete(
+@v1_router.delete(
     "/libraries/{library_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     tags=["Libraries"],
@@ -241,7 +248,7 @@ def delete_library(
         raise LibraryNotFoundError(f"Library {library_id} not found")
 
 
-@app.get(
+@v1_router.get(
     "/libraries/{library_id}/statistics",
     response_model=LibraryStatisticsResponse,
     tags=["Libraries"],
@@ -260,7 +267,7 @@ def get_library_statistics(
 # Document Endpoints
 
 
-@app.post(
+@v1_router.post(
     "/libraries/{library_id}/documents",
     response_model=DocumentResponse,
     status_code=status.HTTP_201_CREATED,
@@ -298,7 +305,7 @@ def add_document(
     return document
 
 
-@app.post(
+@v1_router.post(
     "/libraries/{library_id}/documents/with-embeddings",
     response_model=DocumentResponse,
     status_code=status.HTTP_201_CREATED,
@@ -341,7 +348,7 @@ def add_document_with_embeddings(
     return document
 
 
-@app.get(
+@v1_router.get(
     "/documents/{document_id}",
     response_model=DocumentResponse,
     tags=["Documents"],
@@ -357,7 +364,7 @@ def get_document(
     return service.get_document(document_id)
 
 
-@app.delete(
+@v1_router.delete(
     "/documents/{document_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     tags=["Documents"],
@@ -378,7 +385,7 @@ def delete_document(
 # Search Endpoints
 
 
-@app.post(
+@v1_router.post(
     "/libraries/{library_id}/search",
     response_model=SearchResponse,
     tags=["Search"],
@@ -436,7 +443,7 @@ def search(
     )
 
 
-@app.post(
+@v1_router.post(
     "/libraries/{library_id}/search/embedding",
     response_model=SearchResponse,
     tags=["Search"],
@@ -518,18 +525,29 @@ async def startup_event():
     logger.info("=" * 60)
 
 
+# Include v1 router
+app.include_router(v1_router)
+
+
 # Root endpoint
 
 
 @app.get("/", tags=["Root"])
 def root():
     """
-    Root endpoint with API information.
+    Root endpoint with API information and available versions.
     """
     return {
         "name": "Vector Database API",
-        "version": "1.0.0",
+        "version": API_VERSION,
         "description": "Production-grade vector similarity search API",
         "documentation": "/docs",
         "health_check": "/health",
+        "api_versions": {
+            "v1": {
+                "prefix": API_V1_PREFIX,
+                "status": "stable",
+                "endpoints": f"{API_V1_PREFIX}/libraries, {API_V1_PREFIX}/documents, {API_V1_PREFIX}/search"
+            }
+        }
     }
