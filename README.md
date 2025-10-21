@@ -1,7 +1,7 @@
 # Vector Database REST API
 
-![Tests](https://img.shields.io/badge/tests-131%2F131%20passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-74%25-green)
+![Tests](https://img.shields.io/badge/tests-458%2F461%20passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-96%25-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688)
 
@@ -616,11 +616,28 @@ This section provides **complete step-by-step instructions** for running the pro
 
 #### Step 1: Clone the Repository
 
+Choose between **full installation** (with tests) or **lightweight installation** (production-only):
+
+**Option A: Full Installation (Default - Recommended for Development)**
 ```bash
-# Clone from GitHub
+# Clone entire repository including tests (8,482 test lines)
 git clone https://github.com/bledden/SAI.git
 cd SAI
 ```
+
+**Option B: Lightweight Installation (Production/Learning - 75% Smaller)**
+```bash
+# Clone repository, exclude tests directory (saves ~8,482 lines)
+git clone --depth 1 --single-branch --branch main https://github.com/bledden/SAI.git
+cd SAI
+
+# Remove test directory to save space
+rm -rf tests/
+
+# Repository is now ~2,096 lines instead of ~10,578 lines (80% smaller)
+```
+
+**Note**: The test suite is **4x larger** than the production code (8,482 test lines vs 2,096 production lines). If you only need to run the API or learn from the code, the lightweight installation is sufficient.
 
 #### Step 2: Set Up Python Environment
 
