@@ -46,8 +46,8 @@ echo "Created library: $LIBRARY_ID"
 DOC_ID=$(curl -s -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
-    "text": "Machine learning is a subset of artificial intelligence that enables computers to learn from data without being explicitly programmed. It uses statistical techniques to give computers the ability to learn patterns and make decisions.",
-    "metadata": {
+    "texts": [ "Machine learning is a subset of artificial intelligence that enables computers to learn from data without being explicitly programmed. It uses statistical techniques to give computers the ability to learn patterns and make decisions.",
+    "}
       "title": "Introduction to Machine Learning",
       "author": "Tech Blog",
       "date": "2024-01-15"
@@ -60,8 +60,8 @@ echo "Added document: $DOC_ID"
 curl -s -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
-    "text": "Deep learning is a type of machine learning based on artificial neural networks with multiple layers. It has revolutionized fields like computer vision and natural language processing.",
-    "metadata": {
+    "texts": [ "Deep learning is a type of machine learning based on artificial neural networks with multiple layers. It has revolutionized fields like computer vision and natural language processing.",
+    "}
       "title": "Deep Learning Explained",
       "author": "Tech Blog"
     }
@@ -70,8 +70,8 @@ curl -s -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
 curl -s -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
-    "text": "Natural language processing enables computers to understand, interpret, and generate human language. It powers applications like chatbots, translation, and sentiment analysis.",
-    "metadata": {
+    "texts": [ "Natural language processing enables computers to understand, interpret, and generate human language. It powers applications like chatbots, translation, and sentiment analysis.",
+    "}
       "title": "NLP Overview",
       "author": "Tech Blog"
     }
@@ -196,8 +196,8 @@ curl "http://localhost:8000/v1/libraries/$LIBRARY_ID" | jq '.'
 curl -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
-    "text": "Transformers are a neural network architecture that has revolutionized natural language processing. They use self-attention mechanisms to process sequential data in parallel, making them much faster than recurrent neural networks.",
-    "metadata": {
+    "texts": [ "Transformers are a neural network architecture that has revolutionized natural language processing. They use self-attention mechanisms to process sequential data in parallel, making them much faster than recurrent neural networks.",
+    "}
       "title": "Understanding Transformers",
       "author": "Jane Doe",
       "category": "Deep Learning",
@@ -211,7 +211,7 @@ curl -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
 {
   "id": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
   "library_id": "550e8400-e29b-41d4-a716-446655440000",
-  "metadata": {
+  "}
     "title": "Understanding Transformers",
     "author": "Jane Doe",
     "category": "Deep Learning",
@@ -220,7 +220,7 @@ curl -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
   "chunks": [
     {
       "id": "chunk-001",
-      "text": "Transformers are a neural network architecture...",
+      "texts": [ "Transformers are a neural network architecture...",
       "chunk_index": 0
     }
   ],
@@ -233,8 +233,8 @@ curl -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
 curl -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
-    "text": "'"$(cat long_article.txt)"'",
-    "metadata": {
+    "texts": [ "'"$(cat long_article.txt)"'",
+    "}
       "title": "Long Article",
       "source": "file"
     }
@@ -263,8 +263,8 @@ curl -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/search" \
       "chunk_id": "chunk-001",
       "document_id": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
       "similarity": 0.8542,
-      "text": "Transformers are a neural network architecture...",
-      "metadata": {
+      "texts": [ "Transformers are a neural network architecture...",
+      "}
         "title": "Understanding Transformers",
         "author": "Jane Doe"
       }
@@ -273,8 +273,8 @@ curl -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/search" \
       "chunk_id": "chunk-002",
       "document_id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
       "similarity": 0.7891,
-      "text": "Natural language processing has been transformed...",
-      "metadata": {
+      "texts": [ "Natural language processing has been transformed...",
+      "}
         "title": "NLP Revolution"
       }
     }
@@ -328,14 +328,14 @@ curl "http://localhost:8000/v1/documents/$DOC_ID" | jq '.'
 {
   "id": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
   "library_id": "550e8400-e29b-41d4-a716-446655440000",
-  "metadata": {
+  "}
     "title": "Understanding Transformers",
     "author": "Jane Doe"
   },
   "chunks": [
     {
       "id": "chunk-001",
-      "text": "Transformers are a neural network architecture...",
+      "texts": [ "Transformers are a neural network architecture...",
       "chunk_index": 0
     }
   ],
@@ -425,8 +425,8 @@ KB_ID=$(curl -s -X POST "http://localhost:8000/v1/libraries" \
 curl -s -X POST "http://localhost:8000/v1/libraries/$KB_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
-    "text": "To reset your password, go to the login page and click Forgot Password. Enter your email address and you will receive a reset link within 5 minutes.",
-    "metadata": {
+    "texts": [ "To reset your password, go to the login page and click Forgot Password. Enter your email address and you will receive a reset link within 5 minutes.",
+    "}
       "category": "Account",
       "topic": "Password Reset",
       "last_updated": "2024-10-15"
@@ -436,8 +436,8 @@ curl -s -X POST "http://localhost:8000/v1/libraries/$KB_ID/documents" \
 curl -s -X POST "http://localhost:8000/v1/libraries/$KB_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
-    "text": "Our support team is available Monday-Friday 9am-5pm EST. You can reach us via email at support@company.com or through the live chat on our website.",
-    "metadata": {
+    "texts": [ "Our support team is available Monday-Friday 9am-5pm EST. You can reach us via email at support@company.com or through the live chat on our website.",
+    "}
       "category": "Support",
       "topic": "Contact Information"
     }
@@ -473,8 +473,8 @@ CODE_ID=$(curl -s -X POST "http://localhost:8000/v1/libraries" \
 curl -s -X POST "http://localhost:8000/v1/libraries/$CODE_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
-    "text": "def calculate_similarity(vec1, vec2): Computes the cosine similarity between two vectors. Returns a float between 0 and 1, where 1 means identical and 0 means orthogonal.",
-    "metadata": {
+    "texts": [ "def calculate_similarity(vec1, vec2): Computes the cosine similarity between two vectors. Returns a float between 0 and 1, where 1 means identical and 0 means orthogonal.",
+    "}
       "function": "calculate_similarity",
       "file": "vector_utils.py",
       "type": "function"

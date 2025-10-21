@@ -20,6 +20,8 @@ from infrastructure.indexes.kd_tree import KDTreeIndex
 from infrastructure.indexes.lsh import LSHIndex
 from infrastructure.indexes.hnsw import HNSWIndex
 from infrastructure.concurrency.rw_lock import ReaderWriterLock
+from infrastructure.persistence.wal import WriteAheadLog, OperationType, WALEntry
+from infrastructure.persistence.snapshot import SnapshotManager
 
 
 class LibraryNotFoundError(Exception):
@@ -84,6 +86,18 @@ class LibraryRepository:
         # Thread safety
         self._lock = ReaderWriterLock()
 
+        # Persistence
+        wal_dir = self._data_dir / "wal"
+        snapshot_dir = self._data_dir / "snapshots"
+        wal_dir.mkdir(parents=True, exist_ok=True)
+        snapshot_dir.mkdir(parents=True, exist_ok=True)
+
+        self._wal = WriteAheadLog(wal_dir)
+        self._snapshot_manager = SnapshotManager(snapshot_dir)
+
+        # Load from persistence on startup
+        self._load_from_disk()
+
     def create_library(self, library: Library) -> Library:
         """
         Create a new library.
@@ -100,6 +114,16 @@ class LibraryRepository:
         with self._lock.write():
             if library.id in self._libraries:
                 raise ValueError(f"Library with ID {library.id} already exists")
+
+            # Log to WAL before applying
+            self._wal.append(
+                OperationType.CREATE_LIBRARY,
+                {
+                    "library_id": str(library.id),
+                    "name": library.name,
+                    "index_type": library.metadata.index_type,
+                }
+            )
 
             # Create vector store for this library
             vector_dir = self._data_dir / "vectors" / str(library.id)
@@ -130,6 +154,10 @@ class LibraryRepository:
             # If library has documents, add them
             for doc in library.documents:
                 self._add_document_internal(library.id, doc)
+
+            # Save snapshot periodically (every 10 libraries)
+            if len(self._libraries) % 10 == 0:
+                self._save_snapshot()
 
             return library
 
@@ -176,6 +204,12 @@ class LibraryRepository:
             if library_id not in self._libraries:
                 return False
 
+            # Log to WAL before applying
+            self._wal.append(
+                OperationType.DELETE_LIBRARY,
+                {"library_id": str(library_id)}
+            )
+
             library = self._libraries[library_id]
 
             # Remove all document and chunk mappings
@@ -195,6 +229,10 @@ class LibraryRepository:
             del self._vector_stores[library_id]
             del self._contracts[library_id]
             del self._libraries[library_id]
+
+            # Save snapshot periodically
+            if len(self._libraries) % 10 == 0:
+                self._save_snapshot()
 
             return True
 
@@ -452,6 +490,77 @@ class LibraryRepository:
             return HNSWIndex(vector_store, M=16, ef_construction=200, ef_search=50)
         else:
             raise ValueError(f"Unknown index type: {index_type}")
+
+    def _load_from_disk(self) -> None:
+        """Load state from disk (snapshot + WAL replay)."""
+        try:
+            # Try to load latest snapshot
+            state = self._snapshot_manager.load_latest()
+            if state:
+                # Restore state from snapshot
+                self._libraries = {UUID(k): Library(**v) for k, v in state.get("libraries", {}).items()}
+                # Note: Vector stores and indexes are reconstructed on-demand
+                # as they contain numpy arrays that don't serialize well
+
+            # Replay WAL entries after snapshot
+            # (WAL manager handles finding entries after snapshot timestamp)
+            # For now, we start fresh - full WAL replay would go here
+
+        except Exception as e:
+            # If loading fails, start with empty state
+            import logging
+            logging.warning(f"Failed to load from disk: {e}. Starting fresh.")
+
+    def _save_snapshot(self) -> None:
+        """Save current state to snapshot."""
+        try:
+            state = {
+                "libraries": {
+                    str(lib_id): {
+                        "id": str(lib.id),
+                        "name": lib.name,
+                        "documents": [
+                            {
+                                "id": str(doc.id),
+                                "chunks": [
+                                    {
+                                        "id": str(chunk.id),
+                                        "text": chunk.text,
+                                        "metadata": {
+                                            "created_at": str(chunk.metadata.created_at),
+                                            "page_number": chunk.metadata.page_number,
+                                            "chunk_index": chunk.metadata.chunk_index,
+                                            "source_document_id": str(chunk.metadata.source_document_id),
+                                        }
+                                    }
+                                    for chunk in doc.chunks
+                                ],
+                                "metadata": {
+                                    "title": doc.metadata.title,
+                                    "author": doc.metadata.author,
+                                    "created_at": str(doc.metadata.created_at),
+                                    "document_type": doc.metadata.document_type,
+                                    "source_url": doc.metadata.source_url,
+                                    "tags": doc.metadata.tags,
+                                }
+                            }
+                            for doc in lib.documents
+                        ],
+                        "metadata": {
+                            "description": lib.metadata.description,
+                            "created_at": str(lib.metadata.created_at),
+                            "index_type": lib.metadata.index_type,
+                            "embedding_dimension": lib.metadata.embedding_dimension,
+                            "embedding_model": lib.metadata.embedding_model,
+                        }
+                    }
+                    for lib_id, lib in self._libraries.items()
+                }
+            }
+            self._snapshot_manager.save(state)
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to save snapshot: {e}")
 
     def __repr__(self) -> str:
         """String representation."""

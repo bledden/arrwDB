@@ -45,6 +45,13 @@ from infrastructure.repositories.library_repository import (
 from app.services.embedding_service import EmbeddingServiceError
 from app.config import settings
 
+# Import Temporal client
+try:
+    from temporal.client import TemporalClient
+    TEMPORAL_AVAILABLE = True
+except Exception:
+    TEMPORAL_AVAILABLE = False
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -579,6 +586,95 @@ async def startup_event():
 
 # Include v1 router
 app.include_router(v1_router)
+
+
+# ============================================================
+# Temporal Workflow Endpoints (Extra Feature)
+# ============================================================
+
+@v1_router.post(
+    "/workflows/rag",
+    tags=["workflows"],
+    summary="Start RAG workflow",
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def start_rag_workflow(
+    library_id: UUID,
+    query: str = Query(..., description="Search query"),
+    k: int = Query(5, ge=1, le=20, description="Number of results"),
+):
+    """
+    Start a Temporal RAG (Retrieval-Augmented Generation) workflow.
+
+    This endpoint starts a durable workflow that:
+    1. Preprocesses the query
+    2. Generates embedding
+    3. Retrieves relevant chunks
+    4. Reranks results
+    5. Generates an answer
+
+    Returns the workflow ID for tracking.
+    """
+    if not TEMPORAL_AVAILABLE:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Temporal workflows not available. Start Temporal server with docker-compose."
+        )
+
+    try:
+        client = TemporalClient()
+        workflow_id = await client.start_rag_workflow(
+            library_id=str(library_id),
+            query=query,
+            k=k
+        )
+
+        return {
+            "workflow_id": workflow_id,
+            "status": "started",
+            "message": "RAG workflow started successfully",
+            "query": query,
+            "library_id": str(library_id)
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to start workflow: {str(e)}"
+        )
+
+
+@v1_router.get(
+    "/workflows/{workflow_id}",
+    tags=["workflows"],
+    summary="Get workflow status",
+)
+async def get_workflow_status(workflow_id: str):
+    """
+    Get the status and result of a RAG workflow.
+
+    Returns the workflow execution status and result if completed.
+    """
+    if not TEMPORAL_AVAILABLE:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Temporal workflows not available"
+        )
+
+    try:
+        client = TemporalClient()
+        result = await client.get_workflow_result(workflow_id)
+
+        return {
+            "workflow_id": workflow_id,
+            "status": "completed",
+            "result": result
+        }
+    except Exception as e:
+        return {
+            "workflow_id": workflow_id,
+            "status": "running or failed",
+            "error": str(e)
+        }
 
 
 # Root endpoint
