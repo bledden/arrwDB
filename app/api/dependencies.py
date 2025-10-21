@@ -13,6 +13,7 @@ from fastapi import Depends
 from app.services.library_service import LibraryService
 from app.services.embedding_service import EmbeddingService
 from infrastructure.repositories.library_repository import LibraryRepository
+from app.config import settings
 
 
 @lru_cache()
@@ -23,8 +24,7 @@ def get_data_dir() -> Path:
     Returns:
         Path to the data directory.
     """
-    data_dir_str = os.getenv("VECTOR_DB_DATA_DIR", "./data")
-    return Path(data_dir_str).resolve()
+    return Path(settings.VECTOR_DB_DATA_DIR).resolve()
 
 
 @lru_cache()
@@ -50,26 +50,17 @@ def get_embedding_service() -> EmbeddingService:
     Raises:
         ValueError: If COHERE_API_KEY environment variable is not set.
     """
-    api_key = os.getenv("COHERE_API_KEY")
-    if not api_key:
+    if not settings.COHERE_API_KEY:
         raise ValueError(
             "COHERE_API_KEY environment variable must be set. "
             "Get your API key from https://dashboard.cohere.com/api-keys"
         )
 
-    model = os.getenv("EMBEDDING_MODEL", "embed-english-v3.0")
-    dimension_str = os.getenv("EMBEDDING_DIMENSION", "1024")
-
-    try:
-        dimension = int(dimension_str)
-    except ValueError:
-        dimension = 1024
-
     return EmbeddingService(
-        api_key=api_key,
-        model=model,
+        api_key=settings.COHERE_API_KEY,
+        model=settings.EMBEDDING_MODEL,
         input_type="search_document",
-        embedding_dimension=dimension if dimension < 1024 else None,
+        embedding_dimension=settings.EMBEDDING_DIMENSION if settings.EMBEDDING_DIMENSION < 1024 else None,
     )
 
 
