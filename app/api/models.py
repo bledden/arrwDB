@@ -280,6 +280,31 @@ class LibrarySummaryResponse(BaseModel):
         from_attributes = True
 
 
+# Slim Response Models (without embeddings for bandwidth optimization)
+
+
+class ChunkResponseSlim(BaseModel):
+    """Slim response model for a chunk (without embedding)."""
+
+    id: UUID
+    text: str
+    metadata: "ChunkMetadataResponse"
+
+    class Config:
+        from_attributes = True
+
+
+class DocumentResponseSlim(BaseModel):
+    """Slim response model for a document (without embeddings)."""
+
+    id: UUID
+    chunks: List[ChunkResponseSlim]
+    metadata: DocumentMetadataResponse
+
+    class Config:
+        from_attributes = True
+
+
 class SearchResultResponse(BaseModel):
     """Response model for a search result."""
 
@@ -289,10 +314,27 @@ class SearchResultResponse(BaseModel):
     document_title: str
 
 
+class SearchResultResponseSlim(BaseModel):
+    """Slim response model for a search result (without embedding)."""
+
+    chunk: ChunkResponseSlim
+    distance: float
+    document_id: UUID
+    document_title: str
+
+
 class SearchResponse(BaseModel):
     """Response model for search results."""
 
     results: List[SearchResultResponse]
+    query_time_ms: float
+    total_results: int
+
+
+class SearchResponseSlim(BaseModel):
+    """Slim response model for search results (without embeddings)."""
+
+    results: List[SearchResultResponseSlim]
     query_time_ms: float
     total_results: int
 
@@ -329,3 +371,4 @@ class HealthResponse(BaseModel):
 # Update forward references
 AddDocumentWithEmbeddingsRequest.model_rebuild()
 ChunkResponse.model_rebuild()
+ChunkResponseSlim.model_rebuild()

@@ -5,9 +5,9 @@ This module provides the main FastAPI application with all CRUD endpoints
 for libraries, documents, and chunks, plus search functionality.
 """
 
-from fastapi import FastAPI, HTTPException, Depends, status, Request, APIRouter
+from fastapi import FastAPI, HTTPException, Depends, status, Request, APIRouter, Query
 from fastapi.responses import JSONResponse
-from typing import List
+from typing import List, Union
 from uuid import UUID
 import time
 from datetime import datetime
@@ -25,8 +25,12 @@ from app.api.models import (
     LibraryResponse,
     LibrarySummaryResponse,
     DocumentResponse,
+    DocumentResponseSlim,
     SearchResponse,
+    SearchResponseSlim,
     SearchResultResponse,
+    SearchResultResponseSlim,
+    ChunkResponseSlim,
     LibraryStatisticsResponse,
     ErrorResponse,
     HealthResponse,
@@ -387,7 +391,6 @@ def delete_document(
 
 @v1_router.post(
     "/libraries/{library_id}/search",
-    response_model=SearchResponse,
     tags=["Search"],
     summary="Search with text query",
 )
@@ -396,8 +399,9 @@ def search(
     req: Request,
     library_id: UUID,
     request: SearchRequest,
+    include_embeddings: bool = Query(default=False, description="Include embeddings in response"),
     service: LibraryService = Depends(get_library_service),
-):
+) -> Union[SearchResponse, SearchResponseSlim]:
     """
     Search a library using a natural language query.
 
@@ -407,6 +411,7 @@ def search(
     - **query**: Natural language search query
     - **k**: Number of results to return (1-100)
     - **distance_threshold**: Optional maximum distance (0-2 for cosine)
+    - **include_embeddings**: Include embeddings in response (default: false for reduced bandwidth)
 
     Returns the k most similar chunks ranked by cosine similarity.
     """
@@ -421,31 +426,53 @@ def search(
 
     query_time_ms = (time.time() - start_time) * 1000
 
-    # Build response
+    # Build response based on include_embeddings flag
     search_results = []
     for chunk, distance in results:
         # Get document info
         doc = service.get_document(chunk.metadata.source_document_id)
 
-        search_results.append(
-            SearchResultResponse(
-                chunk=chunk,
-                distance=distance,
-                document_id=doc.id,
-                document_title=doc.metadata.title,
+        if include_embeddings:
+            search_results.append(
+                SearchResultResponse(
+                    chunk=chunk,
+                    distance=distance,
+                    document_id=doc.id,
+                    document_title=doc.metadata.title,
+                )
             )
-        )
+        else:
+            # Create slim chunk without embedding
+            slim_chunk = ChunkResponseSlim(
+                id=chunk.id,
+                text=chunk.text,
+                metadata=chunk.metadata,
+            )
+            search_results.append(
+                SearchResultResponseSlim(
+                    chunk=slim_chunk,
+                    distance=distance,
+                    document_id=doc.id,
+                    document_title=doc.metadata.title,
+                )
+            )
 
-    return SearchResponse(
-        results=search_results,
-        query_time_ms=round(query_time_ms, 2),
-        total_results=len(search_results),
-    )
+    if include_embeddings:
+        return SearchResponse(
+            results=search_results,
+            query_time_ms=round(query_time_ms, 2),
+            total_results=len(search_results),
+        )
+    else:
+        return SearchResponseSlim(
+            results=search_results,
+            query_time_ms=round(query_time_ms, 2),
+            total_results=len(search_results),
+        )
 
 
 @v1_router.post(
     "/libraries/{library_id}/search/embedding",
-    response_model=SearchResponse,
     tags=["Search"],
     summary="Search with embedding",
 )
@@ -454,8 +481,9 @@ def search_with_embedding(
     req: Request,
     library_id: UUID,
     request: SearchWithEmbeddingRequest,
+    include_embeddings: bool = Query(default=False, description="Include embeddings in response"),
     service: LibraryService = Depends(get_library_service),
-):
+) -> Union[SearchResponse, SearchResponseSlim]:
     """
     Search a library using a pre-computed embedding.
 
@@ -464,6 +492,7 @@ def search_with_embedding(
     - **embedding**: Query vector (must match library's dimension)
     - **k**: Number of results to return (1-100)
     - **distance_threshold**: Optional maximum distance (0-2 for cosine)
+    - **include_embeddings**: Include embeddings in response (default: false for reduced bandwidth)
 
     Returns the k most similar chunks ranked by cosine similarity.
     """
@@ -478,26 +507,49 @@ def search_with_embedding(
 
     query_time_ms = (time.time() - start_time) * 1000
 
-    # Build response
+    # Build response based on include_embeddings flag
     search_results = []
     for chunk, distance in results:
         # Get document info
         doc = service.get_document(chunk.metadata.source_document_id)
 
-        search_results.append(
-            SearchResultResponse(
-                chunk=chunk,
-                distance=distance,
-                document_id=doc.id,
-                document_title=doc.metadata.title,
+        if include_embeddings:
+            search_results.append(
+                SearchResultResponse(
+                    chunk=chunk,
+                    distance=distance,
+                    document_id=doc.id,
+                    document_title=doc.metadata.title,
+                )
             )
-        )
+        else:
+            # Create slim chunk without embedding
+            slim_chunk = ChunkResponseSlim(
+                id=chunk.id,
+                text=chunk.text,
+                metadata=chunk.metadata,
+            )
+            search_results.append(
+                SearchResultResponseSlim(
+                    chunk=slim_chunk,
+                    distance=distance,
+                    document_id=doc.id,
+                    document_title=doc.metadata.title,
+                )
+            )
 
-    return SearchResponse(
-        results=search_results,
-        query_time_ms=round(query_time_ms, 2),
-        total_results=len(search_results),
-    )
+    if include_embeddings:
+        return SearchResponse(
+            results=search_results,
+            query_time_ms=round(query_time_ms, 2),
+            total_results=len(search_results),
+        )
+    else:
+        return SearchResponseSlim(
+            results=search_results,
+            query_time_ms=round(query_time_ms, 2),
+            total_results=len(search_results),
+        )
 
 
 # Startup event
