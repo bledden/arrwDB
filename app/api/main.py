@@ -561,7 +561,7 @@ async def startup_event():
     logger.info("=" * 60)
     logger.info("Vector Database API Starting")
     logger.info("=" * 60)
-    logger.info(f"Server: {settings.API_HOST}:{settings.API_PORT}")
+    logger.info(f"Server: {settings.HOST}:{settings.PORT}")
     logger.info(f"Workers: {settings.workers}")
     logger.info(f"Rate Limiting: {'Enabled' if settings.RATE_LIMIT_ENABLED else 'Disabled'}")
     if settings.RATE_LIMIT_ENABLED:
