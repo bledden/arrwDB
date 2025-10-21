@@ -7,26 +7,47 @@ name = "vectordb"
 version = "1.0.0"
 description = "Production-grade Vector Database with multiple index implementations"
 authors = [{name = "Vector DB Team"}]
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 dependencies = [
     "fastapi>=0.104.1",
     "uvicorn[standard]>=0.24.0",
     "pydantic>=2.5.0",
-    "numpy>=1.26.2",
+    "numpy>=1.24.3",
     "cohere>=4.37",
+    "python-dotenv>=1.0.0",
+    "slowapi>=0.1.9",
+]
+
+[project.optional-dependencies]
+# Install with: pip install -e ".[dev]"
+dev = [
+    "pytest>=7.4.3",
+    "pytest-asyncio>=0.21.1",
+    "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.5.0",
+    "httpx>=0.25.2",
+    "black>=23.11.0",
+    "ruff>=0.1.6",
+    "mypy>=1.7.1",
+]
+
+# Install with: pip install -e ".[temporal]"
+temporal = [
     "temporalio>=1.5.1",
 ]
 
+# Install everything: pip install -e ".[dev,temporal]"
+
 [tool.black]
 line-length = 100
-target-version = ['py311']
+target-version = ['py39', 'py310', 'py311']
 
 [tool.isort]
 profile = "black"
 line_length = 100
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

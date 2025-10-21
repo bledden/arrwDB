@@ -319,12 +319,16 @@ class TestSearchEndpoints:
 
         assert response.status_code == 200
         data = response.json()
-        assert "results" in data
-        assert "query_time_ms" in data
-        assert "total_results" in data
-        # Verify slim response (no embeddings)
-        if len(data["results"]) > 0:
-            assert "embedding" not in data["results"][0]["chunk"]
+        # Validate structure and actual values
+        assert isinstance(data["results"], list)
+        assert len(data["results"]) == 1
+        assert isinstance(data["query_time_ms"], (int, float))
+        assert data["query_time_ms"] >= 0
+        assert data["total_results"] == 1
+        # Verify slim response (no embeddings) and correct data
+        assert "embedding" not in data["results"][0]["chunk"]
+        assert data["results"][0]["chunk"]["text"] == "Test result"
+        assert data["results"][0]["distance"] == 0.25
 
     def test_search_with_text_full_response(self, client_with_mock):
         """Test search with include_embeddings=true returns full response."""

@@ -1,0 +1,7 @@
+# Test results are generated during test runs
+# Keep directory structure but ignore generated files
+*.xml
+*.json
+*.log
+*.html
+!.gitignore
