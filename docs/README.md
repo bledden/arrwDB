@@ -16,7 +16,6 @@ This directory contains all documentation for the Vector Database project.
 
 - **[Requirements Verification](REQUIREMENTS_VERIFICATION.md)** - All requirements met ✅
 - **[Code Quality Assessment](CODE_QUALITY_ASSESSMENT.md)** - Code quality analysis
-- **[Testing Philosophy](REAL_VS_MOCKED.md)** - Why we don't mock (real implementations)
 
 ---
 
@@ -24,12 +23,6 @@ This directory contains all documentation for the Vector Database project.
 
 - **[Leader-Follower Design](LEADER_FOLLOWER_DESIGN.md)** - High-availability architecture
 - **[Future Enhancements](FUTURE_ENHANCEMENTS.md)** - Roadmap and potential improvements
-
----
-
-## ✅ Code Review
-
-- **[Hiring Review Checklist](HIRING_REVIEW.md)** - Self-assessment for code review
 
 ---
 
