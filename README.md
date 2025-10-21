@@ -7,6 +7,544 @@
 
 A production-grade vector similarity search database with multiple indexing algorithms, full CRUD operations, and Temporal workflow integration for RAG (Retrieval-Augmented Generation) pipelines.
 
+---
+
+## Table of Contents
+
+- [Project Overview](#project-overview)
+- [Task Description](#task-description)
+- [Technical Choices & Design Decisions](#technical-choices--design-decisions)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [How to Run Locally](#how-to-run-locally)
+- [Usage Examples](#usage-examples)
+- [Requirements Validation](#requirements-validation)
+- [Testing](#testing)
+- [Documentation](#documentation)
+
+---
+
+## Project Overview
+
+This project implements a complete **Vector Database REST API** designed for semantic search and retrieval-augmented generation (RAG) workflows. The system enables users to:
+
+- **Index documents** as vector embeddings for semantic similarity search
+- **Query documents** using natural language or pre-computed embeddings
+- **Choose from 4 indexing algorithms** optimized for different use cases
+- **Scale to production** with Docker, thread safety, and persistence
+
+**Repository**: https://github.com/bledden/SAI
+
+---
+
+## Task Description
+
+### Project Goal
+
+Develop a **production-ready REST API** for a Vector Database that supports:
+
+1. **Indexing and querying documents** using vector similarity search
+2. **Multiple indexing algorithms** (minimum 2-3, implemented 4) without using external vector database libraries
+3. **Full CRUD operations** on libraries, documents, and chunks
+4. **Thread-safe concurrent operations** with no data races
+5. **Docker containerization** for easy deployment
+6. **Temporal workflow integration** for durable RAG pipelines
+
+### Core Entities
+
+The system is built around three primary entities:
+
+1. **Chunk**: A piece of text with an associated embedding vector and metadata
+   - Text content
+   - Embedding vector (1024-dimensional by default)
+   - Metadata: source document ID, chunk index, page number, creation timestamp
+
+2. **Document**: A collection of chunks with document-level metadata
+   - Multiple chunks (text segments from the same source)
+   - Metadata: title, author, document type, tags, source URL, creation date
+
+3. **Library**: A collection of documents with a specific index type
+   - List of documents
+   - Index type selection (Brute Force, KD-Tree, LSH, or HNSW)
+   - Embedding model configuration
+
+### Key Requirements
+
+**Must Have**:
+- ✅ REST API using FastAPI
+- ✅ Pydantic models with fixed schema (not user-definable)
+- ✅ 2-3 custom index implementations (implemented 4)
+- ✅ Thread safety with reader-writer locks
+- ✅ Service layer separating API from business logic
+- ✅ Docker containerization
+- ✅ Cohere API integration for embeddings
+
+**Extra Features Implemented**:
+- ✅ Metadata filtering on search results
+- ✅ Persistence to disk (WAL + Snapshots)
+- ✅ Python SDK client
+- ✅ Temporal workflows for durable execution
+- ✅ Memory-mapped storage for large datasets
+- ✅ 131 comprehensive tests (100% passing)
+
+### Design Constraints
+
+- **No external vector database libraries** (no FAISS, Pinecone, ChromaDB, etc.)
+- **Custom implementations** for all indexing algorithms
+- **Fixed schema** for all entity models (not user-configurable)
+- **NumPy allowed** for mathematical operations only
+
+---
+
+## Technical Choices & Design Decisions
+
+This section explains **why** specific technical decisions were made and their impact on the system.
+
+### 1. Architecture: Domain-Driven Design (DDD)
+
+**Decision**: Implement a layered architecture with clear separation of concerns.
+
+**Why**:
+- **Maintainability**: Changes to the API layer don't affect business logic
+- **Testability**: Each layer can be tested independently
+- **Flexibility**: Easy to swap implementations (e.g., change persistence mechanism)
+- **Code Review Readiness**: Clear boundaries make code easier to review
+
+**Layers**:
+```
+┌─────────────────────────────────────┐
+│  API Layer (FastAPI endpoints)      │  ← HTTP requests/responses
+├─────────────────────────────────────┤
+│  Service Layer (Business logic)     │  ← LibraryService, EmbeddingService
+├─────────────────────────────────────┤
+│  Repository Layer (Data access)     │  ← LibraryRepository (thread-safe)
+├─────────────────────────────────────┤
+│  Infrastructure Layer               │  ← Indexes, VectorStore, Persistence
+└─────────────────────────────────────┘
+```
+
+**Trade-offs**:
+- ✅ **Pro**: Clean, maintainable, extensible
+- ✅ **Pro**: Each layer has single responsibility
+- ⚠️ **Con**: More files and abstractions than simple monolith
+- ⚠️ **Con**: Slightly more complex for small changes
+
+**Files**:
+- API: [app/api/main.py](app/api/main.py)
+- Service: [app/services/library_service.py](app/services/library_service.py)
+- Repository: [infrastructure/repositories/library_repository.py](infrastructure/repositories/library_repository.py)
+
+---
+
+### 2. Index Algorithm Selection
+
+**Decision**: Implement 4 algorithms instead of the minimum 2-3.
+
+#### Algorithm 1: Brute Force Search
+**Why Chosen**: Guaranteed exact results, simple implementation, baseline for comparison.
+
+**When to Use**: Small datasets (< 100K vectors) where exact results are required.
+
+**Complexity**:
+- **Insert**: O(1) - Simply add vector to array
+- **Delete**: O(1) - Mark as deleted or swap-and-pop
+- **Search**: O(n·d) - Compare query against all n vectors of dimension d
+- **Space**: O(n·d) - Store all vectors
+
+**Trade-offs**:
+- ✅ **Perfect recall** (100% accuracy)
+- ✅ **Simple and reliable**
+- ✅ **No build time**
+- ❌ **Slow for large datasets** (linear search)
+
+**Implementation**: [infrastructure/indexes/brute_force.py](infrastructure/indexes/brute_force.py)
+
+---
+
+#### Algorithm 2: KD-Tree
+**Why Chosen**: Efficient for low-dimensional data, exact results, teaches classic CS data structure.
+
+**When to Use**: Low-dimensional embeddings (< 20D), need exact results, moderate dataset size.
+
+**Complexity**:
+- **Build**: O(n log n) - Recursive partitioning
+- **Insert**: O(log n) average (but degrades tree balance)
+- **Search**: O(log n) average in low dimensions, O(n) worst case in high dimensions
+- **Space**: O(n) - Tree structure overhead
+
+**Trade-offs**:
+- ✅ **Fast searches in low dimensions**
+- ✅ **Exact results** (100% recall)
+- ❌ **"Curse of dimensionality"** - ineffective beyond ~20D
+- ❌ **Requires tree rebuilding** for optimal performance after many inserts
+
+**Why It Fails in High Dimensions**: In 1024-dimensional space, almost all points are nearly equidistant from the query, so the tree provides little pruning benefit.
+
+**Implementation**: [infrastructure/indexes/kd_tree.py](infrastructure/indexes/kd_tree.py)
+
+---
+
+#### Algorithm 3: Locality-Sensitive Hashing (LSH)
+**Why Chosen**: Sub-linear search time for large datasets, works well in high dimensions.
+
+**When to Use**: Large datasets (> 100K vectors), high-dimensional embeddings, can tolerate ~90-95% recall.
+
+**Complexity**:
+- **Build**: O(n·L·k) where L = hash tables, k = hash size
+- **Insert**: O(L·k) - Hash into L tables
+- **Search**: O(L·b) where b = average bucket size
+- **Space**: O(n·L) - Multiple hash tables
+
+**How It Works**:
+1. Create L hash tables using random hyperplane projections
+2. Hash each vector into buckets based on which side of hyperplanes it falls
+3. Search only vectors in the same bucket(s) as the query
+4. Probability of collision is proportional to similarity
+
+**Trade-offs**:
+- ✅ **Sub-linear search time** (faster than O(n))
+- ✅ **Works in high dimensions** (unlike KD-Tree)
+- ✅ **Tunable accuracy/speed trade-off** (adjust L and k)
+- ❌ **Approximate results** (~90-95% recall)
+- ❌ **High memory usage** (L hash tables)
+
+**Parameter Tuning**:
+- **More hash tables (L)**: Higher recall, more memory
+- **Larger hash size (k)**: Smaller buckets, higher precision, lower recall
+- **Default**: L=10, k=8 (good balance for 1024D embeddings)
+
+**Implementation**: [infrastructure/indexes/lsh.py](infrastructure/indexes/lsh.py)
+
+---
+
+#### Algorithm 4: Hierarchical Navigable Small World (HNSW)
+**Why Chosen**: State-of-the-art performance, best balance of speed and accuracy, production-ready.
+
+**When to Use**: Production deployments, need both speed and high recall (95-99%), any dataset size.
+
+**Complexity**:
+- **Build**: O(n log n · M · log M) where M = max connections per node
+- **Insert**: O(log n · M · log M) - Navigate graph and add connections
+- **Search**: O(log n · M) - Multi-layer greedy search
+- **Space**: O(n·M) - Graph with M connections per node
+
+**How It Works**:
+1. Build multi-layer graph where each node is a vector
+2. Top layers have sparse long-range connections (highway)
+3. Bottom layer has dense local connections (local roads)
+4. Search: Start at top, greedily move to nearest neighbor, descend layers
+5. Similar to "skip list" data structure but for geometric search
+
+**Trade-offs**:
+- ✅ **Excellent recall** (95-99% with proper parameters)
+- ✅ **Fast search** (logarithmic with graph navigation)
+- ✅ **Incremental insert** (no full rebuild needed)
+- ✅ **Production-proven** (used by many vector databases)
+- ❌ **Complex implementation** (graph construction tricky)
+- ❌ **Higher memory than Brute Force** (graph connections)
+
+**Parameter Tuning**:
+- **M** (max connections): Higher = better recall, more memory (default: 16)
+- **ef_construction**: Higher = better quality graph, slower build (default: 200)
+- **ef_search**: Higher = better recall, slower search (default: 50)
+
+**Research**: Based on paper ["Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs"](https://arxiv.org/abs/1603.09320) (Malkov & Yashunin, 2016)
+
+**Implementation**: [infrastructure/indexes/hnsw.py](infrastructure/indexes/hnsw.py)
+
+---
+
+### Index Selection Guide
+
+| Index | Best For | Dataset Size | Dimensions | Recall | Speed | Memory |
+|-------|----------|--------------|------------|--------|-------|--------|
+| **Brute Force** | Exact search, < 100K | Small | Any | 100% | O(n) | Low |
+| **KD-Tree** | Exact search, low-D | Small-Medium | < 20D | 100% | O(log n)* | Medium |
+| **LSH** | Large datasets, high-D | Large (> 100K) | High (> 100D) | 90-95% | O(1) avg | High |
+| **HNSW** | Production use | Any | Any | 95-99% | O(log n) | Medium-High |
+
+*KD-Tree degrades to O(n) in high dimensions
+
+**Recommendation**: Use **HNSW** for production deployments unless you have specific constraints.
+
+---
+
+### 3. Thread Safety: Reader-Writer Locks with Writer Priority
+
+**Decision**: Implement custom reader-writer lock instead of simple mutex.
+
+**Why**:
+- **Concurrency**: Multiple readers can search simultaneously (common operation)
+- **Correctness**: Writers get exclusive access (ensures consistency)
+- **Fairness**: Writer priority prevents reader starvation of updates
+
+**How It Works**:
+```python
+class ReaderWriterLock:
+    # Multiple readers can hold lock simultaneously
+    # Writers wait for all readers to finish, then get exclusive access
+    # Waiting writers block new readers (writer priority)
+```
+
+**Why Not Simple Mutex**:
+- ❌ Mutex blocks all concurrent reads
+- ❌ Search requests would queue even though they're read-only
+- ❌ Poor performance under read-heavy workload (typical for search)
+
+**Trade-offs**:
+- ✅ **High read concurrency** (searches don't block each other)
+- ✅ **Safe writes** (exclusive access for inserts/deletes)
+- ✅ **Writer priority** (prevents update starvation)
+- ⚠️ **More complex** than simple mutex
+- ⚠️ **Writer priority** can delay readers if many writes
+
+**Implementation**: [infrastructure/concurrency/rw_lock.py](infrastructure/concurrency/rw_lock.py)
+
+**Usage**:
+```python
+# Read operation (multiple concurrent allowed)
+with self._lock.read():
+    return self.index.search(query, k)
+
+# Write operation (exclusive access)
+with self._lock.write():
+    self.vector_store.add(vector_id, vector)
+    self.index.insert(vector_id, vector)
+```
+
+---
+
+### 4. Vector Storage: Centralized VectorStore
+
+**Decision**: Separate vector storage from index structures.
+
+**Why**:
+- **Single Source of Truth**: Vectors stored once, not duplicated in each index
+- **Memory Efficiency**: Reference counting enables safe deletion
+- **Cache Locality**: Contiguous NumPy array for better CPU cache performance
+- **Flexibility**: Multiple indexes can share the same vectors
+
+**Alternative Rejected: Store Vectors in Chunks**:
+- ❌ Vectors scattered across memory (poor cache performance)
+- ❌ Difficult to build indexes efficiently
+- ❌ No vector deduplication
+
+**Alternative Rejected: Store Vectors in Index**:
+- ❌ Can't support multiple indexes on same library
+- ❌ Tight coupling between storage and indexing
+- ❌ Must rebuild index to access vectors
+
+**Implementation**: [core/vector_store.py](core/vector_store.py)
+
+**Trade-offs**:
+- ✅ **Memory efficient** (no duplication)
+- ✅ **Fast vector operations** (contiguous memory)
+- ✅ **Supports multiple indexes**
+- ⚠️ **Additional abstraction layer**
+
+---
+
+### 5. Persistence: Write-Ahead Log (WAL) + Snapshots
+
+**Decision**: Implement WAL for durability and snapshots for fast recovery.
+
+**Why**:
+- **Durability**: All operations logged before execution (survives crashes)
+- **Fast Recovery**: Snapshots avoid replaying entire history
+- **Flexibility**: Can replay WAL for debugging or replication
+
+**How It Works**:
+1. **Write-Ahead Log**: Every operation appended to log before execution
+2. **Snapshots**: Periodic full state saves (every N operations or time interval)
+3. **Recovery**: Load latest snapshot + replay WAL entries since then
+4. **Rotation**: Old WAL files cleaned up after snapshot
+
+**Why Not Alternatives**:
+
+**Alternative Rejected: JSON Files**:
+- ❌ Can't load 1GB+ JSON into memory
+- ❌ Slow to parse
+- ❌ No incremental updates
+
+**Alternative Rejected: Pickle**:
+- ❌ Breaks on Python version upgrades
+- ❌ Security risks
+- ❌ Not human-readable for debugging
+
+**Alternative Rejected: Database (SQLite/Postgres)**:
+- ✅ Would work well
+- ❌ Adds external dependency
+- ❌ Less educational (requirement to implement custom indexes)
+
+**Trade-offs**:
+- ✅ **Durable** (survives crashes)
+- ✅ **Fast recovery** (snapshots)
+- ✅ **Debuggable** (can inspect WAL)
+- ⚠️ **Disk space** (WAL + snapshots)
+- ⚠️ **Complexity** (must manage rotation)
+
+**Implementation**:
+- WAL: [infrastructure/persistence/wal.py](infrastructure/persistence/wal.py)
+- Snapshots: [infrastructure/persistence/snapshot.py](infrastructure/persistence/snapshot.py)
+
+---
+
+### 6. Embedding Service: Cohere Integration
+
+**Decision**: Use Cohere API for text-to-vector conversion with built-in caching.
+
+**Why Cohere**:
+- **High Quality**: State-of-the-art embeddings (embed-english-v3.0)
+- **Batch Support**: Process multiple texts efficiently
+- **Multiple Dimensions**: Support for different embedding sizes
+- **Free Tier**: 100 calls/minute (sufficient for development)
+
+**Alternative Considered: Local Model (Sentence Transformers)**:
+- ✅ No API cost
+- ✅ No rate limits
+- ❌ Lower quality embeddings
+- ❌ Requires GPU for speed
+- ❌ Larger Docker images
+
+**Caching Strategy**:
+- Cache embeddings by text hash to avoid duplicate API calls
+- Particularly useful during testing and development
+- Reduces API costs and latency
+
+**Rate Limiting**:
+- Handle 429 errors gracefully
+- Exponential backoff on failures
+- Batch requests when possible
+
+**Implementation**: [app/services/embedding_service.py](app/services/embedding_service.py)
+
+---
+
+### 7. Fixed Schema Design
+
+**Decision**: Use fixed Pydantic models instead of user-definable schemas.
+
+**Why**:
+- **Simplicity**: No need to validate arbitrary user schemas
+- **Type Safety**: Full type hints and validation
+- **Performance**: No runtime schema interpretation
+- **Consistency**: All libraries use same metadata fields
+
+**Fixed Metadata Fields**:
+- **Chunks**: `created_at`, `page_number`, `chunk_index`, `source_document_id`
+- **Documents**: `title`, `author`, `created_at`, `document_type`, `source_url`, `tags`
+- **Libraries**: `index_type`, `embedding_dimension`, `embedding_model`
+
+**Alternative Rejected: User-Definable Schema**:
+- ❌ Complex validation logic
+- ❌ Loss of type safety
+- ❌ Harder to query and filter
+- ✅ More flexible (but not needed for this use case)
+
+**Trade-offs**:
+- ✅ **Simple implementation**
+- ✅ **Strong typing**
+- ✅ **Easy to query**
+- ⚠️ **Less flexible** (can't add custom fields)
+
+**Note**: Custom metadata can still be stored in document `tags` field or `source_url`.
+
+---
+
+### 8. Temporal Workflows for Durable Execution
+
+**Decision**: Implement RAG workflow using Temporal.
+
+**Why Temporal**:
+- **Durability**: Workflows survive process crashes
+- **Reliability**: Automatic retries with exponential backoff
+- **Observability**: Built-in UI for monitoring workflow execution
+- **Scalability**: Distribute activities across workers
+
+**RAG Workflow Activities**:
+1. **Preprocess Query**: Clean and normalize user query
+2. **Embed Query**: Convert text to vector using Cohere
+3. **Retrieve Chunks**: Search vector database (k-NN)
+4. **Rerank Results**: Improve relevance ranking
+5. **Generate Answer**: LLM integration point (extensible)
+
+**Why Not Simple REST API**:
+- ❌ No durability (if server crashes, query lost)
+- ❌ No automatic retries
+- ❌ Hard to monitor long-running queries
+- ❌ Difficult to implement complex workflows
+
+**Trade-offs**:
+- ✅ **Durable execution** (survives crashes)
+- ✅ **Automatic retries**
+- ✅ **Built-in monitoring**
+- ⚠️ **Additional infrastructure** (Temporal server + PostgreSQL)
+- ⚠️ **Learning curve** (new concepts)
+
+**Implementation**: [temporal/workflows.py](temporal/workflows.py), [temporal/activities.py](temporal/activities.py)
+
+---
+
+### 9. Docker Multi-Stage Builds
+
+**Decision**: Use multi-stage Dockerfile for optimized images.
+
+**Why**:
+- **Smaller Images**: Runtime image doesn't include build tools
+- **Faster Deploys**: Smaller images = faster uploads/downloads
+- **Security**: Fewer packages = smaller attack surface
+
+**Stages**:
+1. **Builder**: Install all dependencies, compile if needed
+2. **Runtime**: Copy only necessary files, minimal base image
+
+**Trade-offs**:
+- ✅ **Smaller production images**
+- ✅ **Faster deployment**
+- ✅ **More secure**
+- ⚠️ **Slightly more complex Dockerfile**
+
+**Implementation**: [Dockerfile](Dockerfile)
+
+---
+
+### 10. Testing Philosophy: Zero Mocking
+
+**Decision**: Test against real implementations, no mocking.
+
+**Why**:
+- **Confidence**: Tests verify actual behavior, not mock behavior
+- **Bug Detection**: Find integration issues and edge cases
+- **Realistic**: Tests use real Cohere API, real numpy operations
+- **Documentation**: Tests serve as usage examples
+
+**What We Test With**:
+- ✅ Real Cohere API (not mocked)
+- ✅ Real FastAPI application (TestClient)
+- ✅ Real vector operations (NumPy)
+- ✅ Real index algorithms
+- ✅ Real concurrent operations
+
+**Trade-offs**:
+- ✅ **High confidence** in correctness
+- ✅ **Catches integration bugs**
+- ✅ **Tests are documentation**
+- ⚠️ **Requires API key** for integration tests
+- ⚠️ **Slower** than mocked unit tests
+- ⚠️ **API rate limits** (mitigated with caching)
+
+**Test Categories**:
+- **Unit Tests (86)**: Core business logic
+- **Integration Tests (23)**: Full API with real embeddings
+- **Edge Cases (22)**: Boundary conditions and error handling
+
+**Implementation**: [tests/](tests/) directory
+
+**See Also**: [docs/REAL_VS_MOCKED.md](docs/REAL_VS_MOCKED.md)
+
+---
+
 ## Features
 
 ### Core Functionality
@@ -66,31 +604,224 @@ A production-grade vector similarity search database with multiple indexing algo
   - Free tier: 100 API calls/minute
   - Trial keys: 3 API calls/minute (upgrade for production)
 
-### Local Development Setup
+---
 
-1. **Clone and setup**:
-   ```bash
-   cd SAI
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
+## How to Run Locally
 
-2. **Configure environment**:
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your COHERE_API_KEY
-   ```
+This section provides **complete step-by-step instructions** for running the project on your local machine.
 
-3. **Run the API server**:
-   ```bash
-   python run_api.py
-   ```
+### Option 1: Local Python Development (Recommended for Development)
 
-4. **Access the API**:
-   - API: http://localhost:8000
-   - Interactive docs: http://localhost:8000/docs
-   - ReDoc: http://localhost:8000/redoc
+**Best for**: Development, testing, debugging, running tests
+
+#### Step 1: Clone the Repository
+
+```bash
+# Clone from GitHub
+git clone https://github.com/bledden/SAI.git
+cd SAI
+```
+
+#### Step 2: Set Up Python Environment
+
+```bash
+# Create virtual environment
+python3 -m venv venv
+
+# Activate virtual environment
+# On macOS/Linux:
+source venv/bin/activate
+# On Windows:
+venv\Scripts\activate
+
+# Verify Python version (should be 3.9+)
+python --version
+```
+
+#### Step 3: Install Dependencies
+
+```bash
+# Install all required packages
+pip install -r requirements.txt
+
+# Verify installation
+pip list | grep fastapi  # Should show fastapi and related packages
+pip list | grep cohere   # Should show cohere
+```
+
+**Dependencies Installed**:
+- FastAPI 0.104.1 - Web framework
+- Uvicorn - ASGI server
+- Pydantic 2.5.0 - Data validation
+- NumPy - Vector operations
+- Cohere - Embedding API client
+- Pytest - Testing framework
+
+#### Step 4: Configure Environment Variables
+
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit .env file and add your Cohere API key
+# You can use any text editor:
+nano .env      # or vim .env, or code .env
+```
+
+**Required .env Configuration**:
+```bash
+# REQUIRED: Get your API key from https://dashboard.cohere.com/api-keys
+COHERE_API_KEY=your_actual_api_key_here
+
+# OPTIONAL: Customize these if needed
+VECTOR_DB_DATA_DIR=./data          # Where to store vector data
+API_HOST=0.0.0.0                   # API server host
+API_PORT=8000                      # API server port
+API_WORKERS=4                      # Number of worker processes
+EMBEDDING_MODEL=embed-english-v3.0 # Cohere embedding model
+EMBEDDING_DIMENSION=1024           # Embedding vector dimension
+```
+
+#### Step 5: Run the API Server
+
+```bash
+# Start the API server
+python run_api.py
+
+# You should see output like:
+# INFO:     Started server process [12345]
+# INFO:     Waiting for application startup.
+# INFO:     Application startup complete.
+# INFO:     Uvicorn running on http://0.0.0.0:8000
+```
+
+#### Step 6: Verify the API is Running
+
+**Option A: Browser**
+- Open http://localhost:8000 in your browser
+- You should see the API welcome message
+
+**Option B: Command Line**
+```bash
+# Test health endpoint
+curl http://localhost:8000/health
+
+# Expected response:
+# {"status":"healthy"}
+```
+
+#### Step 7: Explore the Interactive API Documentation
+
+**Swagger UI** (Interactive): http://localhost:8000/docs
+- Try out API endpoints directly in your browser
+- See request/response schemas
+- Test with your own data
+
+**ReDoc** (Clean docs): http://localhost:8000/redoc
+- Beautiful, searchable documentation
+- See all endpoints and models
+
+#### Step 8: Run Tests (Optional but Recommended)
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Expected output:
+# ======================== 131 passed in XX.XXs ========================
+
+# Run with coverage report
+pytest tests/ --cov=app --cov=core --cov=infrastructure --cov-report=html
+
+# View coverage report
+open htmlcov/index.html  # macOS
+# or: xdg-open htmlcov/index.html  # Linux
+# or: start htmlcov/index.html     # Windows
+```
+
+**Note**: Integration tests require `COHERE_API_KEY` to be set.
+
+#### Step 9: Try Example Requests
+
+**Using Python SDK**:
+```python
+from sdk import VectorDBClient
+
+# Initialize client
+client = VectorDBClient("http://localhost:8000")
+
+# Create a library
+library = client.create_library(
+    name="My First Library",
+    description="Testing the vector database",
+    index_type="hnsw"
+)
+print(f"Created library: {library['id']}")
+
+# Add a document
+doc = client.add_document(
+    library_id=library["id"],
+    title="Sample Document",
+    texts=["This is a test.", "Vector databases are cool!"],
+    tags=["test", "example"]
+)
+print(f"Added document: {doc['id']}")
+
+# Search
+results = client.search(
+    library_id=library["id"],
+    query="What is this about?",
+    k=5
+)
+print(f"Found {len(results['results'])} results")
+```
+
+**Using cURL**:
+```bash
+# Create a library
+curl -X POST http://localhost:8000/libraries \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Test Library", "index_type": "brute_force"}'
+
+# Save the library ID from response, then add a document
+curl -X POST http://localhost:8000/libraries/{LIBRARY_ID}/documents \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Test Doc",
+    "texts": ["Sample text for testing"],
+    "tags": ["test"]
+  }'
+
+# Search
+curl -X POST http://localhost:8000/libraries/{LIBRARY_ID}/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "sample", "k": 10}'
+```
+
+#### Troubleshooting Local Setup
+
+**Issue**: `python: command not found`
+- **Solution**: Use `python3` instead of `python`
+
+**Issue**: `pip: command not found`
+- **Solution**: Use `python3 -m pip` instead of `pip`
+
+**Issue**: `COHERE_API_KEY environment variable must be set`
+- **Solution**: Make sure `.env` file exists and contains your API key
+- **Verify**: `cat .env` should show `COHERE_API_KEY=...`
+
+**Issue**: `Port 8000 already in use`
+- **Solution**: Change `API_PORT` in `.env` to another port (e.g., 8001)
+- **Or**: Kill the process using port 8000: `lsof -ti:8000 | xargs kill`
+
+**Issue**: Import errors or module not found
+- **Solution**: Make sure virtual environment is activated
+- **Verify**: `which python` should point to `venv/bin/python`
+- **Fix**: Re-run `source venv/bin/activate`
+
+---
+
+### Option 2: Docker Deployment (Recommended for Production)
 
 ### Docker Deployment
 
