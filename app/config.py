@@ -13,7 +13,7 @@ Configuration priority (highest to lowest):
 3. Defaults (based on research and best practices)
 """
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 import multiprocessing
 import os
@@ -218,13 +218,12 @@ class Settings(BaseSettings):
     # Index rebuild threshold (for dynamic indexes like KD-Tree)
     INDEX_REBUILD_THRESHOLD: int = 100
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = True
-
-        # Allow extra fields for forward compatibility
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore"  # Allow extra fields for forward compatibility
+    )
 
 
 # Global settings instance
