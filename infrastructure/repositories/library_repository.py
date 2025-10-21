@@ -77,6 +77,7 @@ class LibraryRepository:
         self._contracts: Dict[UUID, LibraryEmbeddingContract] = {}
 
         # Document and chunk mappings for quick lookup
+        self._documents: Dict[UUID, Document] = {}  # doc_id -> Document (O(1) lookup)
         self._doc_to_library: Dict[UUID, UUID] = {}  # doc_id -> library_id
         self._chunk_to_doc: Dict[UUID, UUID] = {}  # chunk_id -> doc_id
 
@@ -181,6 +182,8 @@ class LibraryRepository:
             for doc in library.documents:
                 if doc.id in self._doc_to_library:
                     del self._doc_to_library[doc.id]
+                if doc.id in self._documents:
+                    del self._documents[doc.id]
 
                 for chunk in doc.chunks:
                     if chunk.id in self._chunk_to_doc:
@@ -238,6 +241,7 @@ class LibraryRepository:
 
         # Track document
         self._doc_to_library[document.id] = library_id
+        self._documents[document.id] = document
 
         # Add all chunks
         for chunk in document.chunks:
@@ -272,18 +276,10 @@ class LibraryRepository:
             DocumentNotFoundError: If the document doesn't exist.
         """
         with self._lock.read():
-            if document_id not in self._doc_to_library:
+            if document_id not in self._documents:
                 raise DocumentNotFoundError(f"Document {document_id} not found")
 
-            library_id = self._doc_to_library[document_id]
-            library = self._libraries[library_id]
-
-            # Find document in library
-            for doc in library.documents:
-                if doc.id == document_id:
-                    return doc
-
-            raise DocumentNotFoundError(f"Document {document_id} not found")
+            return self._documents[document_id]
 
     def delete_document(self, document_id: UUID) -> bool:
         """
@@ -329,6 +325,8 @@ class LibraryRepository:
 
             # Remove document tracking
             del self._doc_to_library[document_id]
+            if document_id in self._documents:
+                del self._documents[document_id]
 
             return True
 

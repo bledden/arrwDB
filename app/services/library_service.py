@@ -392,7 +392,7 @@ class LibraryService:
 
         # Generate query embedding
         # Switch to search_query input type for better retrieval
-        original_input_type = self._embedding_service._input_type
+        original_input_type = self._embedding_service.input_type
         try:
             self._embedding_service.change_input_type("search_query")
             query_embedding = self._embedding_service.embed_text(query_text)

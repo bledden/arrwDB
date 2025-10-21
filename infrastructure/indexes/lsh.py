@@ -15,7 +15,7 @@ Space Complexity: O(n * L)
 """
 
 import numpy as np
-from typing import List, Tuple, Optional, Dict, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 from uuid import UUID
 import threading
 from numpy.typing import NDArray
@@ -369,7 +369,7 @@ class LSHIndex(VectorIndex):
         """Get the index type."""
         return "lsh"
 
-    def get_statistics(self) -> Dict[str, any]:
+    def get_statistics(self) -> Dict[str, Any]:
         """
         Get statistics about the index.
 

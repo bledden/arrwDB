@@ -114,6 +114,11 @@ class EmbeddingService:
         return self._model
 
     @property
+    def input_type(self) -> str:
+        """Get the current input type."""
+        return self._input_type
+
+    @property
     def embedding_dimension(self) -> int:
         """
         Get the embedding dimension.

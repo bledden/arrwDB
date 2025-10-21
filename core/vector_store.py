@@ -7,7 +7,7 @@ in-memory and memory-mapped storage for large datasets.
 """
 
 import numpy as np
-from typing import Dict, Optional, Set, Tuple
+from typing import Any, Dict, Optional, Set, Tuple
 from uuid import UUID
 from pathlib import Path
 import threading
@@ -406,7 +406,7 @@ class VectorStore:
         rounded = np.round(vector, decimals=6)
         return hash(rounded.tobytes())
 
-    def get_statistics(self) -> Dict[str, any]:
+    def get_statistics(self) -> Dict[str, Any]:
         """
         Get statistics about the vector store.
 

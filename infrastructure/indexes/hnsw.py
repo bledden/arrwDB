@@ -14,7 +14,7 @@ Space Complexity: O(n * M)
 """
 
 import numpy as np
-from typing import List, Tuple, Optional, Dict, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 from uuid import UUID
 import threading
 from numpy.typing import NDArray
@@ -363,11 +363,13 @@ class HNSWIndex(VectorIndex):
 
             # Remove all connections from neighbors
             for layer in range(node.level + 1):
-                for neighbor_id in node.neighbors[layer]:
+                for neighbor_id in node.neighbors.get(layer, set()):
                     if neighbor_id in self._nodes:
-                        self._nodes[neighbor_id].neighbors[layer].discard(
-                            vector_id
-                        )
+                        # Only remove if the neighbor has this layer
+                        if layer in self._nodes[neighbor_id].neighbors:
+                            self._nodes[neighbor_id].neighbors[layer].discard(
+                                vector_id
+                            )
 
             # Remove node
             del self._nodes[vector_id]
@@ -521,7 +523,7 @@ class HNSWIndex(VectorIndex):
         """Get the index type."""
         return "hnsw"
 
-    def get_statistics(self) -> Dict[str, any]:
+    def get_statistics(self) -> Dict[str, Any]:
         """Get statistics about the index."""
         with self._lock:
             if len(self._nodes) == 0:

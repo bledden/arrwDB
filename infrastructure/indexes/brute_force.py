@@ -14,7 +14,7 @@ Space Complexity: O(n) for the mapping
 """
 
 import numpy as np
-from typing import List, Tuple, Optional, Dict
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 import threading
 from numpy.typing import NDArray
@@ -236,7 +236,7 @@ class BruteForceIndex(VectorIndex):
         """
         return "brute_force"
 
-    def get_statistics(self) -> Dict[str, any]:
+    def get_statistics(self) -> Dict[str, Any]:
         """
         Get statistics about the index.
 

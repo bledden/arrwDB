@@ -140,7 +140,7 @@ async def health_check():
     tags=["Libraries"],
     summary="Create a new library",
 )
-async def create_library(
+def create_library(
     request: CreateLibraryRequest,
     service: LibraryService = Depends(get_library_service),
 ):
@@ -167,7 +167,7 @@ async def create_library(
     tags=["Libraries"],
     summary="List all libraries",
 )
-async def list_libraries(
+def list_libraries(
     service: LibraryService = Depends(get_library_service),
 ):
     """
@@ -196,7 +196,7 @@ async def list_libraries(
     tags=["Libraries"],
     summary="Get a library by ID",
 )
-async def get_library(
+def get_library(
     library_id: UUID,
     service: LibraryService = Depends(get_library_service),
 ):
@@ -212,7 +212,7 @@ async def get_library(
     tags=["Libraries"],
     summary="Delete a library",
 )
-async def delete_library(
+def delete_library(
     library_id: UUID,
     service: LibraryService = Depends(get_library_service),
 ):
@@ -230,7 +230,7 @@ async def delete_library(
     tags=["Libraries"],
     summary="Get library statistics",
 )
-async def get_library_statistics(
+def get_library_statistics(
     library_id: UUID,
     service: LibraryService = Depends(get_library_service),
 ):
@@ -250,7 +250,7 @@ async def get_library_statistics(
     tags=["Documents"],
     summary="Add a document with text chunks",
 )
-async def add_document(
+def add_document(
     library_id: UUID,
     request: AddDocumentRequest,
     service: LibraryService = Depends(get_library_service),
@@ -286,7 +286,7 @@ async def add_document(
     tags=["Documents"],
     summary="Add a document with pre-computed embeddings",
 )
-async def add_document_with_embeddings(
+def add_document_with_embeddings(
     library_id: UUID,
     request: AddDocumentWithEmbeddingsRequest,
     service: LibraryService = Depends(get_library_service),
@@ -326,7 +326,7 @@ async def add_document_with_embeddings(
     tags=["Documents"],
     summary="Get a document by ID",
 )
-async def get_document(
+def get_document(
     document_id: UUID,
     service: LibraryService = Depends(get_library_service),
 ):
@@ -342,7 +342,7 @@ async def get_document(
     tags=["Documents"],
     summary="Delete a document",
 )
-async def delete_document(
+def delete_document(
     document_id: UUID,
     service: LibraryService = Depends(get_library_service),
 ):
@@ -363,7 +363,7 @@ async def delete_document(
     tags=["Search"],
     summary="Search with text query",
 )
-async def search(
+def search(
     library_id: UUID,
     request: SearchRequest,
     service: LibraryService = Depends(get_library_service),
@@ -419,7 +419,7 @@ async def search(
     tags=["Search"],
     summary="Search with embedding",
 )
-async def search_with_embedding(
+def search_with_embedding(
     library_id: UUID,
     request: SearchWithEmbeddingRequest,
     service: LibraryService = Depends(get_library_service),
@@ -472,7 +472,7 @@ async def search_with_embedding(
 
 
 @app.get("/", tags=["Root"])
-async def root():
+def root():
     """
     Root endpoint with API information.
     """

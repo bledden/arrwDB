@@ -5,11 +5,14 @@ This module provides the foundational Pydantic models that define
 the data schema for Chunks, Documents, and Libraries with FIXED schemas.
 """
 
-from pydantic import BaseModel, Field, validator
-from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field, field_validator
+from typing import List, Optional, Dict, Any, Literal
 from datetime import datetime
 from uuid import UUID, uuid4
 import numpy as np
+
+# Import settings for consistent defaults
+from app.config import settings
 
 
 class ChunkMetadata(BaseModel):
@@ -48,7 +51,8 @@ class Chunk(BaseModel):
     embedding: List[float] = Field(..., min_length=1)
     metadata: ChunkMetadata
 
-    @validator("embedding")
+    @field_validator("embedding")
+    @classmethod
     def validate_embedding(cls, v: List[float]) -> List[float]:
         """Ensure embedding is valid and contains no invalid values."""
         if not v:
@@ -107,7 +111,8 @@ class Document(BaseModel):
     chunks: List[Chunk] = Field(..., min_length=1)
     metadata: DocumentMetadata
 
-    @validator("chunks")
+    @field_validator("chunks")
+    @classmethod
     def validate_chunks_consistency(cls, v: List[Chunk]) -> List[Chunk]:
         """Ensure all chunks have same embedding dimension."""
         if not v:
@@ -138,10 +143,8 @@ class LibraryMetadata(BaseModel):
 
     description: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    index_type: str = Field(
-        default="brute_force", pattern="^(brute_force|kd_tree|lsh|hnsw)$"
-    )
-    embedding_dimension: int = Field(default=768, ge=1, le=4096)
+    index_type: Literal["brute_force", "kd_tree", "lsh", "hnsw"] = "brute_force"
+    embedding_dimension: int = Field(default=settings.EMBEDDING_DIMENSION, ge=1, le=4096)
     embedding_model: str = Field(default="embed-english-v3.0")
 
     class Config:
@@ -150,7 +153,7 @@ class LibraryMetadata(BaseModel):
                 "description": "Research papers collection",
                 "created_at": "2024-01-01T00:00:00Z",
                 "index_type": "hnsw",
-                "embedding_dimension": 768,
+                "embedding_dimension": 1024,
                 "embedding_model": "embed-english-v3.0",
             }
         }

@@ -15,7 +15,7 @@ Space Complexity: O(n)
 """
 
 import numpy as np
-from typing import List, Tuple, Optional, Dict
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 import threading
 from numpy.typing import NDArray
@@ -373,7 +373,7 @@ class KDTreeIndex(VectorIndex):
         """Get the index type."""
         return "kd_tree"
 
-    def get_statistics(self) -> Dict[str, any]:
+    def get_statistics(self) -> Dict[str, Any]:
         """
         Get statistics about the index.
 
