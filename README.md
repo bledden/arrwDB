@@ -9,35 +9,6 @@ A production-grade vector similarity search database with multiple indexing algo
 
 ---
 
-## Table of Contents
-
-**Getting Started** (Start here!)
-- [Quick Start](#quick-start) - Get running in 5 minutes
-- [Installation Guide](#installation-guide) - Detailed setup options
-- [Usage Examples](#usage-examples) - Common use cases
-
-**About This Project**
-- [Project Overview](#project-overview) - What this does
-- [Features](#features) - Complete feature list
-- [Architecture](#architecture) - System design
-
-**API Documentation**
-- [API Endpoints](#api-endpoints) - Complete endpoint reference
-- [Index Selection Guide](#index-selection-guide) - Choose the right algorithm
-
-**For Developers**
-- [Testing](#testing) - 484 tests, 96% coverage
-- [Technical Decisions](#technical-choices--design-decisions) - Why we built it this way
-- [Requirements Validation](#requirements-validation) - All requirements met
-
-**Additional Resources**
-- [Configuration](#configuration) - Environment variables
-- [Temporal Workflows](#temporal-workflows) - RAG pipeline
-- [Documentation](#documentation) - Full docs
-- [Future Enhancements](#future-enhancements) - Potential improvements
-
----
-
 ## Quick Start
 
 Get the API running in under 5 minutes:
@@ -61,9 +32,107 @@ python run_api.py
 
 **Done!** → API at http://localhost:8000/docs
 
-**See**: [Installation Guide](#installation-guide) for other options (Docker, full clone, development setup)
+**See**: [Installation](#installation) for other options (Docker, full clone, development setup)
 
 ---
+
+
+## Installation
+
+For detailed installation instructions including local setup, Docker deployment, development environment configuration, and troubleshooting, see:
+
+**→ [Installation Guide](docs/guides/INSTALLATION.md)**
+
+Quick summary of installation options:
+- **Lightweight clone** (recommended): Excludes tests, 80% smaller download
+- **Full clone**: Includes tests and development tools
+- **Docker deployment**: Complete containerized stack with Temporal workflows
+
+All installation methods are documented in the Installation Guide with step-by-step instructions.
+
+---
+
+
+## Usage Examples
+
+### Using the Python SDK
+
+```python
+from sdk import VectorDBClient
+
+# Initialize client
+client = VectorDBClient("http://localhost:8000")
+
+# Create a library
+library = client.create_library(
+    name="Research Papers",
+    description="AI and ML research papers",
+    index_type="hnsw"  # or "brute_force", "kd_tree", "lsh"
+)
+
+# Add documents (embeddings generated automatically)
+doc = client.add_document(
+    library_id=library["id"],
+    title="Introduction to Machine Learning",
+    texts=[
+        "Machine learning is a subset of artificial intelligence...",
+        "Supervised learning involves training with labeled data...",
+        "Deep learning uses neural networks with multiple layers..."
+    ],
+    author="John Doe",
+    tags=["machine-learning", "ai", "tutorial"]
+)
+
+# Search with natural language
+results = client.search(
+    library_id=library["id"],
+    query="What is supervised learning?",
+    k=5
+)
+
+# Display results
+for result in results["results"]:
+    print(f"Score: {1 - result['distance']:.3f}")
+    print(f"Document: {result['document_title']}")
+    print(f"Text: {result['chunk']['text'][:100]}...")
+    print()
+
+# Get statistics
+stats = client.get_library_statistics(library["id"])
+print(f"Total documents: {stats['num_documents']}")
+print(f"Total chunks: {stats['num_chunks']}")
+print(f"Index type: {stats['index_type']}")
+```
+
+### Using cURL
+
+```bash
+# Create a library
+curl -X POST http://localhost:8000/libraries \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Library",
+    "index_type": "hnsw"
+  }'
+
+# Add a document
+curl -X POST http://localhost:8000/libraries/{library_id}/documents \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Sample Document",
+    "texts": ["First chunk", "Second chunk"],
+    "tags": ["example"]
+  }'
+
+# Search
+curl -X POST http://localhost:8000/libraries/{library_id}/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "search query",
+    "k": 10
+  }'
+```
+
 
 ## Project Overview
 
@@ -77,6 +146,7 @@ This project implements a complete **Vector Database REST API** designed for sem
 **Repository**: https://github.com/bledden/SAI
 
 ---
+
 
 ## Task Description
 
@@ -136,6 +206,258 @@ The system is built around three primary entities:
 - **NumPy allowed** for mathematical operations only
 
 ---
+
+
+## Features
+
+### Core Functionality
+- **REST API**: Complete FastAPI-based REST API with automatic OpenAPI documentation
+- **Multiple Index Types**: Choose the best index for your use case
+  - **Brute Force**: Exact search, O(n) complexity, best for small datasets (< 100K vectors)
+  - **KD-Tree**: O(log n) average case, optimal for low-dimensional data (< 20D)
+  - **LSH** (Locality-Sensitive Hashing): Sub-linear approximate search for large datasets
+  - **HNSW** (Hierarchical Navigable Small World): State-of-the-art approximate search
+- **Full CRUD Operations**: Create, read, update, delete for libraries, documents, and chunks
+- **k-NN Vector Search**: Fast similarity search with distance thresholds
+- **Metadata Filtering**: Filter search results by document metadata
+- **Cohere Integration**: Automatic text-to-embedding conversion
+
+### Advanced Features
+- **Thread-Safe**: Reader-writer locks with writer priority prevent data races
+- **Persistence**: Write-Ahead Log (WAL) + snapshots for durability
+- **Memory Efficiency**: Reference counting and vector deduplication
+- **Memory-Mapped Storage**: Handle datasets larger than RAM
+- **Fixed Schema**: Pydantic models with comprehensive validation
+- **Domain-Driven Design**: Clean separation of concerns across layers
+- **Temporal Workflows**: Durable RAG pipeline with 5 activities
+- **Python SDK**: High-level client library for easy integration
+- **Docker Support**: Complete containerized deployment
+
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         REST API (FastAPI)                   │
+│                     /libraries, /documents, /search          │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+┌───────────────────────────▼─────────────────────────────────┐
+│                      Service Layer (DDD)                     │
+│                   LibraryService, EmbeddingService           │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+┌───────────────────────────▼─────────────────────────────────┐
+│                   Repository Layer (Thread-Safe)             │
+│                      LibraryRepository                       │
+└─────┬──────────┬──────────┬──────────┬──────────────────────┘
+      │          │          │          │
+┌─────▼──┐  ┌───▼────┐ ┌───▼─────┐ ┌─▼─────────────────────┐
+│ Vector │  │ Index  │ │Contract │ │ Persistence (WAL+Snap)│
+│ Store  │  │ (4x)   │ │         │ │                        │
+└────────┘  └────────┘ └─────────┘ └────────────────────────┘
+```
+
+
+
+## API Endpoints
+
+### Libraries
+
+- `POST /libraries` - Create a new library
+- `GET /libraries` - List all libraries
+- `GET /libraries/{id}` - Get library details
+- `DELETE /libraries/{id}` - Delete a library
+- `GET /libraries/{id}/statistics` - Get library statistics
+
+### Documents
+
+- `POST /libraries/{id}/documents` - Add document (auto-embed)
+- `POST /libraries/{id}/documents/with-embeddings` - Add document with pre-computed embeddings
+- `GET /documents/{id}` - Get document
+- `DELETE /documents/{id}` - Delete document
+
+### Search
+
+- `POST /libraries/{id}/search` - Search with text query
+- `POST /libraries/{id}/search/embedding` - Search with embedding vector
+
+### Health
+
+- `GET /health` - Health check
+- `GET /` - API information
+
+
+## Index Selection Guide
+
+| Index Type | Best For | Search Speed | Accuracy | Memory | Build Time |
+|------------|----------|--------------|----------|--------|------------|
+| **Brute Force** | < 100K vectors | O(n) | 100% | Low | Instant |
+| **KD-Tree** | < 20 dimensions | O(log n) | 100% | Medium | O(n log n) |
+| **LSH** | Large datasets | O(1) avg | ~90-95% | High | O(n) |
+| **HNSW** | Production use | O(log n) | ~95-99% | High | O(n log n) |
+
+**Recommendations**:
+- **Small datasets (< 100K)**: Use Brute Force for guaranteed exact results
+- **Low dimensions (< 20D)**: Use KD-Tree for fast exact search
+- **Large datasets (> 100K)**: Use HNSW for best balance of speed and accuracy
+- **Extreme scale (> 10M)**: Use LSH with careful parameter tuning
+
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# Required
+COHERE_API_KEY=your_key_here
+
+# Optional (with defaults)
+VECTOR_DB_DATA_DIR=./data
+API_HOST=0.0.0.0
+API_PORT=8000
+API_WORKERS=4
+EMBEDDING_MODEL=embed-english-v3.0
+EMBEDDING_DIMENSION=1024
+```
+
+### Data Directory Structure
+
+```
+data/
+├── vectors/          # Vector storage (memory-mapped files)
+├── wal/              # Write-Ahead Log files
+└── snapshots/        # Periodic state snapshots
+```
+
+
+## Temporal Workflows
+
+The system includes a complete **RAG (Retrieval-Augmented Generation) workflow** using [Temporal](https://temporal.io/) for durable execution.
+
+**Learn More**: [Temporal Documentation](https://docs.temporal.io/) | [What is Temporal?](https://docs.temporal.io/temporal)
+
+### RAG Workflow Activities
+
+The workflow consists of 5 durable activities:
+
+1. **Preprocess** - Clean and normalize query
+2. **Embed** - Generate query embedding with Cohere
+3. **Retrieve** - Search vector database (k-NN)
+4. **Rerank** - Improve result relevance
+5. **Generate**: Create final answer (LLM integration point)
+
+### Running the Temporal Worker
+
+```bash
+# Local
+python temporal/worker.py
+
+# Docker (included in docker-compose)
+docker-compose up temporal-worker
+```
+
+### Using Workflows
+
+```python
+from temporal.client import TemporalClient
+
+client = TemporalClient()
+
+workflow_id = await client.start_rag_workflow(
+    query="What is machine learning?",
+    library_id=library_id,
+    k=10,
+    embedding_service_config={"api_key": "your_key"},
+    service_config={"data_dir": "./data"}
+)
+
+# Get result
+result = await client.get_workflow_result(workflow_id)
+print(result["answer"])
+```
+
+
+
+## Testing
+
+### Test Suite Overview
+
+**Status**: ✅ 484/484 tests passing (100%)
+**Coverage**: 96% of core codebase
+**Test Environment**: Local (not Docker)
+**Full Report**: [docs/testing/FINAL_TEST_REPORT.md](docs/testing/FINAL_TEST_REPORT.md)
+
+The test suite includes:
+- **86 Unit Tests** - Core business logic (vector store, indexes, repositories)
+- **23 Integration Tests** - Full REST API with real Cohere embeddings
+- **22 Edge Case Tests** - Boundary conditions and error handling
+
+### Running Tests Locally
+
+**Prerequisites**:
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Set API key (required for integration tests)
+export COHERE_API_KEY="your_api_key_here"
+```
+
+**Run Tests**:
+```bash
+# All tests (requires API key for integration tests)
+pytest tests/ -v
+
+# Unit tests only (no API key needed)
+pytest tests/unit/ -v
+
+# Integration tests (tests REST API with real embeddings)
+pytest tests/integration/ -v
+
+# Edge case tests
+pytest tests/test_edge_cases.py -v
+
+# With coverage report
+pytest tests/ --cov=app --cov=core --cov=infrastructure --cov-report=html
+
+# View coverage
+open htmlcov/index.html
+```
+
+### Running Tests in Docker
+
+**Note**: The current test suite runs locally using FastAPI's `TestClient`. To test the Dockerized application:
+
+```bash
+# 1. Start services
+docker-compose up -d
+
+# 2. Wait for health check
+curl http://localhost:8000/health
+
+# 3. Run manual API tests
+curl -X POST http://localhost:8000/libraries \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Test Library", "index_type": "brute_force"}'
+
+# 4. Or use the Python SDK
+python scripts/test_basic_functionality.py
+```
+
+### Test Coverage by Component
+
+| Component | Coverage | Tests |
+|-----------|----------|-------|
+| REST API | 88% | Integration tests |
+| Library Service | 88% | Unit + Integration |
+| Repository | 90% | Unit tests |
+| Vector Store | 68% | Unit tests |
+| Indexes (all 4) | 85-92% | Unit tests |
+| Models | 94% | All tests |
+
+---
+
 
 ## Technical Choices & Design Decisions
 
@@ -575,264 +897,35 @@ COPY app/ core/ infrastructure/ ./
 
 ---
 
-## Features
 
-### Core Functionality
-- **REST API**: Complete FastAPI-based REST API with automatic OpenAPI documentation
-- **Multiple Index Types**: Choose the best index for your use case
-  - **Brute Force**: Exact search, O(n) complexity, best for small datasets (< 100K vectors)
-  - **KD-Tree**: O(log n) average case, optimal for low-dimensional data (< 20D)
-  - **LSH** (Locality-Sensitive Hashing): Sub-linear approximate search for large datasets
-  - **HNSW** (Hierarchical Navigable Small World): State-of-the-art approximate search
-- **Full CRUD Operations**: Create, read, update, delete for libraries, documents, and chunks
-- **k-NN Vector Search**: Fast similarity search with distance thresholds
-- **Metadata Filtering**: Filter search results by document metadata
-- **Cohere Integration**: Automatic text-to-embedding conversion
+## Requirements Validation ✅
 
-### Advanced Features
-- **Thread-Safe**: Reader-writer locks with writer priority prevent data races
-- **Persistence**: Write-Ahead Log (WAL) + snapshots for durability
-- **Memory Efficiency**: Reference counting and vector deduplication
-- **Memory-Mapped Storage**: Handle datasets larger than RAM
-- **Fixed Schema**: Pydantic models with comprehensive validation
-- **Domain-Driven Design**: Clean separation of concerns across layers
-- **Temporal Workflows**: Durable RAG pipeline with 5 activities
-- **Python SDK**: High-level client library for easy integration
-- **Docker Support**: Complete containerized deployment
+This project fully implements all specified requirements with comprehensive testing and validation:
 
-## Architecture
+✅ **Core Requirements**
+- REST API for vector database operations (FastAPI)
+- 4 index algorithms implemented from scratch (Brute Force, KD-Tree, LSH, HNSW)
+- Full CRUD operations on libraries, documents, and chunks
+- k-NN vector search with distance thresholds
+- Thread-safe concurrent operations (reader-writer locks)
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         REST API (FastAPI)                   │
-│                     /libraries, /documents, /search          │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-┌───────────────────────────▼─────────────────────────────────┐
-│                      Service Layer (DDD)                     │
-│                   LibraryService, EmbeddingService           │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-┌───────────────────────────▼─────────────────────────────────┐
-│                   Repository Layer (Thread-Safe)             │
-│                      LibraryRepository                       │
-└─────┬──────────┬──────────┬──────────┬──────────────────────┘
-      │          │          │          │
-┌─────▼──┐  ┌───▼────┐ ┌───▼─────┐ ┌─▼─────────────────────┐
-│ Vector │  │ Index  │ │Contract │ │ Persistence (WAL+Snap)│
-│ Store  │  │ (4x)   │ │         │ │                        │
-└────────┘  └────────┘ └─────────┘ └────────────────────────┘
-```
+✅ **Implementation Standards**
+- Domain-Driven Design architecture (layered)
+- Pydantic models for type safety
+- Docker deployment with multi-stage builds
+- 484/484 tests passing (100%), 96% coverage
+- Zero mocking - all tests use real implementations
 
+✅ **Extra Credit (All 5 Implemented)**
+- Metadata filtering in search queries
+- Persistence to disk (WAL + Snapshots)
+- Leader-Follower architecture (documented design)
+- Python SDK client
+- Temporal workflows for durable RAG pipelines
 
-## Installation
-
-For detailed installation instructions including local setup, Docker deployment, development environment configuration, and troubleshooting, see:
-
-**→ [Installation Guide](docs/guides/INSTALLATION.md)**
-
-Quick summary of installation options:
-- **Lightweight clone** (recommended): Excludes tests, 80% smaller download
-- **Full clone**: Includes tests and development tools
-- **Docker deployment**: Complete containerized stack with Temporal workflows
-
-All installation methods are documented in the Installation Guide with step-by-step instructions.
+**See**: [docs/REQUIREMENTS_VERIFICATION.md](docs/REQUIREMENTS_VERIFICATION.md) for detailed verification tables, API endpoint checklist, code quality metrics, and test coverage breakdown.
 
 ---
-
-## Usage Examples
-
-### Using the Python SDK
-
-```python
-from sdk import VectorDBClient
-
-# Initialize client
-client = VectorDBClient("http://localhost:8000")
-
-# Create a library
-library = client.create_library(
-    name="Research Papers",
-    description="AI and ML research papers",
-    index_type="hnsw"  # or "brute_force", "kd_tree", "lsh"
-)
-
-# Add documents (embeddings generated automatically)
-doc = client.add_document(
-    library_id=library["id"],
-    title="Introduction to Machine Learning",
-    texts=[
-        "Machine learning is a subset of artificial intelligence...",
-        "Supervised learning involves training with labeled data...",
-        "Deep learning uses neural networks with multiple layers..."
-    ],
-    author="John Doe",
-    tags=["machine-learning", "ai", "tutorial"]
-)
-
-# Search with natural language
-results = client.search(
-    library_id=library["id"],
-    query="What is supervised learning?",
-    k=5
-)
-
-# Display results
-for result in results["results"]:
-    print(f"Score: {1 - result['distance']:.3f}")
-    print(f"Document: {result['document_title']}")
-    print(f"Text: {result['chunk']['text'][:100]}...")
-    print()
-
-# Get statistics
-stats = client.get_library_statistics(library["id"])
-print(f"Total documents: {stats['num_documents']}")
-print(f"Total chunks: {stats['num_chunks']}")
-print(f"Index type: {stats['index_type']}")
-```
-
-### Using cURL
-
-```bash
-# Create a library
-curl -X POST http://localhost:8000/libraries \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "My Library",
-    "index_type": "hnsw"
-  }'
-
-# Add a document
-curl -X POST http://localhost:8000/libraries/{library_id}/documents \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Sample Document",
-    "texts": ["First chunk", "Second chunk"],
-    "tags": ["example"]
-  }'
-
-# Search
-curl -X POST http://localhost:8000/libraries/{library_id}/search \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "search query",
-    "k": 10
-  }'
-```
-
-## API Endpoints
-
-### Libraries
-
-- `POST /libraries` - Create a new library
-- `GET /libraries` - List all libraries
-- `GET /libraries/{id}` - Get library details
-- `DELETE /libraries/{id}` - Delete a library
-- `GET /libraries/{id}/statistics` - Get library statistics
-
-### Documents
-
-- `POST /libraries/{id}/documents` - Add document (auto-embed)
-- `POST /libraries/{id}/documents/with-embeddings` - Add document with pre-computed embeddings
-- `GET /documents/{id}` - Get document
-- `DELETE /documents/{id}` - Delete document
-
-### Search
-
-- `POST /libraries/{id}/search` - Search with text query
-- `POST /libraries/{id}/search/embedding` - Search with embedding vector
-
-### Health
-
-- `GET /health` - Health check
-- `GET /` - API information
-
-## Index Selection Guide
-
-| Index Type | Best For | Search Speed | Accuracy | Memory | Build Time |
-|------------|----------|--------------|----------|--------|------------|
-| **Brute Force** | < 100K vectors | O(n) | 100% | Low | Instant |
-| **KD-Tree** | < 20 dimensions | O(log n) | 100% | Medium | O(n log n) |
-| **LSH** | Large datasets | O(1) avg | ~90-95% | High | O(n) |
-| **HNSW** | Production use | O(log n) | ~95-99% | High | O(n log n) |
-
-**Recommendations**:
-- **Small datasets (< 100K)**: Use Brute Force for guaranteed exact results
-- **Low dimensions (< 20D)**: Use KD-Tree for fast exact search
-- **Large datasets (> 100K)**: Use HNSW for best balance of speed and accuracy
-- **Extreme scale (> 10M)**: Use LSH with careful parameter tuning
-
-## Configuration
-
-### Environment Variables
-
-```bash
-# Required
-COHERE_API_KEY=your_key_here
-
-# Optional (with defaults)
-VECTOR_DB_DATA_DIR=./data
-API_HOST=0.0.0.0
-API_PORT=8000
-API_WORKERS=4
-EMBEDDING_MODEL=embed-english-v3.0
-EMBEDDING_DIMENSION=1024
-```
-
-### Data Directory Structure
-
-```
-data/
-├── vectors/          # Vector storage (memory-mapped files)
-├── wal/              # Write-Ahead Log files
-└── snapshots/        # Periodic state snapshots
-```
-
-## Temporal Workflows
-
-The system includes a complete **RAG (Retrieval-Augmented Generation) workflow** using [Temporal](https://temporal.io/) for durable execution.
-
-**Learn More**: [Temporal Documentation](https://docs.temporal.io/) | [What is Temporal?](https://docs.temporal.io/temporal)
-
-### RAG Workflow Activities
-
-The workflow consists of 5 durable activities:
-
-1. **Preprocess** - Clean and normalize query
-2. **Embed** - Generate query embedding with Cohere
-3. **Retrieve** - Search vector database (k-NN)
-4. **Rerank** - Improve result relevance
-5. **Generate**: Create final answer (LLM integration point)
-
-### Running the Temporal Worker
-
-```bash
-# Local
-python temporal/worker.py
-
-# Docker (included in docker-compose)
-docker-compose up temporal-worker
-```
-
-### Using Workflows
-
-```python
-from temporal.client import TemporalClient
-
-client = TemporalClient()
-
-workflow_id = await client.start_rag_workflow(
-    query="What is machine learning?",
-    library_id=library_id,
-    k=10,
-    embedding_service_config={"api_key": "your_key"},
-    service_config={"data_dir": "./data"}
-)
-
-# Get result
-result = await client.get_workflow_result(workflow_id)
-print(result["answer"])
-```
 
 
 ## Performance
@@ -846,12 +939,14 @@ print(result["answer"])
 | Memory (MB) | 320 | 380 | 1200 | 950 |
 | Recall@10 | 100% | 100% | 92% | 98% |
 
+
 ## Security Considerations
 
 - **API Keys**: Never commit `.env` files. Use `.env.example` as template.
 - **Network**: In production, use HTTPS and restrict API access
 - **Data**: Vector data persists in `data/` directory - backup regularly
 - **Docker**: Consider using secrets management for production deployments
+
 
 ## Troubleshooting
 
@@ -869,13 +964,6 @@ print(result["answer"])
 **Issue**: Out of memory errors
 - **Solution**: Enable memory-mapped storage or reduce dataset size
 
-## Contributing
-
-This is a self-contained implementation. For bugs or feature requests, please document them in the project notes.
-
-## License
-
-[Specify your license here]
 
 ## Technology Stack
 
@@ -901,6 +989,7 @@ This is a self-contained implementation. For bugs or feature requests, please do
 - HNSW - [Paper](https://arxiv.org/abs/1603.09320)
 - LSH - [Paper](https://arxiv.org/abs/cs/0602029)
 - KD-Tree - Classic CS data structure
+
 
 ## API Key Setup
 
@@ -934,6 +1023,7 @@ COHERE_API_KEY=your_actual_api_key_here
 
 **Note**: Keep your API key secure! Never commit `.env` files to git.
 
+
 ## Next Steps
 
 1. ✅ Get your [Cohere API key](https://dashboard.cohere.com/api-keys)
@@ -942,6 +1032,7 @@ COHERE_API_KEY=your_actual_api_key_here
 4. ✅ Open the interactive API docs: http://localhost:8000/docs
 5. ✅ Try the [Quick Start Guide](docs/guides/QUICKSTART.md)
 6. ✅ Read the [API Reference](docs/guides/INDEX.md)
+
 
 ## Documentation
 
@@ -959,6 +1050,7 @@ COHERE_API_KEY=your_actual_api_key_here
 - **[Code Quality](docs/CODE_QUALITY_ASSESSMENT.md)** - Code quality analysis
 - **[Architecture](docs/LEADER_FOLLOWER_DESIGN.md)** - System design
 - **[Full Documentation](docs/README.md)** - Complete documentation index
+
 
 ## Project Structure
 
@@ -989,113 +1081,16 @@ COHERE_API_KEY=your_actual_api_key_here
     └── planning/          # Historical planning
 ```
 
-## Testing
 
-### Test Suite Overview
+## Contributing
 
-**Status**: ✅ 484/484 tests passing (100%)
-**Coverage**: 96% of core codebase
-**Test Environment**: Local (not Docker)
-**Full Report**: [docs/testing/FINAL_TEST_REPORT.md](docs/testing/FINAL_TEST_REPORT.md)
+This is a self-contained implementation. For bugs or feature requests, please document them in the project notes.
 
-The test suite includes:
-- **86 Unit Tests** - Core business logic (vector store, indexes, repositories)
-- **23 Integration Tests** - Full REST API with real Cohere embeddings
-- **22 Edge Case Tests** - Boundary conditions and error handling
 
-### Running Tests Locally
+## License
 
-**Prerequisites**:
-```bash
-# Install dependencies
-pip install -r requirements.txt
+[Specify your license here]
 
-# Set API key (required for integration tests)
-export COHERE_API_KEY="your_api_key_here"
-```
-
-**Run Tests**:
-```bash
-# All tests (requires API key for integration tests)
-pytest tests/ -v
-
-# Unit tests only (no API key needed)
-pytest tests/unit/ -v
-
-# Integration tests (tests REST API with real embeddings)
-pytest tests/integration/ -v
-
-# Edge case tests
-pytest tests/test_edge_cases.py -v
-
-# With coverage report
-pytest tests/ --cov=app --cov=core --cov=infrastructure --cov-report=html
-
-# View coverage
-open htmlcov/index.html
-```
-
-### Running Tests in Docker
-
-**Note**: The current test suite runs locally using FastAPI's `TestClient`. To test the Dockerized application:
-
-```bash
-# 1. Start services
-docker-compose up -d
-
-# 2. Wait for health check
-curl http://localhost:8000/health
-
-# 3. Run manual API tests
-curl -X POST http://localhost:8000/libraries \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Test Library", "index_type": "brute_force"}'
-
-# 4. Or use the Python SDK
-python scripts/test_basic_functionality.py
-```
-
-### Test Coverage by Component
-
-| Component | Coverage | Tests |
-|-----------|----------|-------|
-| REST API | 88% | Integration tests |
-| Library Service | 88% | Unit + Integration |
-| Repository | 90% | Unit tests |
-| Vector Store | 68% | Unit tests |
-| Indexes (all 4) | 85-92% | Unit tests |
-| Models | 94% | All tests |
-
----
-
-## Requirements Validation ✅
-
-This project fully implements all specified requirements with comprehensive testing and validation:
-
-✅ **Core Requirements**
-- REST API for vector database operations (FastAPI)
-- 4 index algorithms implemented from scratch (Brute Force, KD-Tree, LSH, HNSW)
-- Full CRUD operations on libraries, documents, and chunks
-- k-NN vector search with distance thresholds
-- Thread-safe concurrent operations (reader-writer locks)
-
-✅ **Implementation Standards**
-- Domain-Driven Design architecture (layered)
-- Pydantic models for type safety
-- Docker deployment with multi-stage builds
-- 484/484 tests passing (100%), 96% coverage
-- Zero mocking - all tests use real implementations
-
-✅ **Extra Credit (All 5 Implemented)**
-- Metadata filtering in search queries
-- Persistence to disk (WAL + Snapshots)
-- Leader-Follower architecture (documented design)
-- Python SDK client
-- Temporal workflows for durable RAG pipelines
-
-**See**: [docs/REQUIREMENTS_VERIFICATION.md](docs/REQUIREMENTS_VERIFICATION.md) for detailed verification tables, API endpoint checklist, code quality metrics, and test coverage breakdown.
-
----
 
 ## Future Enhancements
 
