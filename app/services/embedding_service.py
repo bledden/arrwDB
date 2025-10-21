@@ -20,6 +20,28 @@ from tenacity import (
 
 logger = logging.getLogger(__name__)
 
+# Handle different Cohere SDK versions
+try:
+    # Cohere SDK 5.x
+    from cohere.errors import (
+        TooManyRequestsError,
+        ServiceUnavailableError,
+        GatewayTimeoutError,
+        InternalServerError,
+        BadRequestError,
+        UnauthorizedError,
+        ForbiddenError,
+    )
+except (ImportError, AttributeError):
+    # Cohere SDK 4.x fallback - use base exceptions
+    TooManyRequestsError = Exception
+    ServiceUnavailableError = Exception
+    GatewayTimeoutError = Exception
+    InternalServerError = Exception
+    BadRequestError = Exception
+    UnauthorizedError = Exception
+    ForbiddenError = Exception
+
 
 class EmbeddingServiceError(Exception):
     """Base exception for embedding service errors."""
@@ -137,10 +159,10 @@ class EmbeddingService:
         wait=wait_exponential(multiplier=1, min=2, max=10),
         retry=retry_if_exception_type(
             (
-                cohere.errors.TooManyRequestsError,
-                cohere.errors.ServiceUnavailableError,
-                cohere.errors.GatewayTimeoutError,
-                cohere.errors.InternalServerError,
+                TooManyRequestsError,
+                ServiceUnavailableError,
+                GatewayTimeoutError,
+                InternalServerError,
             )
         ),
     )
@@ -196,12 +218,12 @@ class EmbeddingService:
             return embedding
 
         except (
-            cohere.errors.BadRequestError,
-            cohere.errors.UnauthorizedError,
-            cohere.errors.ForbiddenError,
-            cohere.errors.TooManyRequestsError,
-            cohere.errors.InternalServerError,
-            cohere.errors.ServiceUnavailableError,
+            BadRequestError,
+            UnauthorizedError,
+            ForbiddenError,
+            TooManyRequestsError,
+            InternalServerError,
+            ServiceUnavailableError,
         ) as e:
             logger.error(f"Cohere API error: {e}")
             raise EmbeddingServiceError(
@@ -218,10 +240,10 @@ class EmbeddingService:
         wait=wait_exponential(multiplier=1, min=2, max=10),
         retry=retry_if_exception_type(
             (
-                cohere.errors.TooManyRequestsError,
-                cohere.errors.ServiceUnavailableError,
-                cohere.errors.GatewayTimeoutError,
-                cohere.errors.InternalServerError,
+                TooManyRequestsError,
+                ServiceUnavailableError,
+                GatewayTimeoutError,
+                InternalServerError,
             )
         ),
     )
@@ -297,12 +319,12 @@ class EmbeddingService:
             return embeddings
 
         except (
-            cohere.errors.BadRequestError,
-            cohere.errors.UnauthorizedError,
-            cohere.errors.ForbiddenError,
-            cohere.errors.TooManyRequestsError,
-            cohere.errors.InternalServerError,
-            cohere.errors.ServiceUnavailableError,
+            BadRequestError,
+            UnauthorizedError,
+            ForbiddenError,
+            TooManyRequestsError,
+            InternalServerError,
+            ServiceUnavailableError,
         ) as e:
             logger.error(f"Cohere API error: {e}")
             raise EmbeddingServiceError(

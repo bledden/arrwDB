@@ -584,10 +584,6 @@ async def startup_event():
     logger.info("=" * 60)
 
 
-# Include v1 router
-app.include_router(v1_router)
-
-
 # ============================================================
 # Temporal Workflow Endpoints (Extra Feature)
 # ============================================================
@@ -675,6 +671,10 @@ async def get_workflow_status(workflow_id: str):
             "status": "running or failed",
             "error": str(e)
         }
+
+
+# Include v1 router (MUST be after all v1_router endpoints are defined)
+app.include_router(v1_router)
 
 
 # Root endpoint

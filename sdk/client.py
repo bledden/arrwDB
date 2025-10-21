@@ -70,6 +70,7 @@ class VectorDBClient:
             verify_ssl: Whether to verify SSL certificates.
         """
         self.base_url = base_url.rstrip("/")
+        self.api_prefix = "/v1"  # API version prefix
         self.timeout = timeout
         self.verify_ssl = verify_ssl
         self.session = requests.Session()
@@ -91,6 +92,9 @@ class VectorDBClient:
         Raises:
             VectorDBException: If request fails.
         """
+        # Add API version prefix if not already present
+        if not endpoint.startswith(self.api_prefix) and not endpoint.startswith("/health"):
+            endpoint = f"{self.api_prefix}{endpoint}"
         url = f"{self.base_url}{endpoint}"
         kwargs.setdefault("timeout", self.timeout)
         kwargs.setdefault("verify", self.verify_ssl)

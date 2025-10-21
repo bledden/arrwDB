@@ -46,12 +46,11 @@ echo "Created library: $LIBRARY_ID"
 DOC_ID=$(curl -s -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
-    "texts": [ "Machine learning is a subset of artificial intelligence that enables computers to learn from data without being explicitly programmed. It uses statistical techniques to give computers the ability to learn patterns and make decisions.",
-    "}
-      "title": "Introduction to Machine Learning",
-      "author": "Tech Blog",
-      "date": "2024-01-15"
-    }
+    "title": "Introduction to Machine Learning",
+    "texts": [
+      "Machine learning is a subset of artificial intelligence that enables computers to learn from data without being explicitly programmed. It uses statistical techniques to give computers the ability to learn patterns and make decisions."
+    ],
+    "author": "Tech Blog"
   }' | jq -r '.id')
 
 echo "Added document: $DOC_ID"
@@ -60,21 +59,21 @@ echo "Added document: $DOC_ID"
 curl -s -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
-    "texts": [ "Deep learning is a type of machine learning based on artificial neural networks with multiple layers. It has revolutionized fields like computer vision and natural language processing.",
-    "}
-      "title": "Deep Learning Explained",
-      "author": "Tech Blog"
-    }
+    "title": "Deep Learning Explained",
+    "texts": [
+      "Deep learning is a type of machine learning based on artificial neural networks with multiple layers. It has revolutionized fields like computer vision and natural language processing."
+    ],
+    "author": "Tech Blog"
   }' | jq -r '.id'
 
 curl -s -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
-    "texts": [ "Natural language processing enables computers to understand, interpret, and generate human language. It powers applications like chatbots, translation, and sentiment analysis.",
-    "}
-      "title": "NLP Overview",
-      "author": "Tech Blog"
-    }
+    "title": "NLP Overview",
+    "texts": [
+      "Natural language processing enables computers to understand, interpret, and generate human language. It powers applications like chatbots, translation, and sentiment analysis."
+    ],
+    "author": "Tech Blog"
   }' | jq -r '.id'
 
 # 4. Search for similar content

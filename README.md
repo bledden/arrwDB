@@ -1,6 +1,6 @@
 # Vector Database REST API
 
-![Tests](https://img.shields.io/badge/tests-484%2F484%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-466%20passing-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-96%25-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688)
@@ -39,14 +39,35 @@ python run_api.py
 
 ## Installation
 
-**→ [Verification Guide](VERIFICATION.md)** - Step-by-step verification for Windows, macOS, and Linux
+**→ [Verification Guide](docs/testing/VERIFICATION.md)** - Step-by-step verification for Windows, macOS, and Linux
 
 **→ [Installation Guide](docs/guides/INSTALLATION.md)** - Detailed installation options and troubleshooting
 
-Quick summary of installation options:
-- **Lightweight clone** (recommended): Excludes tests, 80% smaller download
-- **Full clone**: Includes tests and development tools
-- **Docker deployment**: Complete containerized stack with Temporal workflows
+### Quick Installation Options
+
+**Option 1: Local Python Setup (Fastest)**
+```bash
+pip install -e .
+cp .env.example .env
+# Edit .env with your COHERE_API_KEY
+python run_api.py
+```
+
+**Option 2: Docker (Production-Ready)**
+```bash
+# First-time Docker users - install Docker:
+# macOS (Apple Silicon): https://desktop.docker.com/mac/main/arm64/Docker.dmg
+# macOS (Intel): https://desktop.docker.com/mac/main/amd64/Docker.dmg
+# Windows: https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe
+# Linux: curl -fsSL https://get.docker.com -o get-docker.sh && sudo sh get-docker.sh
+
+# Then run:
+cp .env.example .env
+# Edit .env with your COHERE_API_KEY
+docker-compose up -d
+```
+
+**Full Docker installation instructions**: See [INSTALLATION.md - Docker Installation](docs/guides/INSTALLATION.md#docker-installation)
 
 **Platform Support**:
 - ✅ macOS (Intel & Apple Silicon)
@@ -1042,12 +1063,15 @@ COHERE_API_KEY=your_actual_api_key_here
 
 ### Quick Reference
 - **[Installation Guide](docs/guides/INSTALLATION.md)** - Complete setup instructions
-- **[Quick Start Guide](docs/guides/QUICKSTART.md)** - Get started in 5 minutes  
+- **[Quick Start Guide](docs/guides/QUICKSTART.md)** - Get started in 5 minutes
 - **[API Index](docs/guides/INDEX.md)** - All REST endpoints
+- **[CLI Examples](docs/guides/CLI_EXAMPLES.md)** - Command-line usage examples
 
 ### Testing
 - **[Final Test Report](docs/testing/FINAL_TEST_REPORT.md)** - 484/484 tests passing (100%)
 - **[Test Status](docs/testing/TEST_STATUS_FINAL.md)** - 74% code coverage details
+- **[Verification Guide](docs/testing/VERIFICATION.md)** - Platform-specific verification steps
+- **[Test New Features](docs/testing/TEST_NEW_FEATURES.md)** - Testing guide for persistence, Temporal, and Docker
 - **[All Test Docs](docs/testing/)** - Complete testing documentation
 
 ### Technical Docs
