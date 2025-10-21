@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -12,10 +12,14 @@ dependencies = [
     "fastapi>=0.104.1",
     "uvicorn[standard]>=0.24.0",
     "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
     "numpy>=1.24.3",
     "cohere>=4.37",
     "python-dotenv>=1.0.0",
     "slowapi>=0.1.9",
+    "python-multipart>=0.0.6",
+    "aiofiles>=23.2.1",
+    "tenacity>=8.2.3",
 ]
 
 [project.optional-dependencies]
@@ -37,6 +41,11 @@ temporal = [
 ]
 
 # Install everything: pip install -e ".[dev,temporal]"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*", "core*", "infrastructure*", "temporal*", "sdk*"]
+exclude = ["tests*", "docs*", "scripts*"]
 
 [tool.black]
 line-length = 100

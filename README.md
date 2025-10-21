@@ -608,63 +608,60 @@ with self._lock.write():
 
 ## How to Run Locally
 
-This section provides **complete step-by-step instructions** for running the project on your local machine.
+### Quick Start (Recommended)
 
-### Option 1: Local Python Development (Recommended for Development)
-
-**Best for**: Development, testing, debugging, running tests
-
-#### Step 1: Clone the Repository
-
-Choose between **full installation** (with tests) or **lightweight installation** (production-only):
-
-**Option A: Full Installation (Default - Recommended for Development)**
 ```bash
-# Clone entire repository including tests (8,482 test lines)
+# 1. Clone and enter directory
+git clone https://github.com/bledden/SAI.git
+cd SAI
+
+# 2. Install (production dependencies only - fast!)
+pip install -e .
+
+# 3. Configure
+cp .env.example .env
+# Edit .env and add your COHERE_API_KEY
+
+# 4. Run
+python run_api.py
+```
+
+**That's it!** API runs on http://localhost:8000
+
+**Note**: This installs production dependencies only (tests are opt-in). See [INSTALLATION.md](INSTALLATION.md) for other options.
+
+---
+
+### Installation Options
+
+| Method | Command | Use Case |
+|--------|---------|----------|
+| **Production** (default) | `pip install -e .` | Run API, learn code |
+| **Development** | `pip install -e ".[dev]"` | Run 458 tests, contribute |
+| **Lightweight clone** | See [INSTALLATION.md](INSTALLATION.md) | 80% smaller repo |
+| **Docker** | `docker-compose up -d` | Production deployment |
+
+**Full installation guide**: [INSTALLATION.md](INSTALLATION.md)
+
+---
+
+### Step-by-Step Details
+
+#### Step 1: Clone Repository
+
+```bash
 git clone https://github.com/bledden/SAI.git
 cd SAI
 ```
 
-**Option B: Lightweight Installation (Production/Learning - 75% Smaller)**
-```bash
-# Clone with sparse checkout to exclude tests (no bandwidth waste!)
-git clone --filter=blob:none --sparse https://github.com/bledden/SAI.git
-cd SAI
-
-# Configure to checkout everything except tests
-git sparse-checkout set '/*' '!tests'
-
-# Repository is now ~2,096 lines instead of ~10,578 lines (80% smaller)
-# Tests directory was never downloaded - saving bandwidth!
-```
-
-**Note**: The test suite is **4x larger** than the production code (8,482 test lines vs 2,096 production lines). If you only need to run the API or learn from the code, the lightweight installation is sufficient.
-
-#### Step 2: Set Up Python Environment
+#### Step 2: Install Dependencies
 
 ```bash
-# Create virtual environment
-python3 -m venv venv
+# Production (recommended - faster)
+pip install -e .
 
-# Activate virtual environment
-# On macOS/Linux:
-source venv/bin/activate
-# On Windows:
-venv\Scripts\activate
-
-# Verify Python version (should be 3.9+)
-python --version
-```
-
-#### Step 3: Install Dependencies
-
-```bash
-# Install all required packages
-pip install -r requirements.txt
-
-# Verify installation
-pip list | grep fastapi  # Should show fastapi and related packages
-pip list | grep cohere   # Should show cohere
+# OR Development (with tests)
+pip install -e ".[dev]"
 ```
 
 **Dependencies Installed**:
