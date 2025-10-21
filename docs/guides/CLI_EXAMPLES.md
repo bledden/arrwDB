@@ -32,7 +32,7 @@ Here's a complete example from creating a library to searching:
 
 ```bash
 # 1. Create a library
-LIBRARY_ID=$(curl -s -X POST "http://localhost:8000/libraries" \
+LIBRARY_ID=$(curl -s -X POST "http://localhost:8000/v1/libraries" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Tech Articles",
@@ -43,7 +43,7 @@ LIBRARY_ID=$(curl -s -X POST "http://localhost:8000/libraries" \
 echo "Created library: $LIBRARY_ID"
 
 # 2. Add a document
-DOC_ID=$(curl -s -X POST "http://localhost:8000/libraries/$LIBRARY_ID/documents" \
+DOC_ID=$(curl -s -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
     "text": "Machine learning is a subset of artificial intelligence that enables computers to learn from data without being explicitly programmed. It uses statistical techniques to give computers the ability to learn patterns and make decisions.",
@@ -57,7 +57,7 @@ DOC_ID=$(curl -s -X POST "http://localhost:8000/libraries/$LIBRARY_ID/documents"
 echo "Added document: $DOC_ID"
 
 # 3. Add more documents
-curl -s -X POST "http://localhost:8000/libraries/$LIBRARY_ID/documents" \
+curl -s -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
     "text": "Deep learning is a type of machine learning based on artificial neural networks with multiple layers. It has revolutionized fields like computer vision and natural language processing.",
@@ -67,7 +67,7 @@ curl -s -X POST "http://localhost:8000/libraries/$LIBRARY_ID/documents" \
     }
   }' | jq -r '.id'
 
-curl -s -X POST "http://localhost:8000/libraries/$LIBRARY_ID/documents" \
+curl -s -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
     "text": "Natural language processing enables computers to understand, interpret, and generate human language. It powers applications like chatbots, translation, and sentiment analysis.",
@@ -78,7 +78,7 @@ curl -s -X POST "http://localhost:8000/libraries/$LIBRARY_ID/documents" \
   }' | jq -r '.id'
 
 # 4. Search for similar content
-curl -s -X POST "http://localhost:8000/libraries/$LIBRARY_ID/search" \
+curl -s -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/search" \
   -H "Content-Type: application/json" \
   -d '{
     "query": "What is AI and how does it learn?",
@@ -86,7 +86,7 @@ curl -s -X POST "http://localhost:8000/libraries/$LIBRARY_ID/search" \
   }' | jq '.'
 
 # 5. Get library statistics
-curl -s "http://localhost:8000/libraries/$LIBRARY_ID/statistics" | jq '.'
+curl -s "http://localhost:8000/v1/libraries/$LIBRARY_ID/statistics" | jq '.'
 ```
 
 ---
@@ -115,7 +115,7 @@ curl http://localhost:8000/health
 
 **Create a library with BruteForce (100% accurate):**
 ```bash
-curl -X POST "http://localhost:8000/libraries" \
+curl -X POST "http://localhost:8000/v1/libraries" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Research Papers",
@@ -126,7 +126,7 @@ curl -X POST "http://localhost:8000/libraries" \
 
 **Create a library with HNSW (recommended):**
 ```bash
-curl -X POST "http://localhost:8000/libraries" \
+curl -X POST "http://localhost:8000/v1/libraries" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Product Catalog",
@@ -158,7 +158,7 @@ curl -X POST "http://localhost:8000/libraries" \
 
 **Get all libraries:**
 ```bash
-curl http://localhost:8000/libraries | jq '.'
+curl http://localhost:8000/v1/libraries | jq '.'
 ```
 
 **Response:**
@@ -184,7 +184,7 @@ curl http://localhost:8000/libraries | jq '.'
 **Get library by ID:**
 ```bash
 LIBRARY_ID="550e8400-e29b-41d4-a716-446655440000"
-curl "http://localhost:8000/libraries/$LIBRARY_ID" | jq '.'
+curl "http://localhost:8000/v1/libraries/$LIBRARY_ID" | jq '.'
 ```
 
 ---
@@ -193,7 +193,7 @@ curl "http://localhost:8000/libraries/$LIBRARY_ID" | jq '.'
 
 **Add a single document:**
 ```bash
-curl -X POST "http://localhost:8000/libraries/$LIBRARY_ID/documents" \
+curl -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
     "text": "Transformers are a neural network architecture that has revolutionized natural language processing. They use self-attention mechanisms to process sequential data in parallel, making them much faster than recurrent neural networks.",
@@ -230,7 +230,7 @@ curl -X POST "http://localhost:8000/libraries/$LIBRARY_ID/documents" \
 
 **Add a long document (auto-chunking):**
 ```bash
-curl -X POST "http://localhost:8000/libraries/$LIBRARY_ID/documents" \
+curl -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
     "text": "'"$(cat long_article.txt)"'",
@@ -247,7 +247,7 @@ curl -X POST "http://localhost:8000/libraries/$LIBRARY_ID/documents" \
 
 **Basic search:**
 ```bash
-curl -X POST "http://localhost:8000/libraries/$LIBRARY_ID/search" \
+curl -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/search" \
   -H "Content-Type: application/json" \
   -d '{
     "query": "neural networks for language understanding",
@@ -287,7 +287,7 @@ curl -X POST "http://localhost:8000/libraries/$LIBRARY_ID/search" \
 
 **Search with distance threshold (only high similarity):**
 ```bash
-curl -X POST "http://localhost:8000/libraries/$LIBRARY_ID/search" \
+curl -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/search" \
   -H "Content-Type: application/json" \
   -d '{
     "query": "machine learning algorithms",
@@ -303,7 +303,7 @@ curl -X POST "http://localhost:8000/libraries/$LIBRARY_ID/search" \
 If you already have embeddings from another source:
 
 ```bash
-curl -X POST "http://localhost:8000/libraries/$LIBRARY_ID/search/embedding" \
+curl -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/search/embedding" \
   -H "Content-Type: application/json" \
   -d '{
     "embedding": [0.123, -0.456, 0.789, ...],
@@ -320,7 +320,7 @@ curl -X POST "http://localhost:8000/libraries/$LIBRARY_ID/search/embedding" \
 **Retrieve a specific document:**
 ```bash
 DOC_ID="a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d"
-curl "http://localhost:8000/documents/$DOC_ID" | jq '.'
+curl "http://localhost:8000/v1/documents/$DOC_ID" | jq '.'
 ```
 
 **Response:**
@@ -349,7 +349,7 @@ curl "http://localhost:8000/documents/$DOC_ID" | jq '.'
 
 **Delete a document:**
 ```bash
-curl -X DELETE "http://localhost:8000/documents/$DOC_ID"
+curl -X DELETE "http://localhost:8000/v1/documents/$DOC_ID"
 ```
 
 **Response:**
@@ -366,7 +366,7 @@ curl -X DELETE "http://localhost:8000/documents/$DOC_ID"
 
 **View library stats:**
 ```bash
-curl "http://localhost:8000/libraries/$LIBRARY_ID/statistics" | jq '.'
+curl "http://localhost:8000/v1/libraries/$LIBRARY_ID/statistics" | jq '.'
 ```
 
 **Response:**
@@ -391,7 +391,7 @@ curl "http://localhost:8000/libraries/$LIBRARY_ID/statistics" | jq '.'
 
 **Delete a library:**
 ```bash
-curl -X DELETE "http://localhost:8000/libraries/$LIBRARY_ID"
+curl -X DELETE "http://localhost:8000/v1/libraries/$LIBRARY_ID"
 ```
 
 **Response:**
@@ -413,7 +413,7 @@ curl -X DELETE "http://localhost:8000/libraries/$LIBRARY_ID"
 # Create a company knowledge base
 
 # 1. Create library
-KB_ID=$(curl -s -X POST "http://localhost:8000/libraries" \
+KB_ID=$(curl -s -X POST "http://localhost:8000/v1/libraries" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Company Knowledge Base",
@@ -422,7 +422,7 @@ KB_ID=$(curl -s -X POST "http://localhost:8000/libraries" \
   }' | jq -r '.id')
 
 # 2. Add FAQ entries
-curl -s -X POST "http://localhost:8000/libraries/$KB_ID/documents" \
+curl -s -X POST "http://localhost:8000/v1/libraries/$KB_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
     "text": "To reset your password, go to the login page and click Forgot Password. Enter your email address and you will receive a reset link within 5 minutes.",
@@ -433,7 +433,7 @@ curl -s -X POST "http://localhost:8000/libraries/$KB_ID/documents" \
     }
   }'
 
-curl -s -X POST "http://localhost:8000/libraries/$KB_ID/documents" \
+curl -s -X POST "http://localhost:8000/v1/libraries/$KB_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
     "text": "Our support team is available Monday-Friday 9am-5pm EST. You can reach us via email at support@company.com or through the live chat on our website.",
@@ -444,7 +444,7 @@ curl -s -X POST "http://localhost:8000/libraries/$KB_ID/documents" \
   }'
 
 # 3. Search the knowledge base
-curl -s -X POST "http://localhost:8000/libraries/$KB_ID/search" \
+curl -s -X POST "http://localhost:8000/v1/libraries/$KB_ID/search" \
   -H "Content-Type: application/json" \
   -d '{
     "query": "How do I change my password?",
@@ -461,7 +461,7 @@ curl -s -X POST "http://localhost:8000/libraries/$KB_ID/search" \
 # Index code documentation
 
 # 1. Create library
-CODE_ID=$(curl -s -X POST "http://localhost:8000/libraries" \
+CODE_ID=$(curl -s -X POST "http://localhost:8000/v1/libraries" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Code Documentation",
@@ -470,7 +470,7 @@ CODE_ID=$(curl -s -X POST "http://localhost:8000/libraries" \
   }' | jq -r '.id')
 
 # 2. Add function documentation
-curl -s -X POST "http://localhost:8000/libraries/$CODE_ID/documents" \
+curl -s -X POST "http://localhost:8000/v1/libraries/$CODE_ID/documents" \
   -H "Content-Type: application/json" \
   -d '{
     "text": "def calculate_similarity(vec1, vec2): Computes the cosine similarity between two vectors. Returns a float between 0 and 1, where 1 means identical and 0 means orthogonal.",
@@ -482,7 +482,7 @@ curl -s -X POST "http://localhost:8000/libraries/$CODE_ID/documents" \
   }'
 
 # 3. Search for similar functions
-curl -s -X POST "http://localhost:8000/libraries/$CODE_ID/search" \
+curl -s -X POST "http://localhost:8000/v1/libraries/$CODE_ID/search" \
   -H "Content-Type: application/json" \
   -d '{
     "query": "compare two vectors",
@@ -499,7 +499,7 @@ curl -s -X POST "http://localhost:8000/libraries/$CODE_ID/search" \
 # Build a content recommendation system
 
 # 1. Create library
-CONTENT_ID=$(curl -s -X POST "http://localhost:8000/libraries" \
+CONTENT_ID=$(curl -s -X POST "http://localhost:8000/v1/libraries" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Blog Articles",
@@ -512,7 +512,7 @@ for article in articles/*.txt; do
   TITLE=$(basename "$article" .txt)
   TEXT=$(cat "$article")
 
-  curl -s -X POST "http://localhost:8000/libraries/$CONTENT_ID/documents" \
+  curl -s -X POST "http://localhost:8000/v1/libraries/$CONTENT_ID/documents" \
     -H "Content-Type: application/json" \
     -d "{
       \"text\": \"$TEXT\",
@@ -524,7 +524,7 @@ for article in articles/*.txt; do
 done
 
 # 3. Find similar articles
-curl -s -X POST "http://localhost:8000/libraries/$CONTENT_ID/search" \
+curl -s -X POST "http://localhost:8000/v1/libraries/$CONTENT_ID/search" \
   -H "Content-Type: application/json" \
   -d '{
     "query": "machine learning deployment best practices",
@@ -544,7 +544,7 @@ echo "LIBRARY_ID=550e8400-e29b-41d4-a716-446655440000" > .env.library
 
 # Load from file
 source .env.library
-curl "http://localhost:8000/libraries/$LIBRARY_ID" | jq '.'
+curl "http://localhost:8000/v1/libraries/$LIBRARY_ID" | jq '.'
 ```
 
 ### Batch Add Documents from CSV
@@ -557,7 +557,7 @@ LIBRARY_ID=$1
 CSV_FILE=$2
 
 tail -n +2 "$CSV_FILE" | while IFS=',' read -r title text author; do
-  curl -s -X POST "http://localhost:8000/libraries/$LIBRARY_ID/documents" \
+  curl -s -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/documents" \
     -H "Content-Type: application/json" \
     -d "{
       \"text\": \"$text\",
@@ -584,7 +584,7 @@ Usage:
 LIBRARY_ID=$1
 QUERY=$2
 
-curl -s -X POST "http://localhost:8000/libraries/$LIBRARY_ID/search" \
+curl -s -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/search" \
   -H "Content-Type: application/json" \
   -d "{
     \"query\": \"$QUERY\",
@@ -612,7 +612,7 @@ Output:
 
 **404 - Library Not Found:**
 ```bash
-curl "http://localhost:8000/libraries/invalid-id"
+curl "http://localhost:8000/v1/libraries/invalid-id"
 ```
 ```json
 {
@@ -622,7 +622,7 @@ curl "http://localhost:8000/libraries/invalid-id"
 
 **400 - Invalid Input:**
 ```bash
-curl -X POST "http://localhost:8000/libraries" \
+curl -X POST "http://localhost:8000/v1/libraries" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "",
