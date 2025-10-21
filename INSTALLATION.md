@@ -2,16 +2,17 @@
 
 Choose the installation method that best fits your use case.
 
-## Quick Start (Production/Learning)
+## Quick Start (Lightweight - Recommended)
 
-**Most users should use this:**
+**Most users should use this - excludes test files (80% smaller):**
 
 ```bash
-# 1. Clone repository
-git clone https://github.com/bledden/SAI.git
+# 1. Clone without tests
+git clone --filter=blob:none --sparse https://github.com/bledden/SAI.git
 cd SAI
+git sparse-checkout set '/*' '!tests'
 
-# 2. Install (production dependencies only - NO tests)
+# 2. Install
 pip install -e .
 
 # 3. Configure
@@ -22,7 +23,29 @@ cp .env.example .env
 python run_api.py
 ```
 
-**What you get**: Full API, all features, no test dependencies (faster install)
+**What you get**: Full API (2,096 lines), no test files, no test dependencies
+
+---
+
+## Full Clone (Alternative)
+
+**Use this if you want test files on disk (even if not running them):**
+
+```bash
+# 1. Clone everything
+git clone https://github.com/bledden/SAI.git
+cd SAI
+
+# 2. Install (production dependencies only)
+pip install -e .
+
+# 3. Configure and run
+cp .env.example .env
+# Edit .env and add your COHERE_API_KEY
+python run_api.py
+```
+
+**What you get**: Full repo (10,578 lines including tests), but test tools NOT installed
 
 ---
 
@@ -31,7 +54,7 @@ python run_api.py
 **Use this if you want to run tests or contribute:**
 
 ```bash
-# 1. Clone repository
+# 1. Clone everything
 git clone https://github.com/bledden/SAI.git
 cd SAI
 
@@ -46,27 +69,6 @@ python run_api.py
 ```
 
 **What you get**: Everything including 458 tests, coverage tools, etc.
-
----
-
-## Lightweight (Minimal Clone)
-
-**Use this to exclude test files from clone:**
-
-```bash
-# 1. Clone without tests (80% smaller)
-git clone --filter=blob:none --sparse https://github.com/bledden/SAI.git
-cd SAI
-git sparse-checkout set '/*' '!tests'
-
-# 2. Install
-pip install -e .
-
-# 3. Run
-python run_api.py
-```
-
-**What you get**: Only production code (2,096 lines vs 10,578 lines)
 
 ---
 

@@ -608,38 +608,53 @@ with self._lock.write():
 
 ## How to Run Locally
 
-### Quick Start (Recommended)
+### Quick Start (Lightweight - Recommended)
+
+**Fastest setup - excludes test files (80% smaller download):**
 
 ```bash
-# 1. Clone and enter directory
-git clone https://github.com/bledden/SAI.git
+# Clone without tests
+git clone --filter=blob:none --sparse https://github.com/bledden/SAI.git
 cd SAI
+git sparse-checkout set '/*' '!tests'
 
-# 2. Install (production dependencies only - fast!)
+# Install and configure
 pip install -e .
-
-# 3. Configure
 cp .env.example .env
 # Edit .env and add your COHERE_API_KEY
 
-# 4. Run
+# Run
 python run_api.py
 ```
 
 **That's it!** API runs on http://localhost:8000
 
-**Note**: This installs production dependencies only (tests are opt-in). See [INSTALLATION.md](INSTALLATION.md) for other options.
+**What you get**: Full API (2,096 lines) without test files (saves 8,482 lines)
+
+---
+
+### Alternative: Full Clone
+
+**If you want test files on disk (even if not running them):**
+
+```bash
+git clone https://github.com/bledden/SAI.git
+cd SAI
+pip install -e .
+```
+
+**Simpler command, but downloads 12 MB of unused test files.**
 
 ---
 
 ### Installation Options
 
-| Method | Command | Use Case |
-|--------|---------|----------|
-| **Production** (default) | `pip install -e .` | Run API, learn code |
-| **Development** | `pip install -e ".[dev]"` | Run 458 tests, contribute |
-| **Lightweight clone** | See [INSTALLATION.md](INSTALLATION.md) | 80% smaller repo |
-| **Docker** | `docker-compose up -d` | Production deployment |
+| Method | Best For | Bandwidth | Command |
+|--------|----------|-----------|---------|
+| **Lightweight** (recommended) | Running API | 3 MB | See above |
+| **Full clone** | Browsing tests | 15 MB | `git clone ... && pip install -e .` |
+| **Development** | Contributing | 15 MB | Full clone + `pip install -e ".[dev]"` |
+| **Docker** | Production | - | `docker-compose up -d` |
 
 **Full installation guide**: [INSTALLATION.md](INSTALLATION.md)
 
