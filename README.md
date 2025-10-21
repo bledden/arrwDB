@@ -39,16 +39,20 @@ python run_api.py
 
 ## Installation
 
-For detailed installation instructions including local setup, Docker deployment, development environment configuration, and troubleshooting, see:
+**→ [Verification Guide](VERIFICATION.md)** - Step-by-step verification for Windows, macOS, and Linux
 
-**→ [Installation Guide](docs/guides/INSTALLATION.md)**
+**→ [Installation Guide](docs/guides/INSTALLATION.md)** - Detailed installation options and troubleshooting
 
 Quick summary of installation options:
 - **Lightweight clone** (recommended): Excludes tests, 80% smaller download
 - **Full clone**: Includes tests and development tools
 - **Docker deployment**: Complete containerized stack with Temporal workflows
 
-All installation methods are documented in the Installation Guide with step-by-step instructions.
+**Platform Support**:
+- ✅ macOS (Intel & Apple Silicon)
+- ✅ Windows 10/11
+- ✅ Linux (Ubuntu, Debian, Fedora, Arch)
+- ✅ Docker (all platforms)
 
 ---
 
