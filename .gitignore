@@ -54,3 +54,8 @@ Thumbs.db
 
 # Temporal
 temporal-data/
+
+# Demo/Interview prep materials (private)
+docs/DEMO_NARRATION_SCRIPT.md
+docs/DEMO_VIDEO_SCRIPT.md
+docs/INTERVIEW_RESPONSES.md

@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vector Database System Architecture - Interactive Diagrams</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0d1117;
+            --bg-medium: #161b22;
+            --bg-light: #21262d;
+            --border-color: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-purple: #bc8cff;
+            --accent-orange: #f78166;
+            --accent-yellow: #d29922;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-medium);
+            border-bottom: 1px solid var(--border-color);
+            padding: 2rem 2rem 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        /* Navigation */
+        .nav {
+            display: flex;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: var(--bg-medium);
+            border-bottom: 1px solid var(--border-color);
+            overflow-x: auto;
+            position: sticky;
+            top: 120px;
+            z-index: 99;
+        }
+
+        .nav-btn {
+            padding: 0.5rem 1rem;
+            background: var(--bg-light);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .nav-btn:hover {
+            background: var(--bg-dark);
+            color: var(--accent-blue);
+            border-color: var(--accent-blue);
+        }
+
+        .nav-btn.active {
+            background: var(--accent-blue);
+            color: var(--bg-dark);
+            border-color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Diagram Card */
+        .diagram-card {
+            background: var(--bg-medium);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.5s forwards;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .diagram-card.hidden {
+            display: none;
+        }
+
+        .diagram-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .diagram-icon {
+            font-size: 2rem;
+        }
+
+        .diagram-title {
+            flex: 1;
+        }
+
+        .diagram-title h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+            color: var(--accent-blue);
+        }
+
+        .diagram-title .subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            background: var(--bg-light);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 0.8rem;
+            color: var(--accent-green);
+        }
+
+        /* Diagram Content */
+        .diagram-content {
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            overflow-x: auto;
+        }
+
+        .diagram-content pre {
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', 'Droid Sans Mono', 'Source Code Pro', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+            white-space: pre;
+        }
+
+        /* Colorize diagram elements */
+        .diagram-content pre {
+            background: linear-gradient(135deg, rgba(88, 166, 255, 0.05), rgba(188, 140, 255, 0.05));
+        }
+
+        /* Talking Points */
+        .talking-points {
+            background: var(--bg-light);
+            border-left: 4px solid var(--accent-green);
+            border-radius: 6px;
+            padding: 1.5rem;
+        }
+
+        .talking-points h3 {
+            color: var(--accent-green);
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .talking-points ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .talking-points li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+            color: var(--text-secondary);
+        }
+
+        .talking-points li:before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: var(--accent-green);
+            font-weight: bold;
+        }
+
+        /* Reference Table */
+        .reference-table {
+            background: var(--bg-light);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .reference-table h3 {
+            color: var(--accent-purple);
+            margin-bottom: 1rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background: var(--bg-dark);
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        td {
+            color: var(--text-secondary);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: var(--bg-dark);
+            color: var(--text-primary);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border-color);
+            margin-top: 4rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .nav {
+                top: 100px;
+            }
+
+            .diagram-content {
+                padding: 1rem;
+                font-size: 0.8rem;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+        }
+
+        /* Code highlighting */
+        .keyword { color: var(--accent-purple); }
+        .string { color: var(--accent-green); }
+        .comment { color: var(--text-secondary); font-style: italic; }
+        .function { color: var(--accent-blue); }
+        .number { color: var(--accent-orange); }
+
+        /* Scroll indicator */
+        .scroll-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+            z-index: 1000;
+            transition: width 0.1s;
+        }
+
+        /* Legend */
+        .legend {
+            background: var(--bg-light);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .color-api { background: var(--accent-blue); }
+        .color-service { background: var(--accent-green); }
+        .color-repo { background: var(--accent-purple); }
+        .color-infra { background: var(--accent-orange); }
+    </style>
+</head>
+<body>
+    <div class="scroll-indicator" id="scrollIndicator"></div>
+
+    <header class="header">
+        <h1>🏗️ Vector Database System Architecture</h1>
+        <p>Interactive Visual Diagrams for Demo & Interview Preparation</p>
+    </header>
+
+    <nav class="nav" id="nav">
+        <button class="nav-btn active" data-diagram="all">📋 All Diagrams</button>
+        <button class="nav-btn" data-diagram="1">1️⃣ High-Level</button>
+        <button class="nav-btn" data-diagram="2">2️⃣ Detailed</button>
+        <button class="nav-btn" data-diagram="3">3️⃣ HNSW</button>
+        <button class="nav-btn" data-diagram="4">4️⃣ R-W Lock</button>
+        <button class="nav-btn" data-diagram="5">5️⃣ Add Document</button>
+        <button class="nav-btn" data-diagram="6">6️⃣ Search</button>
+        <button class="nav-btn" data-diagram="7">7️⃣ Deduplication</button>
+        <button class="nav-btn" data-diagram="reference">📊 Quick Reference</button>
+    </nav>
+
+    <div class="container">
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color color-api"></div>
+                <span>API Layer</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color color-service"></div>
+                <span>Service Layer</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color color-repo"></div>
+                <span>Repository Layer</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color color-infra"></div>
+                <span>Infrastructure</span>
+            </div>
+        </div>
+
+        <!-- Diagram 1 -->
+        <div class="diagram-card" data-diagram-id="1">
+            <div class="diagram-header">
+                <div class="diagram-icon">📐</div>
+                <div class="diagram-title">
+                    <h2>Diagram 1: High-Level Architecture</h2>
+                    <div class="subtitle">Simple 4-layer overview</div>
+                </div>
+                <span class="badge">Part 2: Architecture</span>
+            </div>
+
+            <div class="diagram-content">
+                <pre>
+┌─────────────────────────────────────────────────────────────┐
+│                    REST API (FastAPI)                        │
+│         POST /libraries, /documents, /search                 │
+│              Automatic OpenAPI Docs (/docs)                  │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│               Service Layer (Business Logic)                 │
+│         LibraryService    │    EmbeddingService              │
+│     (Orchestration)       │    (Cohere Integration)          │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│          Repository Layer (Thread-Safe Data Access)          │
+│              LibraryRepository + R-W Lock                    │
+│     Multiple readers OR single writer (exclusive)            │
+└──────┬──────────┬──────────┬──────────┬─────────────────────┘
+       │          │          │          │
+       ▼          ▼          ▼          ▼
+   ┌────────┐ ┌──────┐  ┌───────┐  ┌──────────┐
+   │ Vector │ │Index │  │Embed  │  │Persistence│
+   │ Store  │ │ (4x) │  │Contract│ │WAL+Snapshot│
+   └────────┘ └──────┘  └───────┘  └──────────┘
+                </pre>
+            </div>
+
+            <div class="talking-points">
+                <h3>💡 Talking Points</h3>
+                <ul>
+                    <li>"Four distinct layers, each with single responsibility"</li>
+                    <li>"Request flows top to bottom, responses flow back up"</li>
+                    <li>"Repository layer is the only place with locks - centralized concurrency control"</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Diagram 2 -->
+        <div class="diagram-card" data-diagram-id="2">
+            <div class="diagram-header">
+                <div class="diagram-icon">📐</div>
+                <div class="diagram-title">
+                    <h2>Diagram 2: Detailed Component View</h2>
+                    <div class="subtitle">Full component breakdown with dependencies</div>
+                </div>
+                <span class="badge">Part 2 or Part 7</span>
+            </div>
+
+            <div class="diagram-content">
+                <pre>
+┌─────────────────────────────────────────────────────────────────┐
+│                        FastAPI Application                       │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │   /health    │  │  /libraries  │  │   /search    │          │
+│  │  (endpoint)  │  │  (endpoint)  │  │  (endpoint)  │          │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘          │
+│         │                 │                  │                   │
+│         └─────────────────┼──────────────────┘                   │
+└───────────────────────────┼──────────────────────────────────────┘
+                            │
+                            ▼ Depends on
+┌─────────────────────────────────────────────────────────────────┐
+│                     LibraryService                               │
+│  ┌────────────────────────────────────────────────────┐         │
+│  │ • create_library()                                 │         │
+│  │ • add_document_with_embeddings()                   │         │
+│  │ • search()                                         │         │
+│  └────────────────────────────────────────────────────┘         │
+│         │                                        │               │
+│         │ Uses                                   │ Uses          │
+│         ▼                                        ▼               │
+│  ┌─────────────────┐                  ┌──────────────────┐     │
+│  │EmbeddingService │                  │LibraryRepository │     │
+│  │ (Cohere API)    │                  │  (Data Access)   │     │
+│  └─────────────────┘                  └──────────────────┘     │
+└─────────────────────────────────────────────────────────────────┘
+                                                   │
+                                                   │ Uses
+                                                   ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   Infrastructure Layer                           │
+│                                                                  │
+│  ┌────────────────────────────────────────────────────┐         │
+│  │              LibraryRepository                     │         │
+│  │   ┌──────────────────────────────────────────┐    │         │
+│  │   │    ReaderWriterLock (Thread Safety)      │    │         │
+│  │   │  • read(): Multiple concurrent allowed   │    │         │
+│  │   │  • write(): Exclusive access             │    │         │
+│  │   └──────────────────────────────────────────┘    │         │
+│  └────────────────────────────────────────────────────┘         │
+│                                                                  │
+│  Coordinates:                                                    │
+│  ┌──────────────┐ ┌───────────┐ ┌───────────┐ ┌─────────────┐ │
+│  │ VectorStore  │ │  Index    │ │ Embedding │ │ Persistence │ │
+│  │              │ │ (4 types) │ │ Contract  │ │ (WAL+Snap)  │ │
+│  │ • add_vector │ │ • HNSW    │ │ • validate│ │ • append_op │ │
+│  │ • get_vector │ │ • LSH     │ │ • normalize│ │ • snapshot  │ │
+│  │ • remove     │ │ • KD-Tree │ │           │ │ • recover   │ │
+│  │ • dedup      │ │ • BruteF. │ │           │ │             │ │
+│  └──────────────┘ └───────────┘ └───────────┘ └─────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                </pre>
+            </div>
+
+            <div class="talking-points">
+                <h3>💡 Talking Points</h3>
+                <ul>
+                    <li>"Dependency injection - FastAPI provides LibraryService to endpoints"</li>
+                    <li>"Service layer coordinates between embedding generation and data storage"</li>
+                    <li>"Repository is the single point of thread safety"</li>
+                    <li>"Four pluggable index implementations behind common interface"</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Diagram 3 -->
+        <div class="diagram-card" data-diagram-id="3">
+            <div class="diagram-header">
+                <div class="diagram-icon">📐</div>
+                <div class="diagram-title">
+                    <h2>Diagram 3: HNSW Graph Structure</h2>
+                    <div class="subtitle">Multi-layer navigation visualization</div>
+                </div>
+                <span class="badge">Part 3: HNSW Deep Dive</span>
+            </div>
+
+            <div class="diagram-content">
+                <pre>
+HNSW Graph Structure - Multi-Layer Navigation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Layer 2 (Top - Sparse "Highways")
+   Node A ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━► Node D
+     ↓                                              ↓
+     ↓                                              ↓
+
+Layer 1 (Medium Density)
+   Node A ━━━━━━━━━► Node B ━━━━━━━━━━━━━━━━━━━► Node D
+     ↓                 ↓                            ↓
+     ↓                 ↓                            ↓
+
+Layer 0 (Bottom - Dense "City Streets", ALL vectors)
+   Node A ━━► Node B ━━► Node C ━━► Node D ━━► Node E
+     ↕        ↕         ↕         ↕         ↕
+   (local connections between nearest neighbors)
+
+
+SEARCH EXAMPLE: Finding nearest neighbor to Query Q
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Step 1: Start at Layer 2 (entry point = A)
+   Q is closer to D than A
+   ➜ Jump A → D (long-range connection)
+
+Step 2: Descend to Layer 1 at D
+   Q is closer to B than D
+   ➜ Navigate D → B
+
+Step 3: Descend to Layer 0 at B
+   Q is very close to C
+   ➜ Navigate B → C
+   C is nearest neighbor! ✓
+
+Total hops: 3 (vs checking all 5 nodes with brute force)
+Complexity: O(log n) where n = number of vectors
+
+
+SIMPLIFIED VERSION:
+━━━━━━━━━━━━━━━━━━
+┌─────────────────────────────────────────────────┐
+│  HNSW = Multi-Layer Graph (Like a Highway Map)  │
+└─────────────────────────────────────────────────┘
+
+Layer 2: [A]─────────────────────►[D]
+         (few nodes, long jumps = highways)
+
+Layer 1: [A]────►[B]──────────►[D]
+         (medium density = main roads)
+
+Layer 0: [A]─►[B]─►[C]─►[D]─►[E]
+         (all vectors, local = city streets)
+
+Search Strategy: Start at top (A) → Long jump (D)
+                 → Descend → Local navigation (B→C)
+                 → Find exact neighbor!
+
+Why it's fast: Navigate mostly at top layers (few nodes)
+               Only explore densely at the end (precise)
+                </pre>
+            </div>
+
+            <div class="talking-points">
+                <h3>💡 Talking Points</h3>
+                <ul>
+                    <li>"Like Google Maps - zoom out for highways, zoom in for streets"</li>
+                    <li>"Top layer has maybe 10 nodes out of 10,000 - that's log(n)"</li>
+                    <li>"Each hop gets you closer until you find the nearest neighbor"</li>
+                    <li>"This is why we get O(log n) - limited hops through hierarchy"</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Diagram 4 -->
+        <div class="diagram-card" data-diagram-id="4">
+            <div class="diagram-header">
+                <div class="diagram-icon">📐</div>
+                <div class="diagram-title">
+                    <h2>Diagram 4: Reader-Writer Lock Behavior</h2>
+                    <div class="subtitle">Concurrent access patterns</div>
+                </div>
+                <span class="badge">Part 2: Concurrency</span>
+            </div>
+
+            <div class="diagram-content">
+                <pre>
+READER-WRITER LOCK: How Concurrent Access Works
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Scenario 1: Multiple Readers (ALLOWED - No Blocking)
+┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐
+│Thread 1 │  │Thread 2 │  │Thread 3 │  │Thread 4 │
+│SEARCH   │  │SEARCH   │  │SEARCH   │  │SEARCH   │
+└────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘
+     │            │            │            │
+     └────────────┴────────────┴────────────┘
+                  │
+                  ▼
+        ┌─────────────────────┐
+        │   Read Lock (R)     │  ✓ All proceed simultaneously
+        │   Readers: 4        │  ✓ No blocking
+        │   Writers: 0        │
+        └─────────────────────┘
+
+
+Scenario 2: Writer Arrives (Blocks New Readers)
+┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐
+│Thread 1 │  │Thread 2 │  │Thread 3 │  │Thread 4 │
+│SEARCH   │  │SEARCH   │  │ INSERT  │  │SEARCH   │
+│(active) │  │(active) │  │(waiting)│  │(blocked)│
+└────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘
+     │            │            │            │
+     └────────────┴────────────┼────────────┘
+                               │
+                               ▼
+        ┌─────────────────────────────────────────┐
+        │   Read Lock (R)                         │
+        │   Active Readers: 2 (Thread 1, 2)       │
+        │   Waiting Writer: 1 (Thread 3)          │
+        │   Blocked Readers: 1 (Thread 4)         │
+        │                                          │
+        │   Thread 4 must wait for writer!        │
+        │   (Writer priority prevents starvation) │
+        └─────────────────────────────────────────┘
+
+
+Scenario 3: Writer Executes (Exclusive Access)
+┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐
+│Thread 1 │  │Thread 2 │  │Thread 3 │  │Thread 4 │
+│(done)   │  │(done)   │  │ INSERT  │  │SEARCH   │
+│         │  │         │  │(active) │  │(blocked)│
+└─────────┘  └─────────┘  └────┬────┘  └────┬────┘
+                               │            │
+                               └────────────┘
+                               │
+                               ▼
+        ┌─────────────────────────────────────────┐
+        │   Write Lock (W) - EXCLUSIVE            │
+        │   Active Writers: 1 (Thread 3)          │
+        │   Blocked Readers: 1 (Thread 4)         │
+        │                                          │
+        │   Only ONE writer, everyone else waits  │
+        └─────────────────────────────────────────┘
+
+
+KEY PROPERTIES:
+✓ Multiple readers = OK (concurrent)
+✓ Multiple writers = NO (exclusive)
+✓ Reader + Writer = NO (exclusive)
+✓ Writer waiting → New readers block (writer priority)
+                </pre>
+            </div>
+
+            <div class="talking-points">
+                <h3>💡 Talking Points</h3>
+                <ul>
+                    <li>"Read-heavy workload benefits from concurrent reads"</li>
+                    <li>"Writer priority prevents updates from starving"</li>
+                    <li>"Typical vector DB: 90% searches (reads), 10% inserts (writes)"</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Diagram 5 -->
+        <div class="diagram-card" data-diagram-id="5">
+            <div class="diagram-header">
+                <div class="diagram-icon">📐</div>
+                <div class="diagram-title">
+                    <h2>Diagram 5: Add Document Request Flow</h2>
+                    <div class="subtitle">Complete request lifecycle</div>
+                </div>
+                <span class="badge">Part 5: Live Demo</span>
+            </div>
+
+            <div class="diagram-content">
+                <pre>
+USER ADDS A DOCUMENT - Full Request Flow
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Client Request
+   POST /v1/libraries/{lib_id}/documents
+   {
+     "title": "ML Tutorial",
+     "texts": ["ML is...", "Supervised learning..."]
+   }
+              │
+              ▼
+2. FastAPI Endpoint
+   ┌─────────────────────────────────┐
+   │ POST /documents endpoint        │
+   │ • Validates request (Pydantic)  │
+   │ • Extracts library_id, texts    │
+   └────────────┬────────────────────┘
+                │
+                ▼
+3. Service Layer
+   ┌─────────────────────────────────┐
+   │ LibraryService                  │
+   │ • Calls EmbeddingService        │
+   └────────┬───────────┬────────────┘
+            │           │
+            │           └──────► ┌────────────────────┐
+            │                    │ EmbeddingService   │
+            │                    │ • Calls Cohere API │
+            │                    │ • Returns vectors  │
+            │                    │   [0.1, 0.2, ...]  │
+            │           ┌────────┴────────────────────┘
+            │           │
+            ▼           ▼
+4. Repository Layer
+   ┌──────────────────────────────────────┐
+   │ LibraryRepository.add_document()     │
+   │ • Acquires WRITE lock                │
+   │ • Blocks all readers & writers       │
+   │ └───────────────────────────────────┐│
+   │         while write is active       ││
+   └─────────────────────────────────────┘│
+            │                              │
+            ▼                              │
+5. Persistence (WAL)                       │
+   ┌──────────────────────────────────┐   │
+   │ WriteAheadLog.append_operation() │   │
+   │ • Logs: "ADD_DOCUMENT lib=X"     │   │
+   │ • fsync() to disk (durable)      │   │
+   └────────────┬─────────────────────┘   │
+                │                          │
+                ▼                          │
+6. Vector Storage                          │
+   ┌──────────────────────────────────┐   │
+   │ VectorStore.add_vector()         │   │
+   │ • Hash vector (dedup check)      │   │
+   │ • Store if new, ref++ if exists  │   │
+   │ • Returns vector index           │   │
+   └────────────┬─────────────────────┘   │
+                │                          │
+                ▼                          │
+7. Index Update                            │
+   ┌──────────────────────────────────┐   │
+   │ HNSWIndex.add_vector()           │   │
+   │ • Assign layer (exponential)     │   │
+   │ • Find M nearest neighbors       │   │
+   │ • Create bidirectional edges     │   │
+   │ • Update graph structure         │   │
+   └────────────┬─────────────────────┘   │
+                │                          │
+                └──────────────────────────┘
+                │
+                ▼ Release WRITE lock
+8. Response
+   ┌──────────────────────────────────┐
+   │ 201 Created                      │
+   │ {                                │
+   │   "id": "doc-uuid",              │
+   │   "title": "ML Tutorial",        │
+   │   "chunks": [...]                │
+   │ }                                │
+   └──────────────────────────────────┘
+
+TOTAL TIME: ~100-200ms
+• Cohere API: ~80ms (external)
+• HNSW insert: ~3-5ms per vector
+• WAL write: ~1ms (fsync)
+• Serialization: ~10ms
+                </pre>
+            </div>
+
+            <div class="talking-points">
+                <h3>💡 Talking Points</h3>
+                <ul>
+                    <li>"Six layers of abstraction, each with clear responsibility"</li>
+                    <li>"WAL ensures durability before applying changes"</li>
+                    <li>"Write lock guarantees no concurrent modifications"</li>
+                    <li>"HNSW graph updated incrementally, no full rebuild"</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Diagram 6 -->
+        <div class="diagram-card" data-diagram-id="6">
+            <div class="diagram-header">
+                <div class="diagram-icon">📐</div>
+                <div class="diagram-title">
+                    <h2>Diagram 6: Search Operation Flow</h2>
+                    <div class="subtitle">Search request lifecycle with timing</div>
+                </div>
+                <span class="badge">Part 5: Live Demo</span>
+            </div>
+
+            <div class="diagram-content">
+                <pre>
+USER SEARCHES - Request Flow
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Query: "How does supervised learning work?"
+              │
+              ▼
+2. Embed Query (Cohere API)
+   ┌────────────────────────────────────┐
+   │ EmbeddingService.embed_text()      │
+   │ Input: "How does supervised..."    │
+   │ Output: [0.15, 0.32, ..., 0.08]    │
+   │         (1024-dim vector)          │
+   └────────────────┬───────────────────┘
+                    │
+                    ▼
+3. Search Index (HNSW)
+   ┌────────────────────────────────────┐
+   │ Repository.search() [READ lock]    │
+   │ • Multiple searches can run now    │
+   │ • No writers active                │
+   │                                    │
+   │ HNSWIndex.search(query, k=10)      │
+   │ Layer 2: Start at entry, navigate │
+   │ Layer 1: Descend, narrow search   │
+   │ Layer 0: Find exact k=10 neighbors│
+   │                                    │
+   │ Returns: [(chunk_id, distance)]   │
+   └────────────────┬───────────────────┘
+                    │
+                    ▼
+4. Fetch Chunk Text
+   ┌────────────────────────────────────┐
+   │ Map vector IDs → Chunks            │
+   │ chunk_id_1 → "Supervised learning..."│
+   │ chunk_id_2 → "ML is a subset..."  │
+   │ chunk_id_3 → "Neural networks..."  │
+   └────────────────┬───────────────────┘
+                    │
+                    ▼
+5. Return Results (Ranked)
+   [
+     {
+       "text": "Supervised learning uses...",
+       "distance": 0.12,  ← Most similar
+       "document": "ML Tutorial"
+     },
+     {
+       "text": "ML is a subset...",
+       "distance": 0.35,
+       "document": "ML Tutorial"
+     }
+   ]
+
+TOTAL TIME: ~85-90ms
+• Embed query: ~80ms (Cohere)
+• HNSW search: 1-3ms ← THIS IS THE FLEX!
+• Fetch text: <1ms
+• Serialize: ~5ms
+                </pre>
+            </div>
+
+            <div class="talking-points">
+                <h3>💡 Talking Points</h3>
+                <ul>
+                    <li>"Search is mostly embedding time (80ms) + network"</li>
+                    <li>"HNSW search itself is sub-3ms - that's the algorithmic win"</li>
+                    <li>"Multiple searches run concurrently (READ lock)"</li>
+                    <li>"Results ranked by distance (lower = more similar)"</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Diagram 7 -->
+        <div class="diagram-card" data-diagram-id="7">
+            <div class="diagram-header">
+                <div class="diagram-icon">📐</div>
+                <div class="diagram-title">
+                    <h2>Diagram 7: Memory Efficiency (Deduplication)</h2>
+                    <div class="subtitle">Before/after memory comparison</div>
+                </div>
+                <span class="badge">Part 4: Production Features</span>
+            </div>
+
+            <div class="diagram-content">
+                <pre>
+VECTOR DEDUPLICATION - Memory Savings
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WITHOUT Deduplication (Naive):
+┌─────────────────────────────────────────────────┐
+│ Document 1: "Copyright 2024..."                 │
+│   Chunk 1 → [0.5, 0.2, ...] (4KB)              │
+│   Chunk 2 → [0.1, 0.8, ...] (4KB)              │
+│                                                 │
+│ Document 2: "Copyright 2024..."  ← Same text!  │
+│   Chunk 3 → [0.5, 0.2, ...] (4KB) ← Duplicate! │
+│   Chunk 4 → [0.3, 0.7, ...] (4KB)              │
+│                                                 │
+│ Document 3: "Copyright 2024..."  ← Same again! │
+│   Chunk 5 → [0.5, 0.2, ...] (4KB) ← Duplicate! │
+│   Chunk 6 → [0.6, 0.1, ...] (4KB)              │
+└─────────────────────────────────────────────────┘
+Total: 6 chunks × 4KB = 24KB
+
+
+WITH Deduplication (My Implementation):
+┌─────────────────────────────────────────────────┐
+│ VectorStore (Reference Counted):                │
+│                                                 │
+│ Vector 0: [0.5, 0.2, ...] → ref_count = 3      │
+│           ↑       ↑        ↑                    │
+│   Chunk 1 ┘       │        │                    │
+│          Chunk 3 ─┘        │                    │
+│                 Chunk 5 ───┘                    │
+│                                                 │
+│ Vector 1: [0.1, 0.8, ...] → ref_count = 1      │
+│           ↑                                     │
+│   Chunk 2 ┘                                     │
+│                                                 │
+│ Vector 2: [0.3, 0.7, ...] → ref_count = 1      │
+│           ↑                                     │
+│   Chunk 4 ┘                                     │
+│                                                 │
+│ Vector 3: [0.6, 0.1, ...] → ref_count = 1      │
+│           ↑                                     │
+│   Chunk 6 ┘                                     │
+└─────────────────────────────────────────────────┘
+Total: 4 unique vectors × 4KB = 16KB
+Savings: (24KB - 16KB) / 24KB = 33%
+
+In my tests: 48% savings!
+                </pre>
+            </div>
+
+            <div class="talking-points">
+                <h3>💡 Talking Points</h3>
+                <ul>
+                    <li>"Repeated text is common: headers, footers, disclaimers"</li>
+                    <li>"Store vector once, multiple chunks reference it"</li>
+                    <li>"Reference counting tracks usage, frees when count → 0"</li>
+                    <li>"Real-world benefit: 48% less memory in validation tests"</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Reference Table -->
+        <div class="diagram-card" data-diagram-id="reference">
+            <div class="diagram-header">
+                <div class="diagram-icon">📊</div>
+                <div class="diagram-title">
+                    <h2>Quick Reference: Which Diagram When</h2>
+                    <div class="subtitle">Usage guide for demo video</div>
+                </div>
+            </div>
+
+            <div class="reference-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Video Section</th>
+                            <th>Best Diagram</th>
+                            <th>Why</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Part 1: Intro</td>
+                            <td>Diagram 1 (Simple)</td>
+                            <td>Quick overview</td>
+                        </tr>
+                        <tr>
+                            <td>Part 2: Architecture</td>
+                            <td>Diagram 2 or 4</td>
+                            <td>Show layers + concurrency</td>
+                        </tr>
+                        <tr>
+                            <td>Part 3: HNSW</td>
+                            <td>Diagram 3 (Visual)</td>
+                            <td>Core algorithm</td>
+                        </tr>
+                        <tr>
+                            <td>Part 4: Prod Features</td>
+                            <td>Diagram 7 (Memory)</td>
+                            <td>Show dedup benefit</td>
+                        </tr>
+                        <tr>
+                            <td>Part 5: Live Demo</td>
+                            <td>Diagram 5 or 6</td>
+                            <td>Request flow</td>
+                        </tr>
+                        <tr>
+                            <td>Part 6: Testing</td>
+                            <td>None needed</td>
+                            <td>Just show results</td>
+                        </tr>
+                        <tr>
+                            <td>Part 7: Wrap-up</td>
+                            <td>Diagram 1 again</td>
+                            <td>Bookend the demo</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="talking-points">
+                <h3>💡 Usage Tips</h3>
+                <ul>
+                    <li><strong>For Technical Interviewers:</strong> Use Diagrams 2, 3, 4, 5, 6 (detailed)</li>
+                    <li><strong>For Non-Technical:</strong> Use Diagrams 1, 3 (simplified versions)</li>
+                    <li><strong>For Demo Video:</strong> Use Diagram 1 + Diagram 3 as minimum. Others are backup.</li>
+                    <li><strong>Recommendation:</strong> Diagram 1 + Diagram 3 (HNSW) tell the complete story</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>🏗️ Vector Database System Architecture Diagrams</p>
+        <p>Created for demo video and interview preparation</p>
+    </footer>
+
+    <script>
+        // Navigation
+        const navButtons = document.querySelectorAll('.nav-btn');
+        const diagramCards = document.querySelectorAll('.diagram-card');
+
+        navButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetDiagram = btn.dataset.diagram;
+
+                // Update active button
+                navButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                // Show/hide diagrams
+                diagramCards.forEach(card => {
+                    const cardId = card.dataset.diagramId;
+                    if (targetDiagram === 'all') {
+                        card.classList.remove('hidden');
+                    } else if (cardId === targetDiagram) {
+                        card.classList.remove('hidden');
+                    } else {
+                        card.classList.add('hidden');
+                    }
+                });
+
+                // Scroll to top smoothly
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        });
+
+        // Scroll indicator
+        window.addEventListener('scroll', () => {
+            const scrollIndicator = document.getElementById('scrollIndicator');
+            const windowHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (window.scrollY / windowHeight) * 100;
+            scrollIndicator.style.width = scrolled + '%';
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key >= '1' && e.key <= '7') {
+                const index = parseInt(e.key);
+                navButtons[index].click();
+            }
+            if (e.key === '0') {
+                navButtons[0].click(); // All diagrams
+            }
+        });
+
+        // Print message
+        console.log('%c🏗️ Vector Database System Architecture', 'font-size: 20px; font-weight: bold; color: #58a6ff;');
+        console.log('%cKeyboard shortcuts: Press 0-7 to navigate diagrams', 'color: #8b949e;');
+    </script>
+</body>
+</html>

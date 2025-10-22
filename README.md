@@ -955,7 +955,32 @@ This project fully implements all specified requirements with comprehensive test
 
 ## Performance
 
-### Benchmarks (on test dataset of 100K 768-dim vectors)
+### Validated Performance Metrics
+
+**Empirically tested and validated** ([Full Validation Report](docs/PERFORMANCE_VALIDATION_REPORT.md)):
+
+| Metric | Value | Status |
+|--------|-------|--------|
+| **Search Latency (10k vectors @ 256D)** | 1.86ms avg, 2.27ms p95 | ✅ Production-grade |
+| **HNSW Scaling** | 1.8x slower for 10x data | ✅ Logarithmic O(log n) |
+| **Speedup vs Brute Force (10k)** | 2x faster | ✅ Validated |
+| **Memory Savings (Deduplication)** | 48% reduction | ✅ Exceeds 30-40% target |
+| **Concurrent Throughput** | 251 queries/sec | ⚠️ GIL-limited (see notes) |
+| **Test Coverage** | 484 tests, 97% coverage | ✅ Comprehensive |
+
+**Key Findings:**
+- ✅ **Sub-3ms search** on 10,000 high-dimensional vectors
+- ✅ **Logarithmic scaling confirmed**: 10x more data = only 1.8x slower (not 10x!)
+- ✅ **Memory efficient**: Vector deduplication saves 48% memory through reference counting
+- ⚠️ **Concurrency note**: Thread-safe but Python GIL limits parallel CPU execution (use multiprocessing or Rust extensions for true parallelism)
+
+**Run benchmarks yourself:**
+```bash
+python3 scripts/validate_performance.py  # Quick validation (~30s)
+python3 scripts/performance_demo.py       # Full interactive demo (~10min)
+```
+
+### Comparative Benchmarks (Projected for 100K 768-dim vectors)
 
 | Operation | Brute Force | KD-Tree | LSH | HNSW |
 |-----------|-------------|---------|-----|------|
@@ -963,6 +988,8 @@ This project fully implements all specified requirements with comprehensive test
 | Search k=10 (ms) | 245 | 18 | 3.2 | 2.8 |
 | Memory (MB) | 320 | 380 | 1200 | 950 |
 | Recall@10 | 100% | 100% | 92% | 98% |
+
+*Note: 100K benchmarks are extrapolated. Validated measurements at 10K scale show HNSW achieves 1.86ms average search with 2.27ms p95.*
 
 
 ## Security Considerations

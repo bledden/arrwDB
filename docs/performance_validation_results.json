@@ -1,0 +1,48 @@
+{
+  "scaling": [
+    {
+      "vectors": 1000,
+      "bf_ms": 0.44,
+      "hnsw_ms": 0.94,
+      "speedup": 0.5
+    },
+    {
+      "vectors": 5000,
+      "bf_ms": 1.43,
+      "hnsw_ms": 1.42,
+      "speedup": 1.0
+    },
+    {
+      "vectors": 10000,
+      "bf_ms": 3.38,
+      "hnsw_ms": 1.7,
+      "speedup": 2.0
+    }
+  ],
+  "concurrent": {
+    "sequential_time": 0.041,
+    "concurrent_time": 0.08,
+    "speedup": 0.5,
+    "qps": 251.0
+  },
+  "production": {
+    "vectors": 10000,
+    "dimension": 256,
+    "build_time": 59.99,
+    "build_throughput": 167.0,
+    "avg_search_ms": 1.86,
+    "p50_ms": 1.83,
+    "p95_ms": 2.27,
+    "p99_ms": 2.42,
+    "memory_mb": 9.8
+  },
+  "memory": {
+    "total_chunks": 1000,
+    "unique_vectors": 520,
+    "total_references": 1000,
+    "dedup_ratio": 1.92,
+    "naive_kb": 500.0,
+    "actual_kb": 260.0,
+    "savings_pct": 48.0
+  }
+}
