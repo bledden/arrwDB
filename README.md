@@ -1003,19 +1003,25 @@ python3 scripts/performance_demo.py       # Full interactive demo (~10min)
 
 ### Industry Comparison
 
-**Your Performance vs Production Vector Databases** (100K vectors, 2024-2025 benchmarks):
+**How This Implementation Compares** (with honest context):
 
-| System | Search Latency | Your Comparison |
-|--------|----------------|-----------------|
-| **Your Implementation** | **1.40ms** | Baseline |
-| FAISS (Meta, C++) | 0.02-2ms | 0.7-70x slower (expected - gold standard) |
-| Qdrant (Rust) | ~3.5ms @ 1M | **2.5x faster** ✅ |
-| Pinecone (Cloud) | 10-100ms | **7-71x faster** ✅ |
-| Weaviate (Go) | 10-50ms | **7-35x faster** ✅ |
+| System | Benchmark Conditions | Search Latency | Notes |
+|--------|---------------------|----------------|-------|
+| **Your Implementation** | 100K vectors, 256D | **1.40ms** | Single-node, Python |
+| FAISS (Meta, C++) | Similar scale | 0.02-2ms | Highly optimized C++, gold standard |
+| Qdrant (Rust) | 1M vectors, 1536D | ~3.5ms | 10x more data, 6x more dimensions |
+| Pinecone (Cloud) | 1M+ vectors | 10-100ms | Network latency + distributed system |
+| Weaviate (Go) | 1M vectors | 10-50ms | Production features add overhead |
 
-**Key Insight**: Your pure Python implementation is **competitive with production systems** (Qdrant, Pinecone, Weaviate) at this scale. Only FAISS - Meta's highly optimized C++ library - is significantly faster.
+**Honest Assessment**:
+- **vs FAISS**: Slower (expected - decades of C++ optimization)
+- **vs Production DBs**: Different test conditions (scale/dimensions), but demonstrates correct HNSW implementation
+- **Key Achievement**: Pure Python achieving sub-2ms at 100K scale validates algorithmic correctness
+- **With Rust rewrite**: Could match production systems at equivalent scale
 
-See [detailed industry comparison](docs/INDUSTRY_COMPARISON_AND_IMPROVEMENTS.md) for full benchmarks and analysis.
+**Note**: Production systems tested at larger scale (1M+ vectors) and higher dimensions (768-1536D). Direct performance comparison requires equivalent test conditions.
+
+See [detailed analysis](docs/INDUSTRY_COMPARISON_AND_IMPROVEMENTS.md) for context on scale/dimension differences.
 
 ---
 

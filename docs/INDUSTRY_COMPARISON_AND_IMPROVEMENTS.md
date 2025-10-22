@@ -26,39 +26,47 @@
 - **BUT**: FAISS is the gold standard - being in the same order of magnitude is impressive
 
 #### Qdrant (Production Vector DB) - Rust
-- **Search Latency**: ~3.5ms avg @ 1M vectors (1536D)
+- **Search Latency**: ~3.5ms avg @ **1M vectors (1536D)**
 - **Throughput**: 1,238 queries/sec
-- **Your comparison**: **You're 2.5x FASTER than Qdrant at smaller scale!**
+- **Scale difference**: 10x more vectors, 6x more dimensions than your test
+- **Honest comparison**: Apples-to-oranges - they tested at much larger scale
 
 #### Pinecone (Cloud Vector DB) - Proprietary
 - **Search Latency**: 10-100ms typical (depends on tier/load)
-- **Note**: Network latency included, distributed system
-- **Your comparison**: **You're 7x-71x FASTER than typical Pinecone**
+- **Note**: Network latency included, distributed system, 1M+ vectors
+- **Scale difference**: Larger datasets + network overhead
+- **Honest comparison**: Different use case (cloud/distributed vs local/single-node)
 
 #### Weaviate (Production Vector DB) - Go
-- **Search Latency**: 10-50ms typical @ 1M vectors
-- **Your comparison**: **You're 7x-35x FASTER than Weaviate**
+- **Search Latency**: 10-50ms typical @ **1M vectors**
+- **Scale difference**: 10x more vectors than your test
+- **Honest comparison**: Tested at different scale
 
 ---
 
-## 🎯 **Reality Check: You're Competitive!**
+## 🎯 **Honest Reality Check**
 
-### At 100K Scale:
-- ✅ **Faster than Qdrant** (1.40ms vs ~3.5ms)
-- ✅ **Faster than Pinecone** (1.40ms vs 10-100ms)
-- ✅ **Faster than Weaviate** (1.40ms vs 10-50ms)
-- ⚠️ **Slower than FAISS** (1.40ms vs 0.02-2ms)
+### What You CAN Claim:
+- ✅ **Correct HNSW implementation**: 23.4x speedup vs brute force proves algorithm works
+- ✅ **Sub-2ms at 100K scale**: Validates algorithmic correctness
+- ✅ **Competitive for pure Python**: Impressive given no C++/Rust optimization
+- ⚠️ **Slower than FAISS**: Expected - decades of C++ SIMD optimization
 
-### Why the difference?
-1. **FAISS** = 10+ years of Meta engineering, C++ with SIMD, CPU cache optimization
-2. **Your implementation** = Pure Python with NumPy, built from scratch in weeks
-3. **Qdrant/Pinecone/Weaviate** = Production features (distributed, replicas, durability) add overhead
+### What You CANNOT Claim:
+- ❌ **NOT "faster than Qdrant/Pinecone/Weaviate"** - they tested at 10x scale with higher dimensions
+- ❌ **NOT "competitive with production systems"** - without equivalent scale testing
 
-### The Impressive Part:
-You're **in the same ballpark** as production systems while being:
-- Pure Python (they use Rust/Go/C++)
-- Single-node (they're distributed)
-- Built from scratch (they have teams of engineers)
+### Why Direct Comparison Is Misleading:
+1. **Scale**: Your 100K vs their 1M+ vectors (10x difference)
+2. **Dimensions**: Your 256D vs their 768-1536D (3-6x more computation)
+3. **Features**: Your single-node vs their distributed/replicated/durable systems
+4. **Network**: Your localhost vs their cloud with network latency
+
+### The ACTUAL Impressive Part:
+- **Pure Python** performing this well (they use Rust/Go/C++)
+- **From scratch** (not using FAISS/hnswlib libraries)
+- **Validated correctness** (23.4x speedup proves algorithm works)
+- **Same order of magnitude** (not 100x slower at equivalent scale)
 
 ---
 
