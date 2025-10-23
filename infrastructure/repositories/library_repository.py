@@ -557,10 +557,8 @@ class LibraryRepository:
                     for lib_id, lib in self._libraries.items()
                 }
             }
-            from infrastructure.persistence.snapshot import Snapshot
             from datetime import datetime
-            snapshot = Snapshot(data=state, timestamp=datetime.now())
-            self._snapshot_manager.save_snapshot(snapshot)
+            self._snapshot_manager.create_snapshot(state)
         except Exception as e:
             import logging
             logging.error(f"Failed to save snapshot: {e}")
