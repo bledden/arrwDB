@@ -426,25 +426,29 @@ The test suite includes:
 pip install -r requirements.txt
 
 # Set API key (required for integration tests)
+# Option 1: Load from .env file (recommended - doesn't expose key)
+export COHERE_API_KEY=$(grep COHERE_API_KEY .env | cut -d '=' -f2)
+
+# Option 2: Set manually
 export COHERE_API_KEY="your_api_key_here"
 ```
 
 **Run Tests**:
 ```bash
 # All tests (requires API key for integration tests)
-pytest tests/ -v
+python3 -m pytest tests/ -v
 
 # Unit tests only (no API key needed)
-pytest tests/unit/ -v
+python3 -m pytest tests/unit/ -v
 
 # Integration tests (tests REST API with real embeddings)
-pytest tests/integration/ -v
+python3 -m pytest tests/integration/ -v
 
 # Edge case tests
-pytest tests/test_edge_cases.py -v
+python3 -m pytest tests/test_edge_cases.py -v
 
 # With coverage report
-pytest tests/ --cov=app --cov=core --cov=infrastructure --cov-report=html
+python3 -m pytest tests/ --cov=app --cov=core --cov=infrastructure --cov-report=html
 
 # View coverage
 open htmlcov/index.html
