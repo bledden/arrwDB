@@ -61,11 +61,11 @@ cd SAI
 # 2. Install with test dependencies
 pip install -e ".[dev]"
 
-# 3. Run tests
-pytest tests/
-
-# 4. Run API
+# 3. Run API
 python run_api.py
+
+# 4. Run tests
+python pytest tests/
 ```
 
 **What you get**: Everything including 458 tests, coverage tools, etc.
