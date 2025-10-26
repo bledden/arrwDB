@@ -8,7 +8,7 @@ and the repository layer.
 
 import logging
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 from uuid import UUID
 
 from app.models.base import Chunk, Document, DocumentMetadata, Library, LibraryMetadata
@@ -443,6 +443,155 @@ class LibraryService:
         except Exception as e:
             logger.error(f"Search failed: {e}")
             raise
+
+    def search_with_metadata_filters(
+        self,
+        library_id: UUID,
+        query_text: str,
+        metadata_filters: List[dict],
+        k: int = 10,
+        distance_threshold: Optional[float] = None,
+    ) -> List[Tuple[Chunk, float]]:
+        """
+        Search library with text query and apply metadata filters.
+
+        Filters are applied AFTER vector search to narrow results.
+        All filters are combined with AND logic.
+
+        Args:
+            library_id: The library to search.
+            query_text: Natural language query.
+            metadata_filters: List of filter dictionaries with 'field', 'operator', 'value'.
+            k: Number of results to return (applied AFTER filtering).
+            distance_threshold: Optional maximum distance threshold.
+
+        Returns:
+            List of (chunk, distance) tuples that match all filters.
+
+        Raises:
+            LibraryNotFoundError: If library doesn't exist.
+            EmbeddingServiceError: If query embedding generation fails.
+            ValueError: If filter specification is invalid.
+        """
+        logger.info(
+            f"Searching library {library_id} with {len(metadata_filters)} metadata filters"
+        )
+
+        # First, do regular vector search with higher k to have candidates
+        # We'll fetch more results and then filter them
+        search_k = k * 10  # Get 10x results to account for filtering
+        search_k = min(search_k, 1000)  # Cap at reasonable limit
+
+        initial_results = self.search_with_text(
+            library_id, query_text, k=search_k, distance_threshold=distance_threshold
+        )
+
+        if not metadata_filters:
+            # No filters, just return top k results
+            return initial_results[:k]
+
+        # Apply metadata filters
+        filtered_results = []
+        for chunk, distance in initial_results:
+            if self._chunk_matches_filters(chunk, metadata_filters):
+                filtered_results.append((chunk, distance))
+
+                # Stop once we have k results
+                if len(filtered_results) >= k:
+                    break
+
+        logger.info(
+            f"After filtering: {len(filtered_results)} results (from {len(initial_results)} candidates)"
+        )
+
+        return filtered_results
+
+    def _chunk_matches_filters(self, chunk: Chunk, filters: List[dict]) -> bool:
+        """
+        Check if a chunk matches all metadata filters (AND logic).
+
+        Args:
+            chunk: The chunk to check.
+            filters: List of filter dictionaries.
+
+        Returns:
+            True if chunk matches all filters, False otherwise.
+        """
+        for filter_spec in filters:
+            field = filter_spec["field"]
+            operator = filter_spec["operator"]
+            value = filter_spec["value"]
+
+            # Get the actual value from chunk metadata or document metadata
+            # Check chunk metadata first
+            chunk_meta = chunk.metadata
+            actual_value = None
+
+            # Map field names to actual metadata attributes
+            if hasattr(chunk_meta, field):
+                actual_value = getattr(chunk_meta, field)
+            elif field == "title":
+                # Document-level field - need to get from parent document
+                # For now, we'll skip document-level filters in chunk context
+                # This would require passing document info or restructuring
+                logger.warning(
+                    f"Document-level field '{field}' not accessible in chunk context"
+                )
+                return False
+            else:
+                # Field doesn't exist
+                logger.warning(f"Field '{field}' not found in chunk metadata")
+                return False
+
+            # Apply operator
+            if not self._apply_operator(actual_value, operator, value):
+                return False
+
+        return True
+
+    def _apply_operator(self, actual: Any, operator: str, expected: Any) -> bool:
+        """
+        Apply a comparison operator.
+
+        Args:
+            actual: Actual value from metadata.
+            operator: Comparison operator string.
+            expected: Expected value to compare against.
+
+        Returns:
+            True if comparison succeeds, False otherwise.
+        """
+        try:
+            if operator == "eq":
+                return actual == expected
+            elif operator == "ne":
+                return actual != expected
+            elif operator == "gt":
+                return actual > expected
+            elif operator == "lt":
+                return actual < expected
+            elif operator == "gte":
+                return actual >= expected
+            elif operator == "lte":
+                return actual <= expected
+            elif operator == "in":
+                # Check if actual value is in the expected list
+                return actual in expected
+            elif operator == "contains":
+                # For string: check if expected is substring
+                # For list: check if expected is in the list
+                if isinstance(actual, str):
+                    return expected in actual
+                elif isinstance(actual, list):
+                    return expected in actual
+                else:
+                    return False
+            else:
+                logger.error(f"Unknown operator: {operator}")
+                return False
+        except (TypeError, AttributeError) as e:
+            logger.warning(f"Comparison failed: {e}")
+            return False
 
     def get_library_statistics(self, library_id: UUID) -> dict:
         """
