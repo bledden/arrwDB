@@ -369,6 +369,84 @@ class HealthResponse(BaseModel):
     timestamp: datetime
 
 
+# Metadata Filtering Models
+
+
+class MetadataFilter(BaseModel):
+    """
+    A single metadata filter condition.
+
+    Supports filtering on document and chunk metadata fields.
+    """
+
+    field: str = Field(..., description="Metadata field to filter on")
+    operator: str = Field(
+        ...,
+        pattern="^(eq|ne|gt|lt|gte|lte|in|contains)$",
+        description="Comparison operator: eq, ne, gt, lt, gte, lte, in, contains",
+    )
+    value: Any = Field(..., description="Value to compare against")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "field": "author",
+                "operator": "eq",
+                "value": "John Doe",
+            }
+        }
+
+
+class SearchWithMetadataRequest(BaseModel):
+    """Request model for searching with metadata filters."""
+
+    query: str = Field(..., min_length=1, description="Search query text")
+    k: int = Field(default=10, ge=1, description="Number of results")
+    metadata_filters: List[MetadataFilter] = Field(
+        default_factory=list,
+        description="List of metadata filters to apply (AND logic)",
+    )
+    distance_threshold: Optional[float] = Field(
+        None,
+        ge=0.0,
+        le=2.0,
+        description="Maximum distance threshold (0-2 for cosine)",
+    )
+
+    @field_validator("k")
+    @classmethod
+    def validate_k(cls, v: int) -> int:
+        """Enforce maximum search results limit."""
+        if v > settings.MAX_SEARCH_RESULTS:
+            raise ValueError(
+                f"Too many results requested: {v}. Maximum allowed: {settings.MAX_SEARCH_RESULTS}"
+            )
+        return v
+
+    @field_validator("query")
+    @classmethod
+    def validate_query_length(cls, v: str) -> str:
+        """Enforce maximum query length."""
+        if len(v) > settings.MAX_QUERY_LENGTH:
+            raise ValueError(
+                f"Query too long: {len(v)} chars. Maximum allowed: {settings.MAX_QUERY_LENGTH}"
+            )
+        return v
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "query": "What is machine learning?",
+                "k": 5,
+                "metadata_filters": [
+                    {"field": "author", "operator": "eq", "value": "John Doe"},
+                    {"field": "tags", "operator": "contains", "value": "AI"},
+                ],
+                "distance_threshold": 0.5,
+            }
+        }
+
+
 # Update forward references
 AddDocumentWithEmbeddingsRequest.model_rebuild()
 ChunkResponse.model_rebuild()
