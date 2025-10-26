@@ -6,7 +6,7 @@ like validation, documentation, and serialization.
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator

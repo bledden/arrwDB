@@ -36,6 +36,7 @@ from app.api.models import (
     SearchResultResponse,
     SearchResultResponseSlim,
     SearchWithEmbeddingRequest,
+    SearchWithMetadataRequest,
 )
 from app.config import settings
 from app.services.embedding_service import EmbeddingServiceError
@@ -532,6 +533,116 @@ def search_with_embedding(
             )
         else:
             # Create slim chunk without embedding
+            slim_chunk = ChunkResponseSlim(
+                id=chunk.id,
+                text=chunk.text,
+                metadata=chunk.metadata,
+            )
+            search_results.append(
+                SearchResultResponseSlim(
+                    chunk=slim_chunk,
+                    distance=distance,
+                    document_id=doc.id,
+                    document_title=doc.metadata.title,
+                )
+            )
+
+    if include_embeddings:
+        return SearchResponse(
+            results=search_results,
+            query_time_ms=round(query_time_ms, 2),
+            total_results=len(search_results),
+        )
+    else:
+        return SearchResponseSlim(
+            results=search_results,
+            query_time_ms=round(query_time_ms, 2),
+            total_results=len(search_results),
+        )
+
+
+@v1_router.post(
+    "/libraries/{library_id}/search/filtered",
+    tags=["Search"],
+    summary="Search with metadata filters",
+)
+@limiter.limit(settings.RATE_LIMIT_SEARCH)
+def search_with_metadata(
+    req: Request,
+    library_id: UUID,
+    request: SearchWithMetadataRequest,
+    include_embeddings: bool = Query(default=False, description="Include embeddings in response"),
+    service: LibraryService = Depends(get_library_service),
+) -> Union[SearchResponse, SearchResponseSlim]:
+    """
+    Search a library with text query and apply metadata filters.
+
+    This endpoint performs vector search first, then filters results
+    based on chunk metadata. All filters use AND logic.
+
+    **Available Metadata Fields:**
+    - `created_at`: Chunk creation timestamp (datetime)
+    - `page_number`: Page number (int, optional)
+    - `chunk_index`: Position in document (int)
+    - `source_document_id`: Parent document UUID
+
+    **Supported Operators:**
+    - `eq`, `ne`: Equality/inequality
+    - `gt`, `lt`, `gte`, `lte`: Numeric comparisons
+    - `in`: Check if value is in list
+    - `contains`: String contains substring, or list contains element
+
+    **Example Filters:**
+    ```json
+    {
+      "query": "machine learning",
+      "k": 10,
+      "metadata_filters": [
+        {"field": "page_number", "operator": "gte", "value": 5},
+        {"field": "chunk_index", "operator": "lt", "value": 10}
+      ]
+    }
+    ```
+
+    Returns chunks that match the query AND all metadata filters.
+    """
+    start_time = time.time()
+
+    # Convert MetadataFilter objects to dicts for service layer
+    filters_dict = [
+        {
+            "field": f.field,
+            "operator": f.operator,
+            "value": f.value,
+        }
+        for f in request.metadata_filters
+    ]
+
+    results = service.search_with_metadata_filters(
+        library_id=library_id,
+        query_text=request.query,
+        metadata_filters=filters_dict,
+        k=request.k,
+        distance_threshold=request.distance_threshold,
+    )
+
+    query_time_ms = (time.time() - start_time) * 1000
+
+    # Build response (same format as regular search)
+    search_results = []
+    for chunk, distance in results:
+        doc = service.get_document(chunk.metadata.source_document_id)
+
+        if include_embeddings:
+            search_results.append(
+                SearchResultResponse(
+                    chunk=chunk,
+                    distance=distance,
+                    document_id=doc.id,
+                    document_title=doc.metadata.title,
+                )
+            )
+        else:
             slim_chunk = ChunkResponseSlim(
                 id=chunk.id,
                 text=chunk.text,
