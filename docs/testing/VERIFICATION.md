@@ -22,8 +22,8 @@ Follow these steps to verify everything installs and works:
 
 **All Platforms:**
 ```bash
-git clone --filter=blob:none --sparse https://github.com/bledden/SAI.git
-cd SAI
+git clone --filter=blob:none --sparse https://github.com/bledden/arrwDB.git
+cd arrwDB
 git sparse-checkout set '/*' '!tests'
 ```
 
@@ -384,7 +384,7 @@ If you encounter issues not covered here:
 1. **Check logs**: The API server prints detailed error messages
 2. **Review INSTALLATION.md**: [docs/guides/INSTALLATION.md](docs/guides/INSTALLATION.md)
 3. **Common issues**: See [Troubleshooting](#troubleshooting-by-platform) above
-4. **Report bugs**: https://github.com/bledden/SAI/issues
+4. **Report bugs**: https://github.com/bledden/arrwDB/issues
 
 ---
 

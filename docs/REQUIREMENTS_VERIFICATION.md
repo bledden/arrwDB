@@ -784,7 +784,7 @@ $ python3 test_basic_functionality.py
 ## 🎯 Deliverable Checklist
 
 ### 1. Source Code
-- ✅ Complete implementation in `/Users/bledden/Documents/SAI`
+- ✅ Complete implementation in `/Users/bledden/Documents/arrwDB`
 - ✅ Well-organized structure
 - ✅ All features implemented
 - ✅ No external vector DB libraries used

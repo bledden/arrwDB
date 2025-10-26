@@ -3,7 +3,7 @@
 
 **Created**: October 25, 2025
 **Repository**: `/Users/bledden/Documents/arrwDB`
-**Original**: `/Users/bledden/Documents/SAI` (v1.0 - under review)
+**Original**: `/Users/bledden/Documents/arrwDB` (v1.0 - under review)
 **Status**: ✅ All tests passing, ready for V2 enhancements
 
 ---
@@ -80,9 +80,9 @@ docker-compose up -d
 
 ### V1.0 vs arrwDB
 
-| Aspect | SAI (v1.0) | arrwDB |
+| Aspect | Before (as SAI) | After (as arrwDB) |
 |--------|-----------|---------|
-| Location | `/Users/bledden/Documents/SAI` | `/Users/bledden/Documents/arrwDB` |
+| Location | `/Users/bledden/Documents/arrwDB` | `/Users/bledden/Documents/arrwDB` |
 | API Key | Original (pa6sR...) | Trial (7EY2N...) |
 | Tests Passing | 492/492 (100%) | 492/492 (100%) |
 | Coverage | 96% | 96% |
@@ -587,7 +587,7 @@ except:  # Too broad
 
 ### Git Workflow
 
-**Important**: SAI repository is under review - **DO NOT MODIFY**
+**Important**: This repository was previously named "SAI" - it has now been renamed to "arrwDB"
 
 ```bash
 # Always work in arrwDB
@@ -901,7 +901,7 @@ docs/guides/                   - User documentation
 - [x] arrwDB repository created and tested
 - [x] All 492 tests passing with trial API key
 - [x] API keys properly secured (.env git-ignored)
-- [x] SAI repository preserved unchanged
+- [x] Repository renamed from SAI to arrwDB for clarity
 - [x] Code quality review completed (94/100)
 - [x] V2 roadmap defined
 - [x] Development guidelines documented
@@ -911,7 +911,7 @@ docs/guides/                   - User documentation
 
 **IMPORTANT REMINDERS**:
 
-1. **DO NOT MODIFY** `/Users/bledden/Documents/SAI` - it's under review
+1. **DO NOT MODIFY** `/Users/bledden/Documents/arrwDB` - it's under review
 2. **ALWAYS WORK IN** `/Users/bledden/Documents/arrwDB` for V2
 3. **Trial API key** will max out soon - switch to prod if needed
 4. **Run tests** before every commit

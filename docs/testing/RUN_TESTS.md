@@ -8,7 +8,7 @@ Quick guide for running the comprehensive test suite.
 
 ```bash
 # Ensure you're in the project directory
-cd /Users/bledden/Documents/SAI
+cd /Users/bledden/Documents/arrwDB
 
 # Install test dependencies (already in requirements.txt)
 pip3 install pytest pytest-cov pytest-asyncio
@@ -211,7 +211,7 @@ ERROR collecting tests/unit/test_vector_store.py
 
 **Fix**: Check Python path
 ```bash
-export PYTHONPATH="${PYTHONPATH}:/Users/bledden/Documents/SAI"
+export PYTHONPATH="${PYTHONPATH}:/Users/bledden/Documents/arrwDB"
 python3 -m pytest tests/
 ```
 

@@ -8,8 +8,8 @@ Choose the installation method that best fits your use case.
 
 ```bash
 # 1. Clone without tests
-git clone --filter=blob:none --sparse https://github.com/bledden/SAI.git
-cd SAI
+git clone --filter=blob:none --sparse https://github.com/bledden/arrwDB.git
+cd arrwDB
 git sparse-checkout set '/*' '!tests'
 
 # 2. Install
@@ -33,8 +33,8 @@ python run_api.py
 
 ```bash
 # 1. Clone everything
-git clone https://github.com/bledden/SAI.git
-cd SAI
+git clone https://github.com/bledden/arrwDB.git
+cd arrwDB
 
 # 2. Install (production dependencies only)
 pip install -e .
@@ -55,8 +55,8 @@ python run_api.py
 
 ```bash
 # 1. Clone everything
-git clone https://github.com/bledden/SAI.git
-cd SAI
+git clone https://github.com/bledden/arrwDB.git
+cd arrwDB
 
 # 2. Install with test dependencies
 pip install -e ".[dev]"
@@ -202,8 +202,8 @@ docker compose version
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/bledden/SAI.git
-cd SAI
+git clone https://github.com/bledden/arrwDB.git
+cd arrwDB
 
 # 2. Configure environment
 cp .env.example .env

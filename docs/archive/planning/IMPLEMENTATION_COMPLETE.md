@@ -88,7 +88,7 @@ Test Summary:
 
 ```bash
 # 1. Environment is already set up
-cd /Users/bledden/Documents/SAI
+cd /Users/bledden/Documents/arrwDB
 
 # 2. API key is already configured in .env
 
@@ -146,7 +146,7 @@ docker-compose up -d
 ## File Structure (Complete)
 
 ```
-SAI/
+arrwDB/
 ├── app/
 │   ├── models/base.py          ✅ Pydantic models
 │   ├── services/

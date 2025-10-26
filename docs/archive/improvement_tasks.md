@@ -1,4 +1,5 @@
-# SAI Improvement Tasks - Detailed Breakdown
+# arrwDB Improvement Tasks - Detailed Breakdown
+**Note**: This document was created when the repository was named "SAI" - it has since been renamed to "arrwDB".
 
 **Date**: 2025-10-20
 **Goal**: Address valid concerns from GPT-5-Pro review + additional improvements

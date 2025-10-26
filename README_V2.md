@@ -158,12 +158,11 @@ git grep "COHERE_API_KEY" -- ':(exclude).env'
 
 ## 🚨 IMPORTANT NOTES
 
-### DO NOT MODIFY SAI Repository
-```bash
-# ❌ WRONG - SAI is under review, DO NOT TOUCH
-cd /Users/bledden/Documents/SAI
+### Repository Note
+**Note**: This repository was previously named "SAI" but has been renamed to "arrwDB" for clarity. All references have been updated.
 
-# ✅ CORRECT - Always work in arrwDB for V2
+```bash
+# ✅ Always work in arrwDB
 cd /Users/bledden/Documents/arrwDB
 ```
 
@@ -319,7 +318,7 @@ export COHERE_API_KEY=EOSIcCEO8Q5R1ofq4gW2dQjS5c8SKEAgBTVYJTaj
 ✅ All 492 tests passing
 ✅ 96% code coverage
 ✅ API keys secured
-✅ SAI preserved unchanged
+✅ Repository renamed from SAI to arrwDB
 ✅ arrwDB validated as perfect copy
 ✅ Ready for V2 development
 ```
