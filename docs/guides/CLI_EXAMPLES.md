@@ -314,7 +314,87 @@ curl -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/search/embedding" \
 
 ---
 
-### 8. Get Document Details
+### 8. Search with Metadata Filters
+
+Filter search results based on chunk metadata fields.
+
+**Basic filtered search:**
+```bash
+curl -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/search/filtered" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "machine learning",
+    "k": 10,
+    "metadata_filters": [
+      {"field": "chunk_index", "operator": "eq", "value": 0}
+    ]
+  }' | jq '.'
+```
+
+**Range filtering:**
+```bash
+curl -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/search/filtered" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "neural networks",
+    "k": 5,
+    "metadata_filters": [
+      {"field": "chunk_index", "operator": "gte", "value": 2},
+      {"field": "chunk_index", "operator": "lt", "value": 10}
+    ]
+  }' | jq '.'
+```
+
+**Filter by document:**
+```bash
+DOC_ID="a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d"
+curl -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/search/filtered" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"query\": \"deep learning\",
+    \"k\": 10,
+    \"metadata_filters\": [
+      {\"field\": \"source_document_id\", \"operator\": \"eq\", \"value\": \"$DOC_ID\"}
+    ]
+  }" | jq '.'
+```
+
+**Multiple filters (AND logic):**
+```bash
+curl -X POST "http://localhost:8000/v1/libraries/$LIBRARY_ID/search/filtered" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "supervised learning",
+    "k": 5,
+    "metadata_filters": [
+      {"field": "chunk_index", "operator": "in", "value": [0, 1, 2]},
+      {"field": "chunk_index", "operator": "ne", "value": 1}
+    ],
+    "distance_threshold": 0.7
+  }' | jq '.'
+```
+
+**Available operators:**
+- `eq` - equals
+- `ne` - not equals
+- `gt` - greater than
+- `lt` - less than
+- `gte` - greater than or equal
+- `lte` - less than or equal
+- `in` - value in list
+- `contains` - string/list containment
+
+**Available metadata fields:**
+- `created_at` - Chunk creation timestamp
+- `page_number` - Page number (if available)
+- `chunk_index` - Position in document (0-indexed)
+- `source_document_id` - Parent document UUID
+
+**Note**: See [METADATA_FILTERING.md](METADATA_FILTERING.md) for complete filtering guide.
+
+---
+
+### 9. Get Document Details
 
 **Retrieve a specific document:**
 ```bash
@@ -344,7 +424,7 @@ curl "http://localhost:8000/v1/documents/$DOC_ID" | jq '.'
 
 ---
 
-### 9. Delete Documents
+### 10. Delete Documents
 
 **Delete a document:**
 ```bash
@@ -361,7 +441,7 @@ curl -X DELETE "http://localhost:8000/v1/documents/$DOC_ID"
 
 ---
 
-### 10. Get Library Statistics
+### 11. Get Library Statistics
 
 **View library stats:**
 ```bash
@@ -386,7 +466,7 @@ curl "http://localhost:8000/v1/libraries/$LIBRARY_ID/statistics" | jq '.'
 
 ---
 
-### 11. Delete Libraries
+### 12. Delete Libraries
 
 **Delete a library:**
 ```bash
