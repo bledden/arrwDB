@@ -374,6 +374,69 @@ class VectorDBClient:
         )
         return response.json()
 
+    def search_with_filters(
+        self,
+        library_id: str,
+        query: str,
+        metadata_filters: List[Dict[str, Any]],
+        k: int = 10,
+        distance_threshold: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """
+        Search a library with text query and apply metadata filters.
+
+        This method performs vector search first, then filters results
+        based on chunk metadata. All filters use AND logic.
+
+        Available metadata fields:
+        - created_at: Chunk creation timestamp (datetime)
+        - page_number: Page number (int, optional)
+        - chunk_index: Position in document (int)
+        - source_document_id: Parent document UUID
+
+        Supported operators:
+        - eq, ne: Equality/inequality
+        - gt, lt, gte, lte: Numeric comparisons
+        - in: Check if value is in list
+        - contains: String contains substring, or list contains element
+
+        Example:
+            filters = [
+                {"field": "chunk_index", "operator": "gte", "value": 2},
+                {"field": "chunk_index", "operator": "lt", "value": 10}
+            ]
+            results = client.search_with_filters(
+                library_id="...",
+                query="machine learning",
+                metadata_filters=filters,
+                k=10
+            )
+
+        Args:
+            library_id: Library UUID.
+            query: Search query text.
+            metadata_filters: List of filter dictionaries with keys:
+                - field: Metadata field name
+                - operator: Comparison operator
+                - value: Value to compare against
+            k: Number of results to return.
+            distance_threshold: Optional maximum distance.
+
+        Returns:
+            Search results matching the query AND all metadata filters.
+        """
+        payload = {
+            "query": query,
+            "k": k,
+            "metadata_filters": metadata_filters,
+            "distance_threshold": distance_threshold,
+        }
+
+        response = self._request(
+            "POST", f"/libraries/{library_id}/search/filtered", json=payload
+        )
+        return response.json()
+
     def __repr__(self) -> str:
         """String representation."""
         return f"VectorDBClient(base_url='{self.base_url}')"
