@@ -1,26 +1,51 @@
 # Rust Indexes for arrwDB
 
-High-performance index implementations in Rust with Python bindings via PyO3.
+**Complete high-performance index suite** - All 4 major index types implemented in Rust!
+
+## Performance Summary
+
+All benchmarks: 10,000 vectors, 384 dimensions, 1000 queries
+
+| Index | Operation | Python | Rust | **Speedup** |
+|-------|-----------|--------|------|-------------|
+| **HNSW** | Search (avg) | 1.64ms | 0.37ms | **4.45x** ⚡ |
+| **HNSW** | Build | 58.9s | 13.3s | **4.43x** ⚡ |
+| **BruteForce** | Add | 0.072s | 0.006s | **12x** ⚡ |
+| **BruteForce** | Search | 2.745s | 1.853s | **1.48x** ⚡ |
+| **LSH** | Add | 0.329s | 0.204s | **1.62x** ⚡ |
+| **LSH** | Search | 0.159s | 0.064s | **2.48x** ⚡ |
+| **KD-Tree** | Add+Build | 0.262s | 0.069s | **3.82x** ⚡ |
+| **KD-Tree** | Search | 18.982s | 1.246s | **15.24x** ⚡ |
 
 ## Implemented Indexes
 
 ### 1. HNSW (Hierarchical Navigable Small World)
-Benchmarked on 10,000 vectors (384 dimensions):
+**Best for:** Production workloads, large datasets, fast approximate search
 
-| Metric | Python | Rust | Speedup |
-|--------|--------|------|---------|
-| **Search (avg)** | 1.64ms | 0.37ms | **4.45x** |
-| **Build time** | 58.9s | 13.3s | **4.43x** |
-| **Queries/sec** | 609 | 2,712 | **4.5x** |
+- 4.45x faster search
+- 4.43x faster index building
+- State-of-the-art ANN algorithm
 
 ### 2. BruteForce
-Benchmarked on 10,000 vectors (384 dimensions):
+**Best for:** Small datasets, exact results required
 
-| Metric | Python | Rust | Speedup |
-|--------|--------|------|---------|
-| **Add vectors** | 0.072s | 0.006s | **12x** |
-| **Search** | 2.745s | 1.853s | **1.48x** |
-| **QPS** | 364 | 540 | **48% faster** |
+- 12x faster vector additions
+- Exact nearest neighbor search
+- Zero index overhead
+
+### 3. LSH (Locality-Sensitive Hashing)
+**Best for:** Very large datasets, high dimensions
+
+- 2.48x faster search
+- Sub-linear search time
+- Tunable accuracy/speed tradeoff
+
+### 4. KD-Tree
+**Best for:** Low-medium dimensions (< 50D), exact results
+
+- 15.24x faster search (!)
+- 3.82x faster tree building
+- Exact results with spatial partitioning
 
 ## Features
 
