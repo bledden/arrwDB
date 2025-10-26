@@ -1,0 +1,22 @@
+[package]
+name = "rust_snapshot"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "rust_snapshot"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.21", features = ["extension-module", "abi3-py39"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+bincode = "1.3"
+chrono = { version = "0.4", features = ["serde"] }
+parking_lot = "0.12"
+flate2 = "1.0"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

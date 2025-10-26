@@ -55,6 +55,16 @@ Thumbs.db
 # Temporal
 temporal-data/
 
+# Rust build artifacts
+rust/*/target/
+rust/*/Cargo.lock
+*.dylib
+*.dll
+*.so
+
+# Test results
+tests/test_results/
+
 # Demo/Interview prep materials (private)
 docs/DEMO_NARRATION_SCRIPT.md
 docs/DEMO_VIDEO_SCRIPT.md

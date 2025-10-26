@@ -1,42 +1,60 @@
-# Documentation Index
+# arrwDB Documentation
 
-This directory contains all documentation for the Vector Database project.
+This directory contains all project documentation organized by category.
 
----
+## 📂 Directory Structure
 
-## 📚 For Users
+### `/completed/` - Project Completion Summaries
+Milestone completion documents and summaries:
+- `CLEANUP_COMPLETED.md` - Codebase cleanup and Rust consolidation summary
+- `PYTHON_V2_COMPLETE.md` - Python V2 implementation completion
+- `RUST_CONVERSION_SUMMARY.md` - Rust conversion progress
+- `VALIDATION_SUMMARY.md` - System validation results
 
-- **[Installation Guide](guides/INSTALLATION.md)** - Setup instructions for all platforms
-- **[Quick Start Guide](guides/QUICKSTART.md)** - Get started in 5 minutes
-- **[API Documentation](guides/INDEX.md)** - API endpoints overview
-- **[CLI Examples](guides/CLI_EXAMPLES.md)** - Command-line usage with curl examples
+### `/development/` - Development Documentation
+Planning and development context:
+- `CLEANUP_PLAN.md` - Codebase cleanup plan
+- `V2_DEVELOPMENT_CONTEXT.md` - V2 development context and decisions
+- `README_V2.md` - V2 feature documentation
 
----
+### `/review/` - Code Reviews
+External code reviews and assessments:
+- `INDEPENDENT_CODE_REVIEW.md` - Third-party code review
 
-## 👨‍💻 For Developers
+### `/competitive/` - Competitive Analysis
+Market and competitor analysis:
+- `COMPETITIVE_GAPS_ANALYSIS.md` - Feature gap analysis vs competitors
 
-- **[Requirements Verification](REQUIREMENTS_VERIFICATION.md)** - All requirements met ✅
-- **[Code Quality Assessment](CODE_QUALITY_ASSESSMENT.md)** - Code quality analysis
+### `/guides/` - User Guides
+User-facing documentation and tutorials
 
----
+### `/testing/` - Test Documentation
+Test plans, validation reports, and testing documentation
 
-## 🏗️ Architecture & Design
+### `/archive/` - Historical Documentation
+Archived documentation from previous versions
 
-- **[Leader-Follower Design](LEADER_FOLLOWER_DESIGN.md)** - High-availability architecture
-- **[Future Enhancements](FUTURE_ENHANCEMENTS.md)** - Roadmap and potential improvements
+## 📖 Main Documentation Files (Root Level)
 
----
+Core documentation remains in docs root:
+- `QUANTIZATION_DESIGN.md` - Quantization feature design
+- `PERSISTENCE_IMPLEMENTATION.md` - Persistence layer implementation
+- `REQUIREMENTS_VERIFICATION.md` - Requirements verification
+- `PERFORMANCE_VALIDATION_REPORT.md` - Performance benchmarks
+- `SYSTEM_DIAGRAMS.md` - Architecture diagrams
+- And more...
 
-## 🧪 Testing
+## 🚀 Quick Links
 
-- **[Testing Documentation](testing/)** - Comprehensive test results and coverage
-  - [Final Test Report](testing/FINAL_TEST_REPORT.md) - 484/484 tests passing (100%)
-  - [Test Status](testing/TEST_STATUS_FINAL.md) - 96% code coverage
-  - [Testing History](testing/TESTING_HISTORY.md) - Testing journey and evolution
-  - [Run Tests](testing/RUN_TESTS.md) - How to run the test suite
+- **Getting Started**: See root [README.md](../README.md)
+- **API Documentation**: Available at `/docs` endpoint when server is running
+- **Performance Benchmarks**: `PERFORMANCE_VALIDATION_REPORT.md`
+- **Architecture**: `SYSTEM_DIAGRAMS.md`
 
----
+## 📝 Documentation Standards
 
-## 📂 Historical Documentation
-
-- **[Archive](archive/)** - Development artifacts and planning documents (32 files)
+When adding new documentation:
+1. Use descriptive filenames in UPPER_SNAKE_CASE.md
+2. Place in appropriate subdirectory
+3. Update this README with links
+4. Use markdown with clear headers and structure

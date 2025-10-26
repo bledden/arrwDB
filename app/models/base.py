@@ -139,6 +139,16 @@ class Document(BaseModel):
         }
 
 
+class QuantizationMetadata(BaseModel):
+    """Metadata for quantization settings stored with library."""
+
+    strategy: str = Field(..., description="Quantization strategy (none, scalar, hybrid)")
+    bits: Optional[int] = Field(None, description="Bits per dimension (4 or 8)")
+    rerank_top_k: Optional[int] = Field(None, description="Top K for hybrid reranking")
+    calibration_min: Optional[List[float]] = Field(None, description="Per-dimension min values")
+    calibration_max: Optional[List[float]] = Field(None, description="Per-dimension max values")
+
+
 class LibraryMetadata(BaseModel):
     """Fixed schema for library metadata."""
 
@@ -147,6 +157,7 @@ class LibraryMetadata(BaseModel):
     index_type: Literal["brute_force", "kd_tree", "lsh", "hnsw"] = "brute_force"
     embedding_dimension: int = Field(default=settings.EMBEDDING_DIMENSION, ge=1, le=4096)
     embedding_model: str = Field(default="embed-english-v3.0")
+    quantization: Optional[QuantizationMetadata] = Field(None, description="Quantization settings (if enabled)")
 
     class Config:
         json_schema_extra = {

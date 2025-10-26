@@ -161,6 +161,7 @@ class EmbeddingService:
                 InternalServerError,
             )
         ),
+        reraise=True,
     )
     def embed_text(self, text: str) -> NDArray[np.float32]:
         """
@@ -190,12 +191,11 @@ class EmbeddingService:
                 texts=[text],
                 model=self._model,
                 input_type=self._input_type,
-                embedding_types=["float"],
                 truncate="END",  # Truncate if text is too long
             )
 
             # Extract embedding
-            embedding = np.array(response.embeddings.float[0], dtype=np.float32)
+            embedding = np.array(response.embeddings[0], dtype=np.float32)
 
             # Truncate to desired dimension if specified
             if self._embedding_dimension is not None:
@@ -242,6 +242,7 @@ class EmbeddingService:
                 InternalServerError,
             )
         ),
+        reraise=True,
     )
     def embed_texts(self, texts: List[str]) -> List[NDArray[np.float32]]:
         """
@@ -287,13 +288,12 @@ class EmbeddingService:
                 texts=texts,
                 model=self._model,
                 input_type=self._input_type,
-                embedding_types=["float"],
                 truncate="END",
             )
 
             # Extract and process embeddings
             embeddings = []
-            for emb in response.embeddings.float:
+            for emb in response.embeddings:
                 embedding = np.array(emb, dtype=np.float32)
 
                 # Truncate to desired dimension if specified
