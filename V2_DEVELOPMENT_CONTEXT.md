@@ -26,7 +26,7 @@
 ### Running Tests
 ```bash
 cd /Users/bledden/Documents/arrwDB
-export COHERE_API_KEY=7EY2NaaabpGDByJe1CN9mM4tbiyoNzXTC1pl9ehL  # Trial key
+export COHERE_API_KEY=your_cohere_api_key_here  # Trial key
 python3 -m pytest tests/ -v
 
 # Expected: 492/492 tests passing, 96% coverage
@@ -36,7 +36,7 @@ python3 -m pytest tests/ -v
 ```bash
 cd /Users/bledden/Documents/arrwDB
 export PYTHONPATH=/Users/bledden/Documents/arrwDB
-export COHERE_API_KEY=7EY2NaaabpGDByJe1CN9mM4tbiyoNzXTC1pl9ehL
+export COHERE_API_KEY=your_cohere_api_key_here
 python3 run_api.py
 
 # API available at: http://localhost:8000
@@ -397,7 +397,7 @@ See `/Users/bledden/Documents/arrwDB/docs/FUTURE_ENHANCEMENTS.md` for complete l
 
 #### Trial Key (Current Default)
 ```bash
-export COHERE_API_KEY=7EY2NaaabpGDByJe1CN9mM4tbiyoNzXTC1pl9ehL
+export COHERE_API_KEY=your_cohere_api_key_here
 ```
 - **Rate Limit**: 1,000 requests/minute
 - **Monthly Quota**: ~100 API calls/month
@@ -437,7 +437,7 @@ Based on full test suite (492 tests):
 #### .env (git-ignored)
 ```bash
 # Current arrwDB configuration
-COHERE_API_KEY=7EY2NaaabpGDByJe1CN9mM4tbiyoNzXTC1pl9ehL
+COHERE_API_KEY=your_cohere_api_key_here
 VECTOR_DB_DATA_DIR=./data
 API_HOST=0.0.0.0
 API_PORT=8000
@@ -720,7 +720,7 @@ Breaking change?  → Update CHANGELOG.md (create if needed)
 
 ```bash
 # Ensure API key is set
-export COHERE_API_KEY=7EY2NaaabpGDByJe1CN9mM4tbiyoNzXTC1pl9ehL
+export COHERE_API_KEY=your_cohere_api_key_here
 
 # Verify it's loaded
 python3 -c "import os; print(os.getenv('COHERE_API_KEY'))"

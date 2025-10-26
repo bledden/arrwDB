@@ -45,7 +45,7 @@
 ### 1. Full Test Suite (492 tests)
 ```bash
 cd /Users/bledden/Documents/arrwDB
-export COHERE_API_KEY=7EY2NaaabpGDByJe1CN9mM4tbiyoNzXTC1pl9ehL
+export COHERE_API_KEY=your_cohere_api_key_here
 python3 -m pytest tests/ -v
 ```
 
@@ -69,7 +69,7 @@ python3 -m pytest tests/ -v
 ```bash
 cd /Users/bledden/Documents/arrwDB
 export PYTHONPATH=/Users/bledden/Documents/arrwDB
-export COHERE_API_KEY=7EY2NaaabpGDByJe1CN9mM4tbiyoNzXTC1pl9ehL
+export COHERE_API_KEY=your_cohere_api_key_here
 python3 scripts/test_basic_functionality.py
 ```
 
@@ -188,8 +188,8 @@ git check-ignore -v .env
 
 | Repository | API Key | Purpose |
 |-----------|---------|---------|
-| **Before (SAI)** | `pa6sRhnVAedMVClPAwoCvC1MjHKEwjtcGSTjWRMd` | Original key |
-| **arrwDB** | `7EY2NaaabpGDByJe1CN9mM4tbiyoNzXTC1pl9ehL` | Trial (V2 development) |
+| **Before (SAI)** | `your_cohere_api_key_here` | Original key |
+| **arrwDB** | `your_cohere_api_key_here` | Trial (V2 development) |
 
 **Both keys**:
 - ✅ Properly secured in `.env` (git-ignored)

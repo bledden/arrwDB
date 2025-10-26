@@ -14,7 +14,7 @@
 ### Run Tests (Recommended First Step)
 ```bash
 cd /Users/bledden/Documents/arrwDB
-export COHERE_API_KEY=7EY2NaaabpGDByJe1CN9mM4tbiyoNzXTC1pl9ehL
+export COHERE_API_KEY=your_cohere_api_key_here
 python3 -m pytest tests/ -v
 
 # Expected: 492/492 passing in ~18 seconds
@@ -23,7 +23,7 @@ python3 -m pytest tests/ -v
 ### Run Demo
 ```bash
 export PYTHONPATH=/Users/bledden/Documents/arrwDB
-export COHERE_API_KEY=7EY2NaaabpGDByJe1CN9mM4tbiyoNzXTC1pl9ehL
+export COHERE_API_KEY=your_cohere_api_key_here
 python3 scripts/test_basic_functionality.py
 
 # Tests all 4 index types end-to-end
@@ -32,7 +32,7 @@ python3 scripts/test_basic_functionality.py
 ### Start API Server
 ```bash
 export PYTHONPATH=/Users/bledden/Documents/arrwDB
-export COHERE_API_KEY=7EY2NaaabpGDByJe1CN9mM4tbiyoNzXTC1pl9ehL
+export COHERE_API_KEY=your_cohere_api_key_here
 python3 run_api.py
 
 # API: http://localhost:8000
@@ -74,7 +74,7 @@ See [docs/FUTURE_ENHANCEMENTS.md](docs/FUTURE_ENHANCEMENTS.md) for complete list
 
 ### Trial Key (Current - arrwDB)
 ```bash
-export COHERE_API_KEY=7EY2NaaabpGDByJe1CN9mM4tbiyoNzXTC1pl9ehL
+export COHERE_API_KEY=your_cohere_api_key_here
 ```
 - **Rate**: 1,000 requests/min
 - **Use for**: Development, testing
@@ -277,7 +277,7 @@ git push origin feature/your-feature-name
 echo $COHERE_API_KEY
 
 # Set if missing
-export COHERE_API_KEY=7EY2NaaabpGDByJe1CN9mM4tbiyoNzXTC1pl9ehL
+export COHERE_API_KEY=your_cohere_api_key_here
 ```
 
 ### Import errors?
