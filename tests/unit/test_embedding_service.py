@@ -10,7 +10,15 @@ import numpy as np
 from unittest.mock import Mock, patch, MagicMock
 import cohere
 
-from app.services.embedding_service import EmbeddingService, EmbeddingServiceError
+from app.services.embedding_service import (
+    EmbeddingService,
+    EmbeddingServiceError,
+    BadRequestError,
+    UnauthorizedError,
+    ForbiddenError,
+    InternalServerError,
+    ServiceUnavailableError,
+)
 
 
 class TestEmbeddingServiceInitialization:
@@ -124,8 +132,8 @@ class TestEmbedTextErrorHandling:
 
     def test_bad_request_error_handling(self, service):
         """Test BadRequestError handling (line 194, 201-204)."""
-        service._client.embed.side_effect = cohere.errors.BadRequestError(
-            body="Invalid request"
+        service._client.embed.side_effect = BadRequestError(
+            "Invalid request"
         )
 
         with pytest.raises(EmbeddingServiceError) as exc_info:
@@ -135,8 +143,8 @@ class TestEmbedTextErrorHandling:
 
     def test_unauthorized_error_handling(self, service):
         """Test UnauthorizedError handling (line 195, 201-204)."""
-        service._client.embed.side_effect = cohere.errors.UnauthorizedError(
-            body="Invalid API key"
+        service._client.embed.side_effect = UnauthorizedError(
+            "Invalid API key"
         )
 
         with pytest.raises(EmbeddingServiceError) as exc_info:
@@ -146,8 +154,8 @@ class TestEmbedTextErrorHandling:
 
     def test_forbidden_error_handling(self, service):
         """Test ForbiddenError handling (line 196, 201-204)."""
-        service._client.embed.side_effect = cohere.errors.ForbiddenError(
-            body="Access denied"
+        service._client.embed.side_effect = ForbiddenError(
+            "Access denied"
         )
 
         with pytest.raises(EmbeddingServiceError) as exc_info:
@@ -157,8 +165,8 @@ class TestEmbedTextErrorHandling:
 
     def test_internal_server_error_handling(self, service):
         """Test InternalServerError handling (line 198, 201-204)."""
-        service._client.embed.side_effect = cohere.errors.InternalServerError(
-            body="Server error"
+        service._client.embed.side_effect = InternalServerError(
+            "Server error"
         )
 
         with pytest.raises(EmbeddingServiceError) as exc_info:
@@ -168,8 +176,8 @@ class TestEmbedTextErrorHandling:
 
     def test_service_unavailable_error_handling(self, service):
         """Test ServiceUnavailableError handling (line 199, 201-204)."""
-        service._client.embed.side_effect = cohere.errors.ServiceUnavailableError(
-            body="Service unavailable"
+        service._client.embed.side_effect = ServiceUnavailableError(
+            "Service unavailable"
         )
 
         with pytest.raises(EmbeddingServiceError) as exc_info:
@@ -202,7 +210,7 @@ class TestEmbedTextDimensionTruncation:
             # Mock the embed response
             mock_response = Mock()
             mock_embedding = np.random.rand(1024).tolist()  # Full 1024-dim embedding
-            mock_response.embeddings.float = [mock_embedding]
+            mock_response.embeddings = [mock_embedding]
 
             service._client = mock_client.return_value
             service._client.embed.return_value = mock_response
@@ -274,7 +282,7 @@ class TestEmbedTextsChunking:
             def mock_embed(texts, **kwargs):
                 mock_response = Mock()
                 embeddings = [np.random.rand(1024).tolist() for _ in texts]
-                mock_response.embeddings.float = embeddings
+                mock_response.embeddings = embeddings
                 return mock_response
 
             service._client = mock_client.return_value
@@ -320,8 +328,8 @@ class TestEmbedTextsErrorHandling:
 
     def test_bad_request_error_in_batch(self, service):
         """Test BadRequestError handling in batch (line 295, 302-305)."""
-        service._client.embed.side_effect = cohere.errors.BadRequestError(
-            body="Invalid request"
+        service._client.embed.side_effect = BadRequestError(
+            "Invalid request"
         )
 
         with pytest.raises(EmbeddingServiceError) as exc_info:
@@ -331,8 +339,8 @@ class TestEmbedTextsErrorHandling:
 
     def test_unauthorized_error_in_batch(self, service):
         """Test UnauthorizedError handling in batch (line 296, 302-305)."""
-        service._client.embed.side_effect = cohere.errors.UnauthorizedError(
-            body="Invalid API key"
+        service._client.embed.side_effect = UnauthorizedError(
+            "Invalid API key"
         )
 
         with pytest.raises(EmbeddingServiceError) as exc_info:
@@ -342,8 +350,8 @@ class TestEmbedTextsErrorHandling:
 
     def test_forbidden_error_in_batch(self, service):
         """Test ForbiddenError handling in batch (line 297, 302-305)."""
-        service._client.embed.side_effect = cohere.errors.ForbiddenError(
-            body="Access denied"
+        service._client.embed.side_effect = ForbiddenError(
+            "Access denied"
         )
 
         with pytest.raises(EmbeddingServiceError) as exc_info:
