@@ -8,9 +8,11 @@ use rand::Rng;
 
 mod distance;
 mod node;
+mod brute_force;
 
 use node::HNSWNode;
 use distance::cosine_distance;
+pub use brute_force::RustBruteForceIndex;
 
 /// Hierarchical Navigable Small World (HNSW) index implementation in Rust.
 ///
@@ -665,5 +667,6 @@ impl RustHNSWIndex {
 #[pymodule]
 fn rust_hnsw(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<RustHNSWIndex>()?;
+    m.add_class::<RustBruteForceIndex>()?;
     Ok(())
 }

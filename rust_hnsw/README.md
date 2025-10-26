@@ -1,9 +1,10 @@
-# Rust HNSW Implementation for arrwDB
+# Rust Indexes for arrwDB
 
-High-performance Hierarchical Navigable Small World (HNSW) index implementation in Rust with Python bindings via PyO3.
+High-performance index implementations in Rust with Python bindings via PyO3.
 
-## Performance
+## Implemented Indexes
 
+### 1. HNSW (Hierarchical Navigable Small World)
 Benchmarked on 10,000 vectors (384 dimensions):
 
 | Metric | Python | Rust | Speedup |
@@ -11,6 +12,15 @@ Benchmarked on 10,000 vectors (384 dimensions):
 | **Search (avg)** | 1.64ms | 0.37ms | **4.45x** |
 | **Build time** | 58.9s | 13.3s | **4.43x** |
 | **Queries/sec** | 609 | 2,712 | **4.5x** |
+
+### 2. BruteForce
+Benchmarked on 10,000 vectors (384 dimensions):
+
+| Metric | Python | Rust | Speedup |
+|--------|--------|------|---------|
+| **Add vectors** | 0.072s | 0.006s | **12x** |
+| **Search** | 2.745s | 1.853s | **1.48x** |
+| **QPS** | 364 | 540 | **48% faster** |
 
 ## Features
 
