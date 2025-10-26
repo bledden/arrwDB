@@ -73,6 +73,28 @@ class Settings(BaseSettings):
             return self.GUNICORN_WORKERS_FALLBACK
 
     # ============================================================
+    # Logging Configuration
+    # ============================================================
+
+    # Enable structured JSON logging (useful for production log aggregators)
+    # If False, uses standard formatted logs (better for development)
+    LOG_JSON_FORMAT: bool = False
+
+    # Logging level
+    LOG_LEVEL: str = "INFO"
+
+    # ============================================================
+    # Multi-Tenancy Configuration
+    # ============================================================
+
+    # Enable multi-tenancy (API key authentication required)
+    # If False, single-tenant mode (no authentication required)
+    MULTI_TENANCY_ENABLED: bool = False
+
+    # Path to store tenant/API key mappings
+    TENANTS_DB_PATH: str = "./data/tenants.json"
+
+    # ============================================================
     # Rate Limiting Configuration
     # ============================================================
 

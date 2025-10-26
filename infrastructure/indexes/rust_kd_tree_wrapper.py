@@ -4,6 +4,13 @@ from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 import numpy as np
 from numpy.typing import NDArray
+import sys
+from pathlib import Path
+
+# Add rust/indexes to Python path
+rust_indexes_path = Path(__file__).parent.parent.parent / "rust" / "indexes"
+if str(rust_indexes_path) not in sys.path:
+    sys.path.insert(0, str(rust_indexes_path))
 
 try:
     import rust_hnsw

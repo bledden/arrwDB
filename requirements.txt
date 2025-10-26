@@ -11,6 +11,9 @@ gunicorn==21.2.0
 # Rate Limiting
 slowapi==0.1.9
 
+# Metrics & Monitoring
+prometheus-fastapi-instrumentator==6.1.0
+
 # Vector Operations
 numpy==1.26.2
 
