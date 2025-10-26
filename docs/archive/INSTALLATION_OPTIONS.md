@@ -6,10 +6,10 @@ This guide helps you choose the best installation method based on your use case.
 
 | Use Case | Installation Type | Repository Size | Command |
 |----------|------------------|-----------------|---------|
-| **Development & Testing** | Full | ~10,600 lines | `git clone https://github.com/bledden/arrwDB.git` |
+| **Development & Testing** | Full | ~10,600 lines | `git clone https://github.com/bledden/SAI.git` |
 | **Production Deployment** | Lightweight | ~2,100 lines (80% smaller) | See [Lightweight Installation](#lightweight-installation-production-only) |
 | **Learning/Reading Code** | Lightweight | ~2,100 lines (80% smaller) | See [Lightweight Installation](#lightweight-installation-production-only) |
-| **Contributing** | Full | ~10,600 lines | `git clone https://github.com/bledden/arrwDB.git` |
+| **Contributing** | Full | ~10,600 lines | `git clone https://github.com/bledden/SAI.git` |
 
 ---
 
@@ -36,8 +36,8 @@ If you only need to **run the API** or **study the code**, you can save 80% disk
 
 ```bash
 # Clone the entire repository
-git clone https://github.com/bledden/arrwDB.git
-cd arrwDB
+git clone https://github.com/bledden/SAI.git
+cd SAI
 
 # Create virtual environment
 python3 -m venv venv
@@ -66,7 +66,7 @@ python run_api.py
 
 ### Repository Structure
 ```
-arrwDB/
+SAI/
 ├── app/                    # 745 lines - REST API
 ├── core/                   # 202 lines - Core logic
 ├── infrastructure/         # 1,149 lines - Indexes, persistence
@@ -95,8 +95,8 @@ arrwDB/
 **Method 1: Sparse Checkout (Recommended - No Bandwidth Waste!)**
 ```bash
 # Clone with sparse checkout - tests never downloaded!
-git clone --filter=blob:none --sparse https://github.com/bledden/arrwDB.git
-cd arrwDB
+git clone --filter=blob:none --sparse https://github.com/bledden/SAI.git
+cd SAI
 
 # Configure to checkout everything except tests
 git sparse-checkout set '/*' '!tests'
@@ -121,8 +121,8 @@ python run_api.py
 **Method 2: Partial Clone with Blobless Filter (Alternative)**
 ```bash
 # Clone without downloading file blobs initially
-git clone --filter=blob:none --no-checkout https://github.com/bledden/arrwDB.git
-cd arrwDB
+git clone --filter=blob:none --no-checkout https://github.com/bledden/SAI.git
+cd SAI
 
 # Enable sparse checkout
 git sparse-checkout init --cone
@@ -140,8 +140,8 @@ pip install fastapi uvicorn pydantic numpy cohere python-dotenv slowapi
 **Method 3: Simple Clone + Remove (Fallback for Old Git)**
 ```bash
 # For Git versions < 2.25 that don't support sparse checkout
-git clone --depth 1 https://github.com/bledden/arrwDB.git
-cd arrwDB
+git clone --depth 1 https://github.com/bledden/SAI.git
+cd SAI
 rm -rf tests/  # Less efficient - tests already downloaded
 
 # Continue with installation...
@@ -162,7 +162,7 @@ pip install fastapi uvicorn pydantic numpy cohere python-dotenv slowapi
 
 ### Repository Structure
 ```
-arrwDB/
+SAI/
 ├── app/                    # 745 lines - REST API
 ├── core/                   # 202 lines - Core logic
 ├── infrastructure/         # 1,149 lines - Indexes, persistence
@@ -223,8 +223,8 @@ Docker provides the same API regardless of which git installation you use.
 
 ```bash
 # Clone (full or lightweight, doesn't matter for Docker)
-git clone https://github.com/bledden/arrwDB.git
-cd arrwDB
+git clone https://github.com/bledden/SAI.git
+cd SAI
 
 # Configure
 cp .env.example .env
@@ -263,7 +263,7 @@ Docker image size: ~450 MB (production dependencies only, no test files included
 ### Development Team
 ```bash
 # Full installation - you need tests
-git clone https://github.com/bledden/arrwDB.git
+git clone https://github.com/bledden/SAI.git
 pip install -r requirements.txt
 pytest tests/ -v
 ```
@@ -277,7 +277,7 @@ docker-compose up -d
 ### Learning/Reading Code
 ```bash
 # Lightweight - faster and cleaner
-git clone --depth 1 https://github.com/bledden/arrwDB.git
+git clone --depth 1 https://github.com/bledden/SAI.git
 rm -rf tests/
 pip install fastapi uvicorn pydantic numpy cohere
 ```
@@ -285,7 +285,7 @@ pip install fastapi uvicorn pydantic numpy cohere
 ### Contributing
 ```bash
 # Full installation required
-git clone https://github.com/bledden/arrwDB.git
+git clone https://github.com/bledden/SAI.git
 pip install -r requirements.txt
 # Make changes
 pytest tests/ -v  # Verify tests pass

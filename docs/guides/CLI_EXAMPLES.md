@@ -802,4 +802,4 @@ A: Yes! 96% test coverage, thread-safe, persistent storage. See [README.md](../.
 
 ---
 
-*For more examples and use cases, see the demo script at `/Users/bledden/Documents/arrwDB_demo_script.md`*
+*For more examples and use cases, see the demo script at `/Users/bledden/Documents/SAI_demo_script.md`*

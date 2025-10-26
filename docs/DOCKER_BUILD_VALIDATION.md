@@ -155,8 +155,8 @@ Anyone can reproduce these results:
 
 ```bash
 # Clone repo
-git clone https://github.com/bledden/arrwDB.git
-cd arrwDB
+git clone https://github.com/bledden/SAI.git
+cd SAI
 
 # Build single-stage
 docker build -f Dockerfile.singlestage -t vectordb-singlestage:test .

@@ -1,9 +1,9 @@
-# arrwDB V2 Development Context
+# SAI V2 Development Context
 ## Comprehensive Project Overview for New Development Session
 
 **Created**: October 25, 2025
-**Repository**: `/Users/bledden/Documents/arrwDB`
-**Original**: `/Users/bledden/Documents/arrwDB` (v1.0 - under review)
+**Repository**: `/Users/bledden/Documents/SAI`
+**Original**: `/Users/bledden/Documents/SAI` (v1.0 - under review)
 **Status**: ✅ All tests passing, ready for V2 enhancements
 
 ---
@@ -25,7 +25,7 @@
 
 ### Running Tests
 ```bash
-cd /Users/bledden/Documents/arrwDB
+cd /Users/bledden/Documents/SAI
 export COHERE_API_KEY=your_cohere_api_key_here  # Trial key
 python3 -m pytest tests/ -v
 
@@ -34,8 +34,8 @@ python3 -m pytest tests/ -v
 
 ### Running the API
 ```bash
-cd /Users/bledden/Documents/arrwDB
-export PYTHONPATH=/Users/bledden/Documents/arrwDB
+cd /Users/bledden/Documents/SAI
+export PYTHONPATH=/Users/bledden/Documents/SAI
 export COHERE_API_KEY=your_cohere_api_key_here
 python3 run_api.py
 
@@ -45,7 +45,7 @@ python3 run_api.py
 
 ### Using Docker
 ```bash
-cd /Users/bledden/Documents/arrwDB
+cd /Users/bledden/Documents/SAI
 docker-compose up -d
 
 # Includes: API, Temporal, PostgreSQL, Worker
@@ -78,11 +78,11 @@ docker-compose up -d
 - Python SDK client
 - Temporal durable execution
 
-### V1.0 vs arrwDB
+### V1.0 vs SAI
 
-| Aspect | Before (as SAI) | After (as arrwDB) |
+| Aspect | Before (as SAI) | After (as SAI) |
 |--------|-----------|---------|
-| Location | `/Users/bledden/Documents/arrwDB` | `/Users/bledden/Documents/arrwDB` |
+| Location | `/Users/bledden/Documents/SAI` | `/Users/bledden/Documents/SAI` |
 | API Key | Original (pa6sR...) | Trial (7EY2N...) |
 | Tests Passing | 492/492 (100%) | 492/492 (100%) |
 | Coverage | 96% | 96% |
@@ -106,7 +106,7 @@ Embeddings:   Cohere API (embed-english-v3.0)
 
 ### Project Structure
 ```
-arrwDB/
+SAI/
 ├── app/                          # Application layer
 │   ├── api/                      # REST API endpoints
 │   │   ├── main.py              # 14 FastAPI endpoints
@@ -378,7 +378,7 @@ def test_index_build_time():
 
 ### Priority 2: Future Enhancements (from FUTURE_ENHANCEMENTS.md)
 
-See `/Users/bledden/Documents/arrwDB/docs/FUTURE_ENHANCEMENTS.md` for complete list.
+See `/Users/bledden/Documents/SAI/docs/FUTURE_ENHANCEMENTS.md` for complete list.
 
 **Highlights**:
 1. Advanced metadata filtering (complex queries)
@@ -402,7 +402,7 @@ export COHERE_API_KEY=your_cohere_api_key_here
 - **Rate Limit**: 1,000 requests/minute
 - **Monthly Quota**: ~100 API calls/month
 - **Use For**: Development, testing
-- **Status**: Configured in arrwDB
+- **Status**: Configured in SAI
 
 #### Production Key (Backup)
 ```bash
@@ -436,7 +436,7 @@ Based on full test suite (492 tests):
 
 #### .env (git-ignored)
 ```bash
-# Current arrwDB configuration
+# Current SAI configuration
 COHERE_API_KEY=your_cohere_api_key_here
 VECTOR_DB_DATA_DIR=./data
 API_HOST=0.0.0.0
@@ -587,11 +587,11 @@ except:  # Too broad
 
 ### Git Workflow
 
-**Important**: This repository was previously named "SAI" - it has now been renamed to "arrwDB"
+**Important**: This repository was previously named "SAI" - it has now been renamed to "SAI"
 
 ```bash
-# Always work in arrwDB
-cd /Users/bledden/Documents/arrwDB
+# Always work in SAI
+cd /Users/bledden/Documents/SAI
 
 # Current state
 git status
@@ -615,7 +615,7 @@ python3 -m pytest tests/ -v
 python3 -m pytest tests/ --cov
 
 # 3. Run demo script
-export PYTHONPATH=/Users/bledden/Documents/arrwDB
+export PYTHONPATH=/Users/bledden/Documents/SAI
 python3 scripts/test_basic_functionality.py
 
 # All should pass before committing
@@ -730,7 +730,7 @@ python3 -c "import os; print(os.getenv('COHERE_API_KEY'))"
 
 ```bash
 # Ensure PYTHONPATH is set
-export PYTHONPATH=/Users/bledden/Documents/arrwDB
+export PYTHONPATH=/Users/bledden/Documents/SAI
 
 # Verify
 python3 -c "import app.models.base; print('OK')"
@@ -898,10 +898,10 @@ docs/guides/                   - User documentation
 
 ## Final Checklist Before Starting V2 Work
 
-- [x] arrwDB repository created and tested
+- [x] SAI repository created and tested
 - [x] All 492 tests passing with trial API key
 - [x] API keys properly secured (.env git-ignored)
-- [x] Repository renamed from SAI to arrwDB for clarity
+- [x] Repository renamed from SAI to SAI for clarity
 - [x] Code quality review completed (94/100)
 - [x] V2 roadmap defined
 - [x] Development guidelines documented
@@ -911,8 +911,8 @@ docs/guides/                   - User documentation
 
 **IMPORTANT REMINDERS**:
 
-1. **DO NOT MODIFY** `/Users/bledden/Documents/arrwDB` - it's under review
-2. **ALWAYS WORK IN** `/Users/bledden/Documents/arrwDB` for V2
+1. **DO NOT MODIFY** `/Users/bledden/Documents/SAI` - it's under review
+2. **ALWAYS WORK IN** `/Users/bledden/Documents/SAI` for V2
 3. **Trial API key** will max out soon - switch to prod if needed
 4. **Run tests** before every commit
 5. **Follow existing patterns** - consistency is key

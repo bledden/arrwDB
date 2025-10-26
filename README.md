@@ -15,8 +15,8 @@ Get the API running in under 5 minutes:
 
 ```bash
 # 1. Clone (lightweight - no tests)
-git clone --filter=blob:none --sparse https://github.com/bledden/arrwDB.git
-cd arrwDB
+git clone --filter=blob:none --sparse https://github.com/bledden/SAI.git
+cd SAI
 git sparse-checkout set '/*' '!tests'
 
 # 2. Install
@@ -192,7 +192,7 @@ This project implements a complete **Vector Database REST API** designed for sem
 - **Choose from 4 indexing algorithms** optimized for different use cases
 - **Scale to production** with Docker, thread safety, and persistence
 
-**Repository**: https://github.com/bledden/arrwDB
+**Repository**: https://github.com/bledden/SAI
 
 ---
 

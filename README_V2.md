@@ -1,4 +1,4 @@
-# arrwDB - Vector Database V2 🚀
+# SAI - Vector Database V2 🚀
 
 **Production-grade Vector Database with kNN Search**
 
@@ -13,7 +13,7 @@
 
 ### Run Tests (Recommended First Step)
 ```bash
-cd /Users/bledden/Documents/arrwDB
+cd /Users/bledden/Documents/SAI
 export COHERE_API_KEY=your_cohere_api_key_here
 python3 -m pytest tests/ -v
 
@@ -22,7 +22,7 @@ python3 -m pytest tests/ -v
 
 ### Run Demo
 ```bash
-export PYTHONPATH=/Users/bledden/Documents/arrwDB
+export PYTHONPATH=/Users/bledden/Documents/SAI
 export COHERE_API_KEY=your_cohere_api_key_here
 python3 scripts/test_basic_functionality.py
 
@@ -31,7 +31,7 @@ python3 scripts/test_basic_functionality.py
 
 ### Start API Server
 ```bash
-export PYTHONPATH=/Users/bledden/Documents/arrwDB
+export PYTHONPATH=/Users/bledden/Documents/SAI
 export COHERE_API_KEY=your_cohere_api_key_here
 python3 run_api.py
 
@@ -46,7 +46,7 @@ python3 run_api.py
 | Document | Purpose |
 |----------|---------|
 | **[V2_DEVELOPMENT_CONTEXT.md](V2_DEVELOPMENT_CONTEXT.md)** | 🔥 **START HERE** - Complete V2 development guide |
-| **[VALIDATION_SUMMARY.md](VALIDATION_SUMMARY.md)** | Proof that arrwDB = SAI (all tests) |
+| **[VALIDATION_SUMMARY.md](VALIDATION_SUMMARY.md)** | Proof that SAI = SAI (all tests) |
 | **[INDEPENDENT_CODE_REVIEW.md](INDEPENDENT_CODE_REVIEW.md)** | 94/100 score review from v1 |
 | **[docs/FUTURE_ENHANCEMENTS.md](docs/FUTURE_ENHANCEMENTS.md)** | V2 feature roadmap |
 | **[docs/REQUIREMENTS_VERIFICATION.md](docs/REQUIREMENTS_VERIFICATION.md)** | Original requirements checklist |
@@ -72,7 +72,7 @@ See [docs/FUTURE_ENHANCEMENTS.md](docs/FUTURE_ENHANCEMENTS.md) for complete list
 
 ## 🔑 API Keys
 
-### Trial Key (Current - arrwDB)
+### Trial Key (Current - SAI)
 ```bash
 export COHERE_API_KEY=your_cohere_api_key_here
 ```
@@ -93,7 +93,7 @@ export COHERE_API_KEY=EOSIcCEO8Q5R1ofq4gW2dQjS5c8SKEAgBTVYJTaj
 ## 🏗️ Architecture
 
 ```
-arrwDB/
+SAI/
 ├── app/                    # API layer (FastAPI)
 ├── core/                   # Domain logic
 ├── infrastructure/         # Indexes, concurrency, persistence
@@ -159,11 +159,11 @@ git grep "COHERE_API_KEY" -- ':(exclude).env'
 ## 🚨 IMPORTANT NOTES
 
 ### Repository Note
-**Note**: This repository was previously named "SAI" but has been renamed to "arrwDB" for clarity. All references have been updated.
+**Note**: This repository was previously named "SAI" but has been renamed to "SAI" for clarity. All references have been updated.
 
 ```bash
-# ✅ Always work in arrwDB
-cd /Users/bledden/Documents/arrwDB
+# ✅ Always work in SAI
+cd /Users/bledden/Documents/SAI
 ```
 
 ### Before Every Commit
@@ -175,7 +175,7 @@ python3 -m pytest tests/ -v
 python3 -m pytest tests/ --cov
 
 # 3. Run demo
-export PYTHONPATH=/Users/bledden/Documents/arrwDB
+export PYTHONPATH=/Users/bledden/Documents/SAI
 python3 scripts/test_basic_functionality.py
 
 # All must pass ✅
@@ -193,7 +193,7 @@ python3 scripts/test_basic_functionality.py
 
 ### For Code Review
 1. Check [INDEPENDENT_CODE_REVIEW.md](INDEPENDENT_CODE_REVIEW.md) (94/100 score)
-2. Review [VALIDATION_SUMMARY.md](VALIDATION_SUMMARY.md) (arrwDB = SAI proof)
+2. Review [VALIDATION_SUMMARY.md](VALIDATION_SUMMARY.md) (SAI = SAI proof)
 3. See [docs/CODE_QUALITY_ASSESSMENT.md](docs/CODE_QUALITY_ASSESSMENT.md)
 
 ---
@@ -233,8 +233,8 @@ python3 scripts/test_basic_functionality.py
 
 ### Standard Workflow
 ```bash
-# 1. Ensure you're in arrwDB
-cd /Users/bledden/Documents/arrwDB
+# 1. Ensure you're in SAI
+cd /Users/bledden/Documents/SAI
 
 # 2. Create feature branch
 git checkout -b feature/your-feature-name
@@ -286,7 +286,7 @@ export COHERE_API_KEY=your_cohere_api_key_here
 echo $PYTHONPATH
 
 # Set if missing
-export PYTHONPATH=/Users/bledden/Documents/arrwDB
+export PYTHONPATH=/Users/bledden/Documents/SAI
 ```
 
 ### Rate limit errors?
@@ -318,8 +318,8 @@ export COHERE_API_KEY=EOSIcCEO8Q5R1ofq4gW2dQjS5c8SKEAgBTVYJTaj
 ✅ All 492 tests passing
 ✅ 96% code coverage
 ✅ API keys secured
-✅ Repository renamed from SAI to arrwDB
-✅ arrwDB validated as perfect copy
+✅ Repository renamed from SAI to SAI
+✅ SAI validated as perfect copy
 ✅ Ready for V2 development
 ```
 

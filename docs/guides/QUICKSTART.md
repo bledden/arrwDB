@@ -14,7 +14,7 @@
 ### 1. Test It Works
 
 ```bash
-cd /Users/bledden/Documents/arrwDB
+cd /Users/bledden/Documents/SAI
 python3 test_basic_functionality.py
 ```
 

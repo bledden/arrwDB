@@ -58,7 +58,7 @@
 ## 🗂️ Code Structure
 
 ```
-arrwDB/
+SAI/
 ├── 📖 Documentation
 │   ├── INDEX.md (this file)
 │   ├── QUICKSTART.md
