@@ -1,0 +1,14 @@
+/Users/bledden/Documents/arrwDB/rust_wal/target/release/deps/serde-5831df5b4f214af3.d: /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/bledden/Documents/arrwDB/rust_wal/target/release/build/serde-3b9f80aec0c7246c/out/private.rs
+
+/Users/bledden/Documents/arrwDB/rust_wal/target/release/deps/libserde-5831df5b4f214af3.rlib: /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/bledden/Documents/arrwDB/rust_wal/target/release/build/serde-3b9f80aec0c7246c/out/private.rs
+
+/Users/bledden/Documents/arrwDB/rust_wal/target/release/deps/libserde-5831df5b4f214af3.rmeta: /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/bledden/Documents/arrwDB/rust_wal/target/release/build/serde-3b9f80aec0c7246c/out/private.rs
+
+/Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs:
+/Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs:
+/Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs:
+/Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs:
+/Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs:
+/Users/bledden/Documents/arrwDB/rust_wal/target/release/build/serde-3b9f80aec0c7246c/out/private.rs:
+
+# env-dep:OUT_DIR=/Users/bledden/Documents/arrwDB/rust_wal/target/release/build/serde-3b9f80aec0c7246c/out
