@@ -5,15 +5,16 @@ This module provides dependency injection functions that initialize
 and provide services to API endpoints.
 """
 
+import os
 from functools import lru_cache
 from pathlib import Path
-import os
+
 from fastapi import Depends
 
-from app.services.library_service import LibraryService
-from app.services.embedding_service import EmbeddingService
-from infrastructure.repositories.library_repository import LibraryRepository
 from app.config import settings
+from app.services.embedding_service import EmbeddingService
+from app.services.library_service import LibraryService
+from infrastructure.repositories.library_repository import LibraryRepository
 
 
 @lru_cache()

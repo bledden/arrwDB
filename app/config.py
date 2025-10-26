@@ -13,10 +13,11 @@ Configuration priority (highest to lowest):
 3. Defaults (based on research and best practices)
 """
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional
 import multiprocessing
 import os
+from typing import Optional
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):

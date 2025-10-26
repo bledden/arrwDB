@@ -7,8 +7,8 @@ writer starvation.
 """
 
 import threading
-from typing import Optional
 from contextlib import contextmanager
+from typing import Optional
 
 
 class ReaderWriterLock:

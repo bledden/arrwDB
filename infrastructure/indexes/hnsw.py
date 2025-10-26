@@ -13,16 +13,17 @@ Time Complexity:
 Space Complexity: O(n * M)
 """
 
-import numpy as np
+import heapq
+import threading
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple
 from uuid import UUID
-import threading
-from numpy.typing import NDArray
-import heapq
-from dataclasses import dataclass, field
 
-from infrastructure.indexes.base import VectorIndex
+import numpy as np
+from numpy.typing import NDArray
+
 from core.vector_store import VectorStore
+from infrastructure.indexes.base import VectorIndex
 
 
 @dataclass

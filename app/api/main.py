@@ -5,45 +5,46 @@ This module provides the main FastAPI application with all CRUD endpoints
 for libraries, documents, and chunks, plus search functionality.
 """
 
-from fastapi import FastAPI, HTTPException, Depends, status, Request, APIRouter, Query
-from fastapi.responses import JSONResponse
-from typing import List, Union, Dict, Any
-from uuid import UUID
+import logging
 import time
 from datetime import datetime
-import logging
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
+from typing import Any, Dict, List, Union
+from uuid import UUID
 
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request, status
+from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+
+from app.api.dependencies import get_library_service
 from app.api.models import (
-    CreateLibraryRequest,
     AddDocumentRequest,
     AddDocumentWithEmbeddingsRequest,
-    SearchRequest,
-    SearchWithEmbeddingRequest,
-    LibraryResponse,
-    LibrarySummaryResponse,
+    ChunkResponseSlim,
+    CreateLibraryRequest,
     DocumentResponse,
     DocumentResponseSlim,
+    ErrorResponse,
+    HealthResponse,
+    LibraryResponse,
+    LibraryStatisticsResponse,
+    LibrarySummaryResponse,
+    SearchRequest,
     SearchResponse,
     SearchResponseSlim,
     SearchResultResponse,
     SearchResultResponseSlim,
-    ChunkResponseSlim,
-    LibraryStatisticsResponse,
-    ErrorResponse,
-    HealthResponse,
+    SearchWithEmbeddingRequest,
 )
-from app.api.dependencies import get_library_service
+from app.config import settings
+from app.services.embedding_service import EmbeddingServiceError
 from app.services.library_service import LibraryService
 from infrastructure.repositories.library_repository import (
-    LibraryNotFoundError,
-    DocumentNotFoundError,
     DimensionMismatchError,
+    DocumentNotFoundError,
+    LibraryNotFoundError,
 )
-from app.services.embedding_service import EmbeddingServiceError
-from app.config import settings
 
 # Import Temporal client
 try:

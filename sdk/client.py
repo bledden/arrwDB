@@ -5,10 +5,11 @@ This module provides a high-level Python client for interacting with
 the Vector Database REST API.
 """
 
-import requests
-from typing import List, Optional, Dict, Any, Tuple
-from uuid import UUID
 import logging
+from typing import Any, Dict, List, Optional, Tuple
+from uuid import UUID
+
+import requests
 
 logger = logging.getLogger(__name__)
 

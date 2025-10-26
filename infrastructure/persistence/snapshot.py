@@ -7,12 +7,12 @@ entire WAL.
 """
 
 import json
+import logging
 import pickle
+import threading
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
-from datetime import datetime
-import logging
-import threading
 
 logger = logging.getLogger(__name__)
 

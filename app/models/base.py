@@ -5,11 +5,12 @@ This module provides the foundational Pydantic models that define
 the data schema for Chunks, Documents, and Libraries with FIXED schemas.
 """
 
-from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional, Dict, Any, Literal
 from datetime import datetime
+from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID, uuid4
+
 import numpy as np
+from pydantic import BaseModel, Field, field_validator
 
 # Import settings for consistent defaults
 from app.config import settings

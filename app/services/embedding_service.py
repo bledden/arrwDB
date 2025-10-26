@@ -6,17 +6,13 @@ for text using the Cohere API. It handles batching, retries, and
 error handling for robust production use.
 """
 
-import cohere
-from typing import List, Optional
-from numpy.typing import NDArray
-import numpy as np
 import logging
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_exponential,
-    retry_if_exception_type,
-)
+from typing import List, Optional
+
+import cohere
+import numpy as np
+from numpy.typing import NDArray
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
 
@@ -24,13 +20,13 @@ logger = logging.getLogger(__name__)
 try:
     # Cohere SDK 5.x
     from cohere.errors import (
-        TooManyRequestsError,
-        ServiceUnavailableError,
+        BadRequestError,
+        ForbiddenError,
         GatewayTimeoutError,
         InternalServerError,
-        BadRequestError,
+        ServiceUnavailableError,
+        TooManyRequestsError,
         UnauthorizedError,
-        ForbiddenError,
     )
 except (ImportError, AttributeError):
     # Cohere SDK 4.x fallback - use base exceptions

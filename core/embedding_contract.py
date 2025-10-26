@@ -7,8 +7,9 @@ vectors must match that dimension. This prevents dimension mismatches that
 would cause runtime errors during vector operations.
 """
 
-import numpy as np
 from typing import List, Optional
+
+import numpy as np
 from numpy.typing import NDArray
 
 

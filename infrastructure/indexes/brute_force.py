@@ -13,14 +13,15 @@ Time Complexity:
 Space Complexity: O(n) for the mapping
 """
 
-import numpy as np
+import threading
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
-import threading
+
+import numpy as np
 from numpy.typing import NDArray
 
-from infrastructure.indexes.base import VectorIndex
 from core.vector_store import VectorStore
+from infrastructure.indexes.base import VectorIndex
 
 
 class BruteForceIndex(VectorIndex):

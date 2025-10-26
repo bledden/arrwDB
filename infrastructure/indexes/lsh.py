@@ -14,15 +14,16 @@ Time Complexity:
 Space Complexity: O(n * L)
 """
 
-import numpy as np
+import threading
+from collections import defaultdict
 from typing import Any, Dict, List, Optional, Set, Tuple
 from uuid import UUID
-import threading
-from numpy.typing import NDArray
-from collections import defaultdict
 
-from infrastructure.indexes.base import VectorIndex
+import numpy as np
+from numpy.typing import NDArray
+
 from core.vector_store import VectorStore
+from infrastructure.indexes.base import VectorIndex
 
 
 class LSHIndex(VectorIndex):

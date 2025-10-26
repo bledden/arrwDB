@@ -6,18 +6,18 @@ following Domain-Driven Design principles. It sits between the API layer
 and the repository layer.
 """
 
-from typing import List, Optional, Tuple
-from uuid import UUID
 import logging
 from pathlib import Path
+from typing import List, Optional, Tuple
+from uuid import UUID
 
-from app.models.base import Library, Document, Chunk, LibraryMetadata, DocumentMetadata
+from app.models.base import Chunk, Document, DocumentMetadata, Library, LibraryMetadata
 from app.services.embedding_service import EmbeddingService, EmbeddingServiceError
 from infrastructure.repositories.library_repository import (
-    LibraryRepository,
-    LibraryNotFoundError,
-    DocumentNotFoundError,
     DimensionMismatchError,
+    DocumentNotFoundError,
+    LibraryNotFoundError,
+    LibraryRepository,
 )
 
 logger = logging.getLogger(__name__)
@@ -290,6 +290,7 @@ class LibraryService:
 
         # Create chunks
         from uuid import uuid4
+
         from app.models.base import ChunkMetadata
 
         doc_id = uuid4()

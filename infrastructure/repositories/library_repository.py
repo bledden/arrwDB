@@ -6,22 +6,22 @@ domain models, vector store, indexes, and embedding contract to provide
 a consistent, thread-safe interface for all vector database operations.
 """
 
-from typing import Dict, List, Optional, Tuple
-from uuid import UUID
 import threading
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+from uuid import UUID
 
-from app.models.base import Library, Document, Chunk, LibraryMetadata
-from core.vector_store import VectorStore
+from app.models.base import Chunk, Document, Library, LibraryMetadata
 from core.embedding_contract import LibraryEmbeddingContract
+from core.vector_store import VectorStore
+from infrastructure.concurrency.rw_lock import ReaderWriterLock
 from infrastructure.indexes.base import VectorIndex
 from infrastructure.indexes.brute_force import BruteForceIndex
+from infrastructure.indexes.hnsw import HNSWIndex
 from infrastructure.indexes.kd_tree import KDTreeIndex
 from infrastructure.indexes.lsh import LSHIndex
-from infrastructure.indexes.hnsw import HNSWIndex
-from infrastructure.concurrency.rw_lock import ReaderWriterLock
-from infrastructure.persistence.wal import WriteAheadLog, OperationType, WALEntry
 from infrastructure.persistence.snapshot import SnapshotManager
+from infrastructure.persistence.wal import OperationType, WALEntry, WriteAheadLog
 
 
 class LibraryNotFoundError(Exception):
