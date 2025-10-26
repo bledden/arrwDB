@@ -1,7 +1,7 @@
 # Vector Database REST API
 
-![Tests](https://img.shields.io/badge/tests-484%20passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-97%25-brightgreen)
+![Tests](https://img.shields.io/badge/tests-545%20passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688)
 
@@ -122,6 +122,18 @@ for result in results["results"]:
     print(f"Text: {result['chunk']['text'][:100]}...")
     print()
 
+# Search with metadata filters
+filters = [
+    {"field": "chunk_index", "operator": "gte", "value": 2},
+    {"field": "chunk_index", "operator": "lt", "value": 10}
+]
+filtered_results = client.search_with_filters(
+    library_id=library["id"],
+    query="supervised learning",
+    metadata_filters=filters,
+    k=5
+)
+
 # Get statistics
 stats = client.get_library_statistics(library["id"])
 print(f"Total documents: {stats['num_documents']}")
@@ -155,6 +167,18 @@ curl -X POST http://localhost:8000/libraries/{library_id}/search \
   -d '{
     "query": "search query",
     "k": 10
+  }'
+
+# Search with metadata filters
+curl -X POST http://localhost:8000/libraries/{library_id}/search/filtered \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "machine learning",
+    "k": 10,
+    "metadata_filters": [
+      {"field": "chunk_index", "operator": "gte", "value": 2},
+      {"field": "chunk_index", "operator": "lt", "value": 10}
+    ]
   }'
 ```
 
@@ -221,7 +245,7 @@ The system is built around three primary entities:
 - ✅ Python SDK client
 - ✅ Temporal workflows for durable execution
 - ✅ Memory-mapped storage for large datasets
-- ✅ 484 comprehensive tests (100% passing)
+- ✅ 545 comprehensive tests (100% passing, 95% coverage)
 
 ### Design Constraints
 
@@ -306,6 +330,7 @@ The system is built around three primary entities:
 
 - `POST /libraries/{id}/search` - Search with text query
 - `POST /libraries/{id}/search/embedding` - Search with embedding vector
+- `POST /libraries/{id}/search/filtered` - Search with metadata filters
 
 ### Health
 
@@ -408,14 +433,14 @@ print(result["answer"])
 
 ### Test Suite Overview
 
-**Status**: ✅ 484/484 tests passing (100%)
-**Coverage**: 96% of core codebase
+**Status**: ✅ 545/545 tests passing (100%)
+**Coverage**: 95% of core codebase
 **Test Environment**: Local (not Docker)
 **Full Report**: [docs/testing/FINAL_TEST_REPORT.md](docs/testing/FINAL_TEST_REPORT.md)
 
 The test suite includes:
-- **86 Unit Tests** - Core business logic (vector store, indexes, repositories)
-- **23 Integration Tests** - Full REST API with real Cohere embeddings
+- **127 Unit Tests** - Core business logic, persistence, concurrency (vector store, indexes, repositories)
+- **35 Integration Tests** - Full REST API with real Cohere embeddings, including metadata filtering
 - **22 Edge Case Tests** - Boundary conditions and error handling
 
 ### Running Tests Locally
@@ -939,7 +964,7 @@ This project fully implements all specified requirements with comprehensive test
 - Domain-Driven Design architecture (layered)
 - Pydantic models for type safety
 - Docker deployment with multi-stage builds
-- 484/484 tests passing (100%), 96% coverage
+- 545/545 tests passing (100%), 95% coverage
 - Zero mocking - all tests use real implementations
 
 ✅ **Extra Credit (All 5 Implemented)**
@@ -969,7 +994,7 @@ This project fully implements all specified requirements with comprehensive test
 | **Speedup vs Brute Force (100k)** | 23.4x faster | ✅ Confirmed |
 | **Memory Savings (Deduplication)** | 48% reduction | ✅ Exceeds 30-40% target |
 | **Concurrent Throughput** | 251 queries/sec | ⚠️ GIL-limited (see notes) |
-| **Test Coverage** | 484 tests, 97% coverage | ✅ Comprehensive |
+| **Test Coverage** | 545 tests, 95% coverage | ✅ Comprehensive |
 
 **Key Findings:**
 - ✅ **Sub-2ms search at scale**: 1.40ms average on 100,000 vectors (256D)
@@ -1155,7 +1180,7 @@ COHERE_API_KEY=your_actual_api_key_here
 - **[CLI Examples](docs/guides/CLI_EXAMPLES.md)** - Command-line usage examples
 
 ### Testing
-- **[Final Test Report](docs/testing/FINAL_TEST_REPORT.md)** - 484/484 tests passing (100%)
+- **[Final Test Report](docs/testing/FINAL_TEST_REPORT.md)** - 545/545 tests passing (100%)
 - **[Test Status](docs/testing/TEST_STATUS_FINAL.md)** - 74% code coverage details
 - **[Verification Guide](docs/testing/VERIFICATION.md)** - Platform-specific verification steps
 - **[Test New Features](docs/testing/TEST_NEW_FEATURES.md)** - Testing guide for persistence, Temporal, and Docker
@@ -1186,7 +1211,7 @@ COHERE_API_KEY=your_actual_api_key_here
 ├── sdk/                    # Python client SDK
 ├── scripts/                # Utility scripts
 │   └── test_basic_functionality.py
-├── tests/                  # Test suite (484 tests)
+├── tests/                  # Test suite (545 tests)
 │   ├── unit/              # Unit tests
 │   ├── integration/       # API integration tests
 │   └── conftest.py        # Test fixtures
