@@ -1,0 +1,14 @@
+/Users/bledden/Documents/arrwDB/rust_snapshot/target/release/deps/pyo3_build_config-f6f48832d0295367.d: /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/lib.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/errors.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/impl_.rs /Users/bledden/Documents/arrwDB/rust_snapshot/target/release/build/pyo3-build-config-9963bef742cba76d/out/pyo3-build-config-file.txt /Users/bledden/Documents/arrwDB/rust_snapshot/target/release/build/pyo3-build-config-9963bef742cba76d/out/pyo3-build-config.txt
+
+/Users/bledden/Documents/arrwDB/rust_snapshot/target/release/deps/libpyo3_build_config-f6f48832d0295367.rlib: /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/lib.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/errors.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/impl_.rs /Users/bledden/Documents/arrwDB/rust_snapshot/target/release/build/pyo3-build-config-9963bef742cba76d/out/pyo3-build-config-file.txt /Users/bledden/Documents/arrwDB/rust_snapshot/target/release/build/pyo3-build-config-9963bef742cba76d/out/pyo3-build-config.txt
+
+/Users/bledden/Documents/arrwDB/rust_snapshot/target/release/deps/libpyo3_build_config-f6f48832d0295367.rmeta: /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/lib.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/errors.rs /Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/impl_.rs /Users/bledden/Documents/arrwDB/rust_snapshot/target/release/build/pyo3-build-config-9963bef742cba76d/out/pyo3-build-config-file.txt /Users/bledden/Documents/arrwDB/rust_snapshot/target/release/build/pyo3-build-config-9963bef742cba76d/out/pyo3-build-config.txt
+
+/Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/lib.rs:
+/Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/errors.rs:
+/Users/bledden/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/impl_.rs:
+/Users/bledden/Documents/arrwDB/rust_snapshot/target/release/build/pyo3-build-config-9963bef742cba76d/out/pyo3-build-config-file.txt:
+/Users/bledden/Documents/arrwDB/rust_snapshot/target/release/build/pyo3-build-config-9963bef742cba76d/out/pyo3-build-config.txt:
+
+# env-dep:CARGO_PKG_VERSION=0.21.2
+# env-dep:OUT_DIR=/Users/bledden/Documents/arrwDB/rust_snapshot/target/release/build/pyo3-build-config-9963bef742cba76d/out
