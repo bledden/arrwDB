@@ -249,7 +249,7 @@ def get_settings() -> Settings:
     return settings
 
 
-def print_config_summary():
+def print_config_summary() -> None:
     """
     Print configuration summary for startup logging.
 

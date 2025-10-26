@@ -112,7 +112,7 @@ class VectorDBClient:
                         f"{error_data.get('error', 'Unknown error')}: "
                         f"{error_data.get('detail', str(e))}"
                     )
-                except:
+                except (ValueError, requests.exceptions.JSONDecodeError):
                     raise VectorDBException(f"Request failed: {e}")
             raise VectorDBException(f"Request failed: {e}")
 

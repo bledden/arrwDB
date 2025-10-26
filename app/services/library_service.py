@@ -44,7 +44,7 @@ class LibraryService:
         self,
         repository: LibraryRepository,
         embedding_service: EmbeddingService,
-    ):
+    ) -> None:
         """
         Initialize the library service.
 

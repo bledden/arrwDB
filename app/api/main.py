@@ -7,7 +7,7 @@ for libraries, documents, and chunks, plus search functionality.
 
 from fastapi import FastAPI, HTTPException, Depends, status, Request, APIRouter, Query
 from fastapi.responses import JSONResponse
-from typing import List, Union
+from typing import List, Union, Dict, Any
 from uuid import UUID
 import time
 from datetime import datetime
@@ -90,7 +90,7 @@ v1_router = APIRouter(prefix=API_V1_PREFIX)
 
 
 @app.exception_handler(LibraryNotFoundError)
-async def library_not_found_handler(request, exc):
+async def library_not_found_handler(request: Request, exc: LibraryNotFoundError) -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
         content={
@@ -102,7 +102,7 @@ async def library_not_found_handler(request, exc):
 
 
 @app.exception_handler(DocumentNotFoundError)
-async def document_not_found_handler(request, exc):
+async def document_not_found_handler(request: Request, exc: DocumentNotFoundError) -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
         content={
@@ -114,7 +114,7 @@ async def document_not_found_handler(request, exc):
 
 
 @app.exception_handler(DimensionMismatchError)
-async def dimension_mismatch_handler(request, exc):
+async def dimension_mismatch_handler(request: Request, exc: DimensionMismatchError) -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={
@@ -126,7 +126,7 @@ async def dimension_mismatch_handler(request, exc):
 
 
 @app.exception_handler(EmbeddingServiceError)
-async def embedding_service_error_handler(request, exc):
+async def embedding_service_error_handler(request: Request, exc: EmbeddingServiceError) -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         content={
@@ -138,7 +138,7 @@ async def embedding_service_error_handler(request, exc):
 
 
 @app.exception_handler(ValueError)
-async def value_error_handler(request, exc):
+async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={
@@ -158,7 +158,7 @@ async def value_error_handler(request, exc):
     tags=["Health"],
     summary="Health check endpoint",
 )
-async def health_check():
+async def health_check() -> HealthResponse:
     """Check if the API is running."""
     return HealthResponse(
         status="healthy", version=API_VERSION, timestamp=datetime.utcnow()
@@ -563,7 +563,7 @@ def search_with_embedding(
 
 
 @app.on_event("startup")
-async def startup_event():
+async def startup_event() -> None:
     """Log configuration summary on startup."""
     logger.info("=" * 60)
     logger.info("Vector Database API Starting")
@@ -681,7 +681,7 @@ app.include_router(v1_router)
 
 
 @app.get("/", tags=["Root"])
-def root():
+def root() -> Dict[str, Any]:
     """
     Root endpoint with API information and available versions.
     """

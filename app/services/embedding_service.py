@@ -74,7 +74,7 @@ class EmbeddingService:
         model: str = "embed-english-v3.0",
         input_type: str = "search_document",
         embedding_dimension: Optional[int] = None,
-    ):
+    ) -> None:
         """
         Initialize the EmbeddingService.
 
