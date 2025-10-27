@@ -13,6 +13,7 @@ Coverage targets:
 """
 
 from unittest.mock import Mock, patch
+from datetime import datetime
 from uuid import uuid4
 
 import pytest
@@ -28,11 +29,12 @@ class TestGetCurrentTenant:
     @pytest.mark.asyncio
     async def test_valid_api_key_x_api_key_header(self):
         """Test authentication with valid X-API-Key header."""
-        tenant_id = uuid4()
+        tenant_id = str(uuid4())
         tenant = Tenant(
             tenant_id=tenant_id,
             name="Test Tenant",
-            api_key="arrw_test123",
+            api_key_hash="hashed_arrw_test123",
+            created_at=datetime.utcnow(),
             is_active=True
         )
 
@@ -47,11 +49,12 @@ class TestGetCurrentTenant:
     @pytest.mark.asyncio
     async def test_valid_api_key_authorization_header(self):
         """Test authentication with valid Authorization Bearer header."""
-        tenant_id = uuid4()
+        tenant_id = str(uuid4())
         tenant = Tenant(
             tenant_id=tenant_id,
             name="Test Tenant",
-            api_key="arrw_test456",
+            api_key_hash="hashed_arrw_test456",
+            created_at=datetime.utcnow(),
             is_active=True
         )
 
@@ -69,11 +72,12 @@ class TestGetCurrentTenant:
     @pytest.mark.asyncio
     async def test_authorization_header_with_extra_whitespace(self):
         """Test that extra whitespace in Bearer token is handled."""
-        tenant_id = uuid4()
+        tenant_id = str(uuid4())
         tenant = Tenant(
             tenant_id=tenant_id,
             name="Test Tenant",
-            api_key="arrw_test789",
+            api_key_hash="hashed_arrw_test789",
+            created_at=datetime.utcnow(),
             is_active=True
         )
 
@@ -90,11 +94,12 @@ class TestGetCurrentTenant:
     @pytest.mark.asyncio
     async def test_x_api_key_takes_precedence(self):
         """Test that X-API-Key header takes precedence over Authorization."""
-        tenant_id = uuid4()
+        tenant_id = str(uuid4())
         tenant = Tenant(
             tenant_id=tenant_id,
             name="Test Tenant",
-            api_key="arrw_primary",
+            api_key_hash="hashed_arrw_primary",
+            created_at=datetime.utcnow(),
             is_active=True
         )
 
@@ -186,11 +191,12 @@ class TestRequireTenant:
     @pytest.mark.asyncio
     async def test_require_tenant_with_valid_tenant(self):
         """Test that valid tenant passes through."""
-        tenant_id = uuid4()
+        tenant_id = str(uuid4())
         tenant = Tenant(
             tenant_id=tenant_id,
             name="Test Tenant",
-            api_key="arrw_test",
+            api_key_hash="hashed_arrw_test",
+            created_at=datetime.utcnow(),
             is_active=True
         )
 
@@ -215,11 +221,12 @@ class TestAuthenticationFlow:
     @pytest.mark.asyncio
     async def test_full_authentication_flow_success(self):
         """Test complete authentication flow from API key to tenant."""
-        tenant_id = uuid4()
+        tenant_id = str(uuid4())
         tenant = Tenant(
             tenant_id=tenant_id,
             name="Production Tenant",
-            api_key="arrw_prod_key",
+            api_key_hash="hashed_arrw_prod_key",
+            created_at=datetime.utcnow(),
             is_active=True
         )
 
@@ -336,11 +343,12 @@ class TestMultiTenancyScenarios:
     @pytest.mark.asyncio
     async def test_multi_tenancy_disabled_with_valid_key(self):
         """Test that valid API key still works when multi-tenancy is disabled."""
-        tenant_id = uuid4()
+        tenant_id = str(uuid4())
         tenant = Tenant(
             tenant_id=tenant_id,
             name="Test Tenant",
-            api_key="arrw_test",
+            api_key_hash="hashed_arrw_test",
+            created_at=datetime.utcnow(),
             is_active=True
         )
 
