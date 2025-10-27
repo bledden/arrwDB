@@ -2103,6 +2103,10 @@ app.include_router(job_routes.router)
 from app.api import event_routes
 app.include_router(event_routes.router)
 
+# Include health check endpoints for monitoring and probes
+from app.api import health
+app.include_router(health.router)
+
 
 # Root endpoint
 
