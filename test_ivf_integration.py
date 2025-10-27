@@ -55,11 +55,11 @@ def main():
     # Step 2: Add documents
     print("\n2. Adding documents...")
     docs = [
-        {"title": "Machine Learning Basics", "text": "Machine learning is a subset of artificial intelligence that enables systems to learn from data."},
-        {"title": "Deep Learning", "text": "Deep learning uses neural networks with multiple layers to learn hierarchical representations."},
-        {"title": "Natural Language Processing", "text": "NLP enables computers to understand, interpret and generate human language."},
-        {"title": "Computer Vision", "text": "Computer vision trains computers to interpret and understand visual information from images."},
-        {"title": "Reinforcement Learning", "text": "Reinforcement learning is about learning what actions to take to maximize cumulative reward."},
+        {"title": "Machine Learning Basics", "texts": ["Machine learning is a subset of artificial intelligence that enables systems to learn from data."]},
+        {"title": "Deep Learning", "texts": ["Deep learning uses neural networks with multiple layers to learn hierarchical representations."]},
+        {"title": "Natural Language Processing", "texts": ["NLP enables computers to understand, interpret and generate human language."]},
+        {"title": "Computer Vision", "texts": ["Computer vision trains computers to interpret and understand visual information from images."]},
+        {"title": "Reinforcement Learning", "texts": ["Reinforcement learning is about learning what actions to take to maximize cumulative reward."]},
     ]
 
     doc_ids = []
@@ -68,12 +68,14 @@ def main():
             f"{BASE_URL}/v1/libraries/{library_id}/documents",
             json=doc
         )
-        if response.status_code == 200:
+        if response.status_code in [200, 201]:
             doc_data = response.json()
             doc_ids.append(doc_data["id"])
             print_info(f"Added: {doc['title']}")
         else:
-            print_error(f"Failed to add document: {doc['title']}")
+            print_error(f"Failed to add document: {doc['title']} - Status: {response.status_code}")
+            if response.text:
+                print_error(f"  Error: {response.text[:200]}")
 
     print_success(f"Added {len(doc_ids)} documents")
 

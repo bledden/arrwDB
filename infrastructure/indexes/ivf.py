@@ -302,6 +302,9 @@ class IVFIndex(VectorIndex):
             if vec_id in self._vector_id_to_index:
                 vec_idx = self._vector_id_to_index[vec_id]
                 vector = self._vector_store.get_vector(vec_idx)
+                if vector is None:
+                    logger.warning(f"Vector at index {vec_idx} not found in store, skipping")
+                    continue
                 distance = float(np.linalg.norm(vector - query))
                 candidates.append((vec_id, distance))
 
@@ -320,6 +323,9 @@ class IVFIndex(VectorIndex):
         results = []
         for vec_id, vec_idx in self._vector_id_to_index.items():
             vector = self._vector_store.get_vector(vec_idx)
+            if vector is None:
+                logger.warning(f"Vector at index {vec_idx} not found in store, skipping")
+                continue
             distance = float(np.linalg.norm(vector - query))
 
             if distance_threshold is None or distance <= distance_threshold:
@@ -362,15 +368,14 @@ class IVFIndex(VectorIndex):
         Returns:
             Statistics dictionary
         """
-        stats = super().get_statistics()
-
-        stats.update({
+        stats = {
             "index_type": "ivf",
             "built": self._built,
             "n_clusters": self._n_clusters,
             "nprobe": self._nprobe,
             "use_pq": self._use_pq,
-        })
+            "total_vectors": self.size(),
+        }
 
         if self._built and self._centroids is not None:
             total_vectors = sum(len(lst) for lst in self._inverted_lists.values())
