@@ -21,6 +21,7 @@ from infrastructure.concurrency.rw_lock import ReaderWriterLock
 from infrastructure.indexes.base import VectorIndex
 from infrastructure.indexes.brute_force import BruteForceIndex
 from infrastructure.indexes.hnsw import HNSWIndex
+from infrastructure.indexes.ivf import IVFIndex
 from infrastructure.indexes.kd_tree import KDTreeIndex
 from infrastructure.indexes.lsh import LSHIndex
 from infrastructure.persistence.snapshot import SnapshotManager
@@ -912,6 +913,8 @@ class LibraryRepository:
             return LSHIndex(vector_store, num_tables=10, hash_size=10)
         elif index_type == "hnsw":
             return HNSWIndex(vector_store, M=16, ef_construction=200, ef_search=50)
+        elif index_type == "ivf":
+            return IVFIndex(vector_store, n_clusters=256, nprobe=8)
         else:
             raise ValueError(f"Unknown index type: {index_type}")
 
@@ -954,6 +957,18 @@ class LibraryRepository:
             ef_search = config.get("ef_search", 50)
             return HNSWIndex(
                 vector_store, M=M, ef_construction=ef_construction, ef_search=ef_search
+            )
+        elif index_type == "ivf":
+            n_clusters = config.get("n_clusters", 256)
+            nprobe = config.get("nprobe", 8)
+            use_pq = config.get("use_pq", False)
+            pq_subvectors = config.get("pq_subvectors", 8)
+            return IVFIndex(
+                vector_store,
+                n_clusters=n_clusters,
+                nprobe=nprobe,
+                use_pq=use_pq,
+                pq_subvectors=pq_subvectors,
             )
         else:
             raise ValueError(f"Unknown index type: {index_type}")

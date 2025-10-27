@@ -443,7 +443,7 @@ def create_library(
 
     - **name**: Unique name for the library
     - **description**: Optional description
-    - **index_type**: Type of index (brute_force, kd_tree, lsh, hnsw)
+    - **index_type**: Type of index (brute_force, kd_tree, lsh, hnsw, ivf)
     - **embedding_model**: Optional model override
     - **quantization_config**: Optional quantization configuration (opt-in)
     """

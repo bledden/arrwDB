@@ -154,7 +154,7 @@ class LibraryMetadata(BaseModel):
 
     description: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    index_type: Literal["brute_force", "kd_tree", "lsh", "hnsw"] = "brute_force"
+    index_type: Literal["brute_force", "kd_tree", "lsh", "hnsw", "ivf"] = "brute_force"
     embedding_dimension: int = Field(default=settings.EMBEDDING_DIMENSION, ge=1, le=4096)
     embedding_model: str = Field(default="embed-english-v3.0")
     quantization: Optional[QuantizationMetadata] = Field(None, description="Quantization settings (if enabled)")

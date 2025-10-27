@@ -56,8 +56,8 @@ class CreateLibraryRequest(BaseModel):
     description: Optional[str] = Field(None, description="Optional description")
     index_type: str = Field(
         default="brute_force",
-        pattern="^(brute_force|kd_tree|lsh|hnsw)$",
-        description="Index type: brute_force, kd_tree, lsh, or hnsw",
+        pattern="^(brute_force|kd_tree|lsh|hnsw|ivf)$",
+        description="Index type: brute_force, kd_tree, lsh, hnsw, or ivf",
     )
     embedding_model: Optional[str] = Field(
         None, description="Optional embedding model override"
@@ -697,7 +697,7 @@ class RebuildIndexRequest(BaseModel):
 
     index_type: Optional[str] = Field(
         None,
-        pattern="^(brute_force|kd_tree|lsh|hnsw)$",
+        pattern="^(brute_force|kd_tree|lsh|hnsw|ivf)$",
         description="New index type (optional, keeps current if not specified)",
     )
     index_config: Optional[dict] = Field(
