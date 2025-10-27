@@ -11,6 +11,9 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
+import asyncio
+import logging
+
 from app.models.base import Chunk, Document, Library, LibraryMetadata
 from core.embedding_contract import LibraryEmbeddingContract
 from core.vector_store import VectorStore
@@ -22,6 +25,8 @@ from infrastructure.indexes.kd_tree import KDTreeIndex
 from infrastructure.indexes.lsh import LSHIndex
 from infrastructure.persistence.snapshot import SnapshotManager
 from infrastructure.persistence.wal import OperationType, WALEntry, WriteAheadLog
+
+logger = logging.getLogger(__name__)
 
 
 class LibraryNotFoundError(Exception):
@@ -62,15 +67,17 @@ class LibraryRepository:
     Multiple concurrent reads are allowed, but writes are exclusive.
     """
 
-    def __init__(self, data_dir: Path):
+    def __init__(self, data_dir: Path, event_bus=None):
         """
         Initialize the repository.
 
         Args:
             data_dir: Base directory for data storage (vectors, indexes, etc.)
+            event_bus: Optional event bus for change data capture (CDC)
         """
         self._data_dir = data_dir
         self._data_dir.mkdir(parents=True, exist_ok=True)
+        self._event_bus = event_bus  # Optional CDC event bus
 
         # Core data structures
         self._libraries: Dict[UUID, Library] = {}
@@ -97,6 +104,52 @@ class LibraryRepository:
 
         # Load from persistence on startup
         self._load_from_disk()
+
+    def _publish_event(self, event_type, library_id: UUID, data: dict):
+        """
+        Publish an event to the event bus (if configured).
+
+        This is a fire-and-forget operation that doesn't block.
+
+        Args:
+            event_type: EventType enum value
+            library_id: Library where event occurred
+            data: Event-specific data payload
+        """
+        if self._event_bus is None:
+            return
+
+        try:
+            # Import here to avoid circular dependency
+            from app.events.bus import Event
+            from datetime import datetime
+
+            event = Event(
+                type=event_type,
+                library_id=library_id,
+                data=data,
+                timestamp=datetime.utcnow(),
+            )
+
+            # Publish asynchronously using thread-safe method
+            # Get event loop from event bus (set during startup)
+            event_loop = self._event_bus._loop if self._event_bus else None
+
+            if event_loop and not event_loop.is_closed():
+                # Use run_coroutine_threadsafe - designed for calling async from sync threads
+                logger.info(f"Publishing event {event_type.value} to event bus")
+                future = asyncio.run_coroutine_threadsafe(
+                    self._event_bus.publish(event),
+                    event_loop
+                )
+                # Don't wait for result - fire and forget
+                logger.info(f"Event {event_type.value} queued successfully")
+            else:
+                logger.warning(f"Event {event_type.value} skipped (event bus not ready)")
+
+        except Exception as e:
+            # Never let event publishing break repository operations
+            logger.error(f"Failed to publish event {event_type}: {e}")
 
     def create_library(self, library: Library) -> Library:
         """
@@ -158,6 +211,19 @@ class LibraryRepository:
             # Save snapshot periodically (every 10 libraries)
             if len(self._libraries) % 10 == 0:
                 self._save_snapshot()
+
+            # Publish event
+            from app.events.bus import EventType
+            self._publish_event(
+                EventType.LIBRARY_CREATED,
+                library.id,
+                {
+                    "library_id": str(library.id),
+                    "name": library.name,
+                    "index_type": library.metadata.index_type,
+                    "embedding_dimension": library.metadata.embedding_dimension,
+                },
+            )
 
             return library
 
@@ -259,6 +325,18 @@ class LibraryRepository:
 
             # Update library's document list
             self._libraries[library_id].documents.append(document)
+
+            # Publish event
+            from app.events.bus import EventType
+            self._publish_event(
+                EventType.DOCUMENT_ADDED,
+                library_id,
+                {
+                    "document_id": str(document.id),
+                    "title": document.metadata.title,
+                    "num_chunks": len(document.chunks),
+                },
+            )
 
             return document
 

@@ -1831,6 +1831,51 @@ async def startup_event() -> None:
     if settings.workers > 1:
         logger.warning("⚠️  Running with multiple workers. Be aware of in-memory state limitations.")
 
+    # Start event bus for real-time notifications (CDC)
+    from app.events.bus import get_event_bus, Event
+    event_bus = get_event_bus()
+    await event_bus.start()
+    logger.info("✓ Event bus started for real-time notifications")
+
+    # Connect event bus to WebSocket manager for real-time event broadcasting
+    from app.websockets.manager import get_connection_manager
+    connection_manager = get_connection_manager()
+
+    async def forward_event_to_websockets(event: Event):
+        """Forward events from event bus to WebSocket subscribers."""
+        await connection_manager.broadcast_event(
+            event_type=event.type.value,
+            library_id=event.library_id,
+            data=event.data,
+        )
+
+    # Subscribe to all events for WebSocket forwarding
+    event_bus.subscribe(forward_event_to_websockets)
+    logger.info("✓ WebSocket event forwarding enabled")
+
+    # Start job queue for background operations
+    from app.jobs.queue import get_job_queue
+    from app.jobs.handlers import register_default_handlers
+    from app.api.dependencies import get_library_service
+
+    job_queue = get_job_queue()
+    await job_queue.start()
+    logger.info("✓ Job queue started for background operations")
+
+    # Register default job handlers
+    try:
+        from app.api.dependencies import get_library_repository, get_embedding_service
+
+        # Create actual service instances (not Depends wrappers)
+        library_repository = get_library_repository()
+        embedding_service_instance = get_embedding_service()
+        library_service_instance = LibraryService(library_repository, embedding_service_instance)
+
+        register_default_handlers(job_queue, library_service_instance)
+        logger.info("✓ Job handlers registered")
+    except Exception as e:
+        logger.error(f"✗ Failed to register job handlers: {e}")
+
     # Restore state and regenerate embeddings for any loaded libraries
     try:
         from app.api.dependencies import library_service
@@ -1870,6 +1915,24 @@ async def shutdown_event() -> None:
     logger.info("Vector Database API Shutting Down")
     logger.info("=" * 60)
     logger.info("Saving state to disk...")
+
+    # Stop job queue
+    try:
+        from app.jobs.queue import get_job_queue
+        job_queue = get_job_queue()
+        await job_queue.stop()
+        logger.info("✓ Job queue stopped")
+    except Exception as e:
+        logger.error(f"✗ Failed to stop job queue: {e}")
+
+    # Stop event bus
+    try:
+        from app.events.bus import get_event_bus
+        event_bus = get_event_bus()
+        await event_bus.stop()
+        logger.info("✓ Event bus stopped")
+    except Exception as e:
+        logger.error(f"✗ Failed to stop event bus: {e}")
 
     try:
         # Get the library service and trigger a save
@@ -1976,6 +2039,22 @@ async def get_workflow_status(workflow_id: str):
 
 # Include v1 router (MUST be after all v1_router endpoints are defined)
 app.include_router(v1_router)
+
+# Include streaming router for async/real-time operations
+from app.api import streaming
+app.include_router(streaming.router, prefix=API_V1_PREFIX, tags=["streaming"])
+
+# Include WebSocket router for bidirectional real-time communication
+from app.api import websocket_routes
+app.include_router(websocket_routes.router)
+
+# Include job queue router for background operations
+from app.api import job_routes
+app.include_router(job_routes.router)
+
+# Include event bus router for CDC and event monitoring
+from app.api import event_routes
+app.include_router(event_routes.router)
 
 
 # Root endpoint

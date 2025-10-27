@@ -36,8 +36,11 @@ def get_library_repository() -> LibraryRepository:
     Returns:
         The library repository instance.
     """
+    from app.events.bus import get_event_bus
+
     data_dir = get_data_dir()
-    return LibraryRepository(data_dir)
+    event_bus = get_event_bus()
+    return LibraryRepository(data_dir, event_bus=event_bus)
 
 
 @lru_cache()
