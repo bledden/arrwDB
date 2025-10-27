@@ -87,7 +87,7 @@ class IVFIndex(VectorIndex):
             pq_subvectors: Number of PQ subvectors (if use_pq=True)
                           More = better accuracy, less compression
         """
-        super().__init__(vector_store)
+        self._vector_store = vector_store
         self._n_clusters = n_clusters
         self._nprobe = nprobe
         self._use_pq = use_pq
@@ -95,6 +95,9 @@ class IVFIndex(VectorIndex):
 
         # Centroids: shape (n_clusters, dimensions)
         self._centroids: Optional[np.ndarray] = None
+
+        # Vector ID tracking: map vector_id -> vector_index in store
+        self._vector_id_to_index: Dict[UUID, int] = {}
 
         # Inverted lists: dict mapping cluster_id -> list of vector_ids
         self._inverted_lists: Dict[int, List[UUID]] = {}
@@ -384,3 +387,101 @@ class IVFIndex(VectorIndex):
                 stats["compression_ratio"] = f"{8 * len(self._pq_codebooks) / dims:.2f}x"
 
         return stats
+
+    def add_vector(self, vector_id: UUID, vector_index: int) -> None:
+        """
+        Add a vector to the IVF index.
+
+        Args:
+            vector_id: ID of the vector to add
+            vector_index: Index of the vector in the vector store
+        """
+        # Track vector
+        self._vector_id_to_index[vector_id] = vector_index
+
+        # If index is built, assign to nearest cluster
+        if self._built and self._centroids is not None:
+            vector = self._vector_store.get_vector(vector_index)
+            distances = np.linalg.norm(self._centroids - vector, axis=1)
+            cluster_id = int(np.argmin(distances))
+
+            self._inverted_lists[cluster_id].append(vector_id)
+            if self._list_sizes is not None:
+                self._list_sizes[cluster_id] += 1
+
+    def remove_vector(self, vector_id: UUID) -> bool:
+        """
+        Remove a vector from the IVF index.
+
+        Args:
+            vector_id: ID of the vector to remove
+
+        Returns:
+            True if vector was removed, False if not found
+        """
+        if vector_id not in self._vector_id_to_index:
+            return False
+
+        # Remove from tracking
+        del self._vector_id_to_index[vector_id]
+
+        # Remove from inverted lists if index is built
+        if self._built:
+            for cluster_id, inverted_list in self._inverted_lists.items():
+                if vector_id in inverted_list:
+                    inverted_list.remove(vector_id)
+                    if self._list_sizes is not None:
+                        self._list_sizes[cluster_id] -= 1
+                    return True
+
+        return True
+
+    def rebuild(self) -> None:
+        """
+        Rebuild the IVF index from scratch.
+
+        This will re-cluster all vectors and rebuild the inverted lists.
+        """
+        logger.info("Rebuilding IVF index...")
+
+        # Get all vector IDs and indices
+        all_ids = list(self._vector_id_to_index.keys())
+        if not all_ids:
+            self._built = False
+            self._centroids = None
+            self._inverted_lists = {}
+            return
+
+        # Get all vectors
+        vectors = np.array([
+            self._vector_store.get_vector(self._vector_id_to_index[vid])
+            for vid in all_ids
+        ])
+
+        # Rebuild clustering
+        self._build_index(vectors, all_ids)
+
+        logger.info(f"IVF index rebuilt with {len(all_ids)} vectors")
+
+    def size(self) -> int:
+        """Get the number of vectors in the index."""
+        return len(self._vector_id_to_index)
+
+    def clear(self) -> None:
+        """Remove all vectors from the index."""
+        self._vector_id_to_index.clear()
+        self._inverted_lists = {}
+        self._centroids = None
+        self._built = False
+        self._list_sizes = None
+        self._pq_codebooks = None
+
+    @property
+    def supports_incremental_updates(self) -> bool:
+        """IVF supports incremental updates but may need periodic rebalancing."""
+        return True
+
+    @property
+    def index_type(self) -> str:
+        """Get the index type."""
+        return "ivf"

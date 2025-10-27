@@ -1,0 +1,571 @@
+"""
+Streaming and async endpoints for real-time data operations.
+
+This module provides:
+- Async streaming document ingestion (NDJSON)
+- Streaming search results
+- Non-blocking operations for large-scale data
+- Server-Sent Events (SSE) for real-time notifications
+"""
+
+import asyncio
+import json
+import logging
+from typing import Optional
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
+from sse_starlette.sse import EventSourceResponse
+
+from app.api.dependencies import get_library_service
+from app.services.library_service import LibraryService
+from app.events.bus import Event, EventBus, EventType, get_event_bus
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+
+@router.post("/libraries/{library_id}/documents/stream")
+async def stream_documents(
+    library_id: UUID,
+    request: Request,
+    service: LibraryService = Depends(get_library_service),
+):
+    """
+    Stream documents via newline-delimited JSON (NDJSON).
+
+    Accepts chunked transfer encoding with one JSON document per line:
+    ```
+    {"title": "Doc 1", "texts": ["chunk1", "chunk2"], "tags": ["tag1"]}
+    {"title": "Doc 2", "texts": ["chunk1", "chunk2"]}
+    ...
+    ```
+
+    Returns NDJSON stream with status updates for each document:
+    ```
+    {"status": "processing", "title": "Doc 1"}
+    {"status": "completed", "id": "...", "title": "Doc 1", "num_chunks": 2}
+    {"status": "processing", "title": "Doc 2"}
+    {"status": "completed", "id": "...", "title": "Doc 2", "num_chunks": 2}
+    ...
+    ```
+
+    Errors are included in stream:
+    ```
+    {"status": "error", "title": "Doc 3", "error": "Invalid embedding dimension"}
+    ```
+
+    Args:
+        library_id: Library to add documents to
+        request: FastAPI request object with streaming body
+        service: Library service dependency
+
+    Returns:
+        StreamingResponse with NDJSON status updates
+
+    Example:
+        ```bash
+        # Stream from file
+        cat documents.ndjson | curl -X POST \\
+          http://localhost:8000/v1/libraries/{id}/documents/stream \\
+          -H "Content-Type: application/x-ndjson" \\
+          --data-binary @-
+
+        # Generate and stream
+        python generate_docs.py | curl -X POST \\
+          http://localhost:8000/v1/libraries/{id}/documents/stream \\
+          -H "Content-Type: application/x-ndjson" \\
+          --data-binary @-
+        ```
+    """
+    logger.info(f"Starting streaming ingestion for library {library_id}")
+
+    async def process_stream():
+        """Process incoming NDJSON stream and yield status updates."""
+        total_processed = 0
+        total_succeeded = 0
+        total_failed = 0
+        total_chunks = 0
+
+        try:
+            # Buffer to accumulate partial lines
+            buffer = ""
+
+            # Read request body as chunks and process line by line
+            async for chunk_bytes in request.stream():
+                # Decode chunk and add to buffer
+                chunk_text = chunk_bytes.decode("utf-8")
+                buffer += chunk_text
+
+                # Process complete lines in buffer
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+                    line = line.strip()
+
+                    # Skip empty lines
+                    if not line:
+                        continue
+
+                try:
+                    # Parse JSON document
+                    doc_data = json.loads(line)
+                    title = doc_data.get("title", f"Document {total_processed + 1}")
+
+                    # Send processing status
+                    yield json.dumps({"status": "processing", "title": title}) + "\n"
+
+                    # Add document (run in thread pool to avoid blocking)
+                    result = await asyncio.to_thread(
+                        service.add_document_with_text,
+                        library_id,
+                        title=doc_data.get("title", "Untitled"),
+                        texts=doc_data.get("texts", []),
+                        author=doc_data.get("author"),
+                        document_type=doc_data.get("document_type", "text"),
+                        source_url=doc_data.get("source_url"),
+                        tags=doc_data.get("tags"),
+                    )
+
+                    # Send success status
+                    num_chunks = len(result.chunks)
+                    total_chunks += num_chunks
+                    total_succeeded += 1
+
+                    yield json.dumps({
+                        "status": "completed",
+                        "id": str(result.id),
+                        "title": title,
+                        "num_chunks": num_chunks,
+                    }) + "\n"
+
+                except json.JSONDecodeError as e:
+                    # Invalid JSON
+                    total_failed += 1
+                    yield json.dumps({
+                        "status": "error",
+                        "error": f"Invalid JSON: {e}",
+                        "line": line[:100],
+                    }) + "\n"
+
+                except Exception as e:
+                    # Document add failed
+                    total_failed += 1
+                    yield json.dumps({
+                        "status": "error",
+                        "title": doc_data.get("title", "Unknown"),
+                        "error": str(e),
+                    }) + "\n"
+                    logger.error(f"Failed to add document: {e}")
+
+                finally:
+                    total_processed += 1
+
+            # Process any remaining data in buffer (last line without newline)
+            if buffer.strip():
+                line = buffer.strip()
+                try:
+                    doc_data = json.loads(line)
+                    title = doc_data.get("title", f"Document {total_processed + 1}")
+                    yield json.dumps({"status": "processing", "title": title}) + "\n"
+
+                    result = await asyncio.to_thread(
+                        service.add_document_with_text,
+                        library_id,
+                        title=doc_data.get("title", "Untitled"),
+                        texts=doc_data.get("texts", []),
+                        author=doc_data.get("author"),
+                        document_type=doc_data.get("document_type", "text"),
+                        source_url=doc_data.get("source_url"),
+                        tags=doc_data.get("tags"),
+                    )
+
+                    num_chunks = len(result.chunks)
+                    total_chunks += num_chunks
+                    total_succeeded += 1
+
+                    yield json.dumps({
+                        "status": "completed",
+                        "id": str(result.id),
+                        "title": title,
+                        "num_chunks": num_chunks,
+                    }) + "\n"
+
+                except Exception as e:
+                    total_failed += 1
+                    yield json.dumps({
+                        "status": "error",
+                        "title": doc_data.get("title", "Unknown") if 'doc_data' in locals() else "Unknown",
+                        "error": str(e),
+                    }) + "\n"
+
+                finally:
+                    total_processed += 1
+
+            # Send final summary
+            yield json.dumps({
+                "status": "summary",
+                "total_processed": total_processed,
+                "total_succeeded": total_succeeded,
+                "total_failed": total_failed,
+                "total_chunks": total_chunks,
+            }) + "\n"
+
+            logger.info(
+                f"Streaming ingestion complete for library {library_id}: "
+                f"{total_succeeded}/{total_processed} succeeded, {total_chunks} chunks"
+            )
+
+        except Exception as e:
+            # Stream processing error
+            logger.error(f"Stream processing error: {e}")
+            yield json.dumps({
+                "status": "stream_error",
+                "error": str(e),
+            }) + "\n"
+
+    return StreamingResponse(
+        process_stream(),
+        media_type="application/x-ndjson",
+    )
+
+
+@router.post("/libraries/{library_id}/search/stream")
+async def stream_search_results(
+    library_id: UUID,
+    query: str,
+    k: int = 10,
+    distance_threshold: Optional[float] = None,
+    service: LibraryService = Depends(get_library_service),
+):
+    """
+    Stream search results as they're found (for large k or progressive display).
+
+    Returns NDJSON stream with one result per line:
+    ```
+    {"rank": 1, "id": "...", "score": 0.95, "text": "...", "metadata": {...}}
+    {"rank": 2, "id": "...", "score": 0.89, "text": "...", "metadata": {...}}
+    ...
+    ```
+
+    Args:
+        library_id: Library to search
+        query: Search query text
+        k: Number of results to return
+        distance_threshold: Optional maximum distance threshold
+        service: Library service dependency
+
+    Returns:
+        StreamingResponse with NDJSON results
+
+    Example:
+        ```bash
+        curl -X POST \\
+          "http://localhost:8000/v1/libraries/{id}/search/stream?query=machine+learning&k=100" \\
+          | jq -c '.'  # Pretty-print each result
+        ```
+    """
+    logger.info(f"Streaming search for library {library_id}: query='{query}', k={k}")
+
+    async def result_stream():
+        """Execute search and stream results."""
+        try:
+            # Execute search (run in thread pool)
+            results = await asyncio.to_thread(
+                service.search,
+                library_id,
+                query,
+                k=k,
+                distance_threshold=distance_threshold,
+            )
+
+            # Stream results one by one
+            for rank, result in enumerate(results, start=1):
+                yield json.dumps({
+                    "rank": rank,
+                    "chunk_id": str(result["chunk_id"]),
+                    "document_id": str(result["document_id"]),
+                    "score": result["score"],
+                    "distance": result["distance"],
+                    "text": result["text"],
+                    "metadata": result.get("metadata", {}),
+                }) + "\n"
+
+            # Send summary
+            yield json.dumps({
+                "status": "complete",
+                "total_results": len(results),
+            }) + "\n"
+
+        except Exception as e:
+            # Search error
+            logger.error(f"Search error: {e}")
+            yield json.dumps({
+                "status": "error",
+                "error": str(e),
+            }) + "\n"
+
+    return StreamingResponse(
+        result_stream(),
+        media_type="application/x-ndjson",
+    )
+
+
+@router.get("/libraries/{library_id}/documents/stream")
+async def stream_all_documents(
+    library_id: UUID,
+    batch_size: int = 100,
+    service: LibraryService = Depends(get_library_service),
+):
+    """
+    Stream all documents from a library (for export/backup).
+
+    Returns NDJSON stream with one document per line.
+
+    Args:
+        library_id: Library to export
+        batch_size: Number of documents to fetch per batch
+        service: Library service dependency
+
+    Returns:
+        StreamingResponse with NDJSON documents
+
+    Example:
+        ```bash
+        # Export to file
+        curl http://localhost:8000/v1/libraries/{id}/documents/stream \\
+          > library_backup.ndjson
+
+        # Pipe to another service
+        curl http://localhost:8000/v1/libraries/{id}/documents/stream \\
+          | python process_documents.py
+        ```
+    """
+    logger.info(f"Streaming all documents from library {library_id}")
+
+    async def document_stream():
+        """Stream all documents."""
+        try:
+            # Get library
+            library = await asyncio.to_thread(
+                service.get_library,
+                library_id
+            )
+
+            # Stream documents
+            for document in library.documents:
+                yield json.dumps({
+                    "id": str(document.id),
+                    "title": document.metadata.title,
+                    "author": document.metadata.author,
+                    "document_type": document.metadata.document_type,
+                    "source_url": document.metadata.source_url,
+                    "tags": document.metadata.tags,
+                    "created_at": document.metadata.created_at.isoformat(),
+                    "chunks": [
+                        {
+                            "id": str(chunk.id),
+                            "text": chunk.text,
+                            "metadata": {
+                                "position": chunk.metadata.position,
+                                "document_id": str(chunk.metadata.document_id),
+                            }
+                        }
+                        for chunk in document.chunks
+                    ]
+                }) + "\n"
+
+            # Send summary
+            yield json.dumps({
+                "status": "complete",
+                "total_documents": len(library.documents),
+            }) + "\n"
+
+        except Exception as e:
+            logger.error(f"Document streaming error: {e}")
+            yield json.dumps({
+                "status": "error",
+                "error": str(e),
+            }) + "\n"
+
+    return StreamingResponse(
+        document_stream(),
+        media_type="application/x-ndjson",
+    )
+
+
+@router.get("/events/stream")
+async def stream_events(
+    library_id: Optional[UUID] = None,
+    event_types: Optional[str] = None,
+):
+    """
+    Stream real-time events via Server-Sent Events (SSE).
+
+    This endpoint allows clients to subscribe to database events in real-time:
+    - Library created/deleted
+    - Document added/updated/deleted
+    - Index rebuilt/optimized
+    - Batch operations
+
+    Args:
+        library_id: Optional library ID to filter events (only events from this library)
+        event_types: Optional comma-separated event types to subscribe to
+                     (e.g., "document.added,document.deleted")
+
+    Returns:
+        EventSourceResponse with SSE stream
+
+    Example:
+        ```javascript
+        // JavaScript client
+        const eventSource = new EventSource('/v1/events/stream?library_id=...');
+
+        eventSource.addEventListener('document.added', (e) => {
+          const data = JSON.parse(e.data);
+          console.log('New document:', data.document_id);
+        });
+
+        eventSource.addEventListener('index.rebuilt', (e) => {
+          console.log('Index rebuilt!');
+        });
+        ```
+
+        ```python
+        # Python client (using sseclient-py)
+        import sseclient
+        import requests
+
+        response = requests.get(
+            'http://localhost:8000/v1/events/stream',
+            stream=True
+        )
+        client = sseclient.SSEClient(response)
+
+        for event in client.events():
+            print(f"Event: {event.event}")
+            print(f"Data: {event.data}")
+        ```
+
+        ```bash
+        # curl client
+        curl -N http://localhost:8000/v1/events/stream
+        ```
+    """
+    logger.info(
+        f"SSE client connected: library_id={library_id}, event_types={event_types}"
+    )
+
+    # Parse event type filter
+    event_type_filter = None
+    if event_types:
+        try:
+            event_type_filter = set(
+                EventType(et.strip()) for et in event_types.split(",")
+            )
+        except ValueError as e:
+            raise HTTPException(400, f"Invalid event type: {e}")
+
+    # Get event bus
+    event_bus = get_event_bus()
+
+    async def event_generator():
+        """Generate SSE events from event bus."""
+        # Create a queue for this client
+        queue: asyncio.Queue[Event] = asyncio.Queue()
+
+        # Event callback
+        async def on_event(event: Event):
+            """Filter and queue events for this client."""
+            # Filter by library_id if specified
+            if library_id is not None and event.library_id != library_id:
+                return
+
+            # Filter by event type if specified
+            if event_type_filter is not None and event.type not in event_type_filter:
+                return
+
+            # Queue event for delivery
+            await queue.put(event)
+
+        # Subscribe to events
+        if event_type_filter:
+            for event_type in event_type_filter:
+                event_bus.subscribe(on_event, event_type)
+        else:
+            event_bus.subscribe(on_event)  # Subscribe to all events
+
+        try:
+            # Send heartbeat every 30 seconds to keep connection alive
+            heartbeat_task = asyncio.create_task(_heartbeat(queue))
+
+            while True:
+                try:
+                    # Wait for event with timeout
+                    event = await asyncio.wait_for(queue.get(), timeout=30.0)
+
+                    if event == "heartbeat":
+                        # Send SSE comment (keeps connection alive)
+                        yield {
+                            "comment": "heartbeat"
+                        }
+                    else:
+                        # Send actual event
+                        yield {
+                            "event": event.type.value,
+                            "data": json.dumps({
+                                "library_id": str(event.library_id),
+                                "timestamp": event.timestamp.isoformat(),
+                                **event.data,
+                            }),
+                        }
+
+                except asyncio.TimeoutError:
+                    # Send heartbeat comment
+                    yield {
+                        "comment": "heartbeat"
+                    }
+
+        except asyncio.CancelledError:
+            # Client disconnected
+            logger.info("SSE client disconnected")
+            heartbeat_task.cancel()
+            # Unsubscribe
+            if event_type_filter:
+                for event_type in event_type_filter:
+                    event_bus.unsubscribe(on_event, event_type)
+            else:
+                event_bus.unsubscribe(on_event)
+            raise
+
+    return EventSourceResponse(event_generator())
+
+
+async def _heartbeat(queue: asyncio.Queue):
+    """Send periodic heartbeats to keep SSE connection alive."""
+    while True:
+        await asyncio.sleep(30)
+        await queue.put("heartbeat")
+
+
+@router.get("/events/statistics")
+async def get_event_statistics():
+    """
+    Get event bus statistics.
+
+    Returns:
+        Event bus statistics including:
+        - total_published: Total events published
+        - total_delivered: Total events delivered to subscribers
+        - total_errors: Errors during delivery
+        - pending_events: Events in queue
+        - subscriber_count: Active subscribers
+
+    Example:
+        ```bash
+        curl http://localhost:8000/v1/events/statistics
+        ```
+    """
+    event_bus = get_event_bus()
+    return event_bus.get_statistics()

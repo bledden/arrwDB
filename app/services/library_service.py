@@ -91,7 +91,7 @@ class LibraryService:
         logger.info(f"Creating library '{name}' with index type '{index_type}'")
 
         # Validate index type
-        valid_index_types = {"brute_force", "kd_tree", "lsh", "hnsw"}
+        valid_index_types = {"brute_force", "kd_tree", "lsh", "hnsw", "ivf"}
         if index_type not in valid_index_types:
             raise ValueError(
                 f"Invalid index_type '{index_type}'. "

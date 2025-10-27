@@ -42,7 +42,7 @@ def main():
         }
     )
 
-    if lib_response.status_code != 200:
+    if lib_response.status_code not in [200, 201]:
         print_error(f"Failed to create library: {lib_response.status_code}")
         print(lib_response.text)
         return
