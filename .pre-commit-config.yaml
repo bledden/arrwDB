@@ -1,0 +1,136 @@
+# Pre-commit hooks for code quality and security
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+# Update hooks: pre-commit autoupdate
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # Prevent large files from being committed (> 500KB)
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+
+      # Ensure files end with newline
+      - id: end-of-file-fixer
+
+      # Remove trailing whitespace
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+
+      # Check YAML syntax
+      - id: check-yaml
+        args: ['--safe']
+
+      # Check JSON syntax
+      - id: check-json
+
+      # Check TOML syntax
+      - id: check-toml
+
+      # Detect private keys
+      - id: detect-private-key
+
+      # Check for merge conflict markers
+      - id: check-merge-conflict
+
+      # Check for debugger imports
+      - id: debug-statements
+
+      # Check for mixed line endings
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+      # Check Python syntax
+      - id: check-ast
+
+      # Check for files that would conflict on case-insensitive filesystems
+      - id: check-case-conflict
+
+  # Python code formatting with Black
+  - repo: https://github.com/psf/black
+    rev: 23.11.0
+    hooks:
+      - id: black
+        language_version: python3
+        args: ['--line-length=100']
+
+  # Import sorting with isort
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        args: ['--profile=black', '--line-length=100']
+
+  # Linting with flake8
+  - repo: https://github.com/PyCQA/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+        args: [
+          '--max-line-length=100',
+          '--extend-ignore=E203,W503',  # Ignore conflicts with Black
+          '--max-complexity=15',  # Cyclomatic complexity threshold
+        ]
+        additional_dependencies:
+          - flake8-bugbear  # Find likely bugs
+          - flake8-comprehensions  # Better list/dict comprehensions
+          - flake8-simplify  # Suggest simplifications
+
+  # Type checking with mypy
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.7.1
+    hooks:
+      - id: mypy
+        args: [
+          '--ignore-missing-imports',
+          '--no-strict-optional',
+          '--warn-redundant-casts',
+          '--warn-unused-ignores',
+        ]
+        additional_dependencies:
+          - types-requests
+          - types-python-dateutil
+
+  # Security checks with bandit
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: ['-ll']  # Only show medium+ severity
+        exclude: ^tests/
+
+  # Docstring coverage
+  - repo: https://github.com/econchick/interrogate
+    rev: 1.5.0
+    hooks:
+      - id: interrogate
+        args: [
+          '--fail-under=50',  # Require 50% docstring coverage
+          '--ignore-init-method',
+          '--ignore-init-module',
+          '--ignore-magic',
+          '--ignore-nested-functions',
+          '--exclude', 'tests',
+        ]
+
+  # Check requirements.txt formatting
+  - repo: https://github.com/pre-commit/mirrors-autopep8
+    rev: v2.0.4
+    hooks:
+      - id: autopep8
+
+# CI: Run specific hooks in CI/CD pipeline
+# Local: All hooks run on commit
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false
