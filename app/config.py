@@ -241,6 +241,57 @@ class Settings(BaseSettings):
     # Index rebuild threshold (for dynamic indexes like KD-Tree)
     INDEX_REBUILD_THRESHOLD: int = 100
 
+    # ============================================================
+    # CORS (Cross-Origin Resource Sharing) Configuration
+    # ============================================================
+
+    # Enable CORS middleware
+    CORS_ENABLED: bool = True
+
+    # Allowed origins (comma-separated)
+    # Production: Set to specific domains (e.g., "https://app.example.com,https://admin.example.com")
+    # Development: "*" allows all origins (INSECURE - only for dev)
+    CORS_ORIGINS: str = "*"
+
+    # Allow credentials (cookies, authorization headers)
+    # If True, CORS_ORIGINS cannot be "*" (security requirement)
+    CORS_ALLOW_CREDENTIALS: bool = False
+
+    # Allowed HTTP methods
+    CORS_ALLOW_METHODS: str = "GET,POST,PUT,DELETE,PATCH,OPTIONS"
+
+    # Allowed headers
+    # Use "*" for all headers, or specify: "Content-Type,Authorization,X-API-Key"
+    CORS_ALLOW_HEADERS: str = "*"
+
+    # Headers to expose to browser
+    CORS_EXPOSE_HEADERS: str = "X-Total-Count,X-Request-ID"
+
+    # Cache preflight requests (in seconds)
+    # 3600 = 1 hour (reduces OPTIONS requests)
+    CORS_MAX_AGE: int = 3600
+
+    # ============================================================
+    # Security Headers
+    # ============================================================
+
+    # Enable security headers middleware
+    SECURITY_HEADERS_ENABLED: bool = True
+
+    # ============================================================
+    # Request Size Limits
+    # ============================================================
+
+    # Maximum request body size (in bytes)
+    # 100MB = 100 * 1024 * 1024 bytes
+    # Prevents DoS attacks via large payloads
+    MAX_REQUEST_SIZE: int = 100 * 1024 * 1024
+
+    # Trusted hosts (comma-separated)
+    # Set to specific domains in production
+    # Example: "api.example.com,api-staging.example.com"
+    ALLOWED_HOSTS: str = "*"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

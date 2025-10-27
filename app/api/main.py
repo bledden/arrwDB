@@ -120,6 +120,53 @@ app.state.limiter = limiter
 # Add rate limit exception handler
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# ============================================================
+# Middleware Configuration
+# ============================================================
+
+# Add CORS middleware (if enabled)
+if settings.CORS_ENABLED:
+    from fastapi.middleware.cors import CORSMiddleware
+
+    # Parse origins from comma-separated string
+    origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
+
+    # Parse methods from comma-separated string
+    methods = [method.strip() for method in settings.CORS_ALLOW_METHODS.split(",")]
+
+    # Parse expose headers from comma-separated string
+    expose_headers = [header.strip() for header in settings.CORS_EXPOSE_HEADERS.split(",")]
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
+        allow_methods=methods,
+        allow_headers=["*"] if settings.CORS_ALLOW_HEADERS == "*" else settings.CORS_ALLOW_HEADERS.split(","),
+        expose_headers=expose_headers,
+        max_age=settings.CORS_MAX_AGE,
+    )
+    logger.info(f"CORS enabled with origins: {origins}")
+
+# Add Security Headers middleware (if enabled)
+if settings.SECURITY_HEADERS_ENABLED:
+    from app.middleware.security import SecurityHeadersMiddleware
+
+    app.add_middleware(SecurityHeadersMiddleware)
+    logger.info("Security headers middleware enabled")
+
+# Add Request Size Limit middleware
+from app.middleware.security import RequestSizeLimitMiddleware
+
+app.add_middleware(RequestSizeLimitMiddleware)
+logger.info(f"Request size limit: {settings.MAX_REQUEST_SIZE / (1024 * 1024):.0f}MB")
+
+# Add Request ID middleware (for tracing)
+from app.middleware.security import RequestIDMiddleware
+
+app.add_middleware(RequestIDMiddleware)
+logger.info("Request ID tracking enabled")
+
 # Add Prometheus metrics instrumentation
 # This automatically tracks:
 # - Request count by endpoint, method, status code
