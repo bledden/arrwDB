@@ -2107,6 +2107,10 @@ app.include_router(event_routes.router)
 from app.api import health
 app.include_router(health.router)
 
+# Include webhook routes for event notifications
+from app.api import webhook_routes
+app.include_router(webhook_routes.router)
+
 
 # Root endpoint
 
