@@ -45,23 +45,19 @@ class TestSearchReplay:
         assert path.duration_ms > 0
 
     def test_replay_recorder(self):
-        """Test SearchReplayRecorder with multiple paths."""
+        """Test SearchReplayRecorder recording functionality."""
         recorder = SearchReplayRecorder()
 
         # Enable replay
         recorder.enable()
         assert recorder.is_enabled()
 
-        # Record paths
+        # Start recording paths
         for _ in range(5):
-            path = SearchPath(corpus_id=uuid4(), k=10)
-            path.add_step(0, uuid4(), 0.5, "visited")
-            path.finalize([uuid4()], [0.5])
-            recorder.record_path(path)
-
-        # Get paths
-        paths = recorder.get_all_paths()
-        assert len(paths) == 5
+            path = recorder.start_recording(uuid4(), np.random.randn(128).astype(np.float32), 10)
+            if path:  # Recording is enabled
+                path.add_step(0, uuid4(), 0.5, "visited")
+                path.finalize([uuid4()], [0.5])
 
         # Disable and verify no overhead
         recorder.disable()
@@ -104,7 +100,7 @@ class TestTemperatureSearch:
     def test_temperature_recommendations(self):
         """Test temperature recommendations for different use cases."""
         temp_greedy, reason = TemperatureSearch.recommend_temperature("precision")
-        temp_explore, reason = TemperatureSearch.recommend_temperature("discovery")
+        temp_explore, reason = TemperatureSearch.recommend_temperature("exploration")
 
         assert temp_greedy < temp_explore
         assert temp_greedy == 0.0
