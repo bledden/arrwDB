@@ -2119,6 +2119,10 @@ app.include_router(search_replay_routes.router, prefix=API_V1_PREFIX)
 from app.api import temperature_search_routes
 app.include_router(temperature_search_routes.router, prefix=API_V1_PREFIX)
 
+# Include IndexOracle routes for adaptive index selection (NOVEL FEATURE)
+from app.api import index_oracle_routes
+app.include_router(index_oracle_routes.router, prefix=API_V1_PREFIX)
+
 
 # Root endpoint
 
