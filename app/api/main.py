@@ -2115,6 +2115,10 @@ app.include_router(webhook_routes.router)
 from app.api import search_replay_routes
 app.include_router(search_replay_routes.router, prefix=API_V1_PREFIX)
 
+# Include TemperatureSearch routes for exploration/exploitation control (NOVEL FEATURE)
+from app.api import temperature_search_routes
+app.include_router(temperature_search_routes.router, prefix=API_V1_PREFIX)
+
 
 # Root endpoint
 
