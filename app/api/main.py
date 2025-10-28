@@ -2123,6 +2123,10 @@ app.include_router(temperature_search_routes.router, prefix=API_V1_PREFIX)
 from app.api import index_oracle_routes
 app.include_router(index_oracle_routes.router, prefix=API_V1_PREFIX)
 
+# Include EmbeddingHealth routes for quality monitoring (NOVEL FEATURE)
+from app.api import embedding_health_routes
+app.include_router(embedding_health_routes.router, prefix=API_V1_PREFIX)
+
 
 # Root endpoint
 
