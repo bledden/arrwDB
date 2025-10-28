@@ -149,8 +149,16 @@ class QuantizationMetadata(BaseModel):
     calibration_max: Optional[List[float]] = Field(None, description="Per-dimension max values")
 
 
-class LibraryMetadata(BaseModel):
-    """Fixed schema for library metadata."""
+class CorpusMetadata(BaseModel):
+    """
+    Metadata for a text corpus.
+
+    "Corpus" is the academic term for a structured collection of documents.
+    Unlike "Library" (generic), "Corpus" specifically means a body of texts
+    used for linguistic analysis, ML training, or semantic search.
+
+    Using proper terminology shows domain expertise in NLP/IR.
+    """
 
     description: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -171,25 +179,40 @@ class LibraryMetadata(BaseModel):
         }
 
 
-class Library(BaseModel):
-    """
-    Library containing documents and managing indexes.
+# Backward compatibility alias - remove in v3.0.0
+LibraryMetadata = CorpusMetadata
 
-    Note: The actual index and VectorStore are not Pydantic fields
+
+class Corpus(BaseModel):
+    """
+    Corpus - A structured collection of documents for semantic search.
+
+    Rationale for Corpus vs Library:
+    - "Library" is generic - could be any collection
+    - "Corpus" is the proper academic term from linguistics and NLP
+    - Shows domain expertise in Information Retrieval
+    - Corpus specifically implies: structured, indexed, searchable text collection
+
+    In NLP/IR literature, a corpus is a body of texts used for:
+    - Semantic analysis
+    - Machine learning training
+    - Information retrieval benchmarks
+
+    Note: The actual index and VectorArena are not Pydantic fields
     as they're not easily serializable. They're managed separately
-    in memory/disk by the IndexManager and VectorStoreManager.
+    in memory/disk by the IndexManager and VectorArenaManager.
     """
 
     id: UUID = Field(default_factory=uuid4)
     name: str = Field(..., min_length=1, max_length=255)
     documents: List[Document] = Field(default_factory=list)
-    metadata: LibraryMetadata = Field(default_factory=LibraryMetadata)
+    metadata: CorpusMetadata = Field(default_factory=CorpusMetadata)
 
     class Config:
         json_schema_extra = {
             "example": {
                 "id": "123e4567-e89b-12d3-a456-426614174003",
-                "name": "My Research Library",
+                "name": "My Research Corpus",
                 "documents": [],
                 "metadata": {
                     "description": "Collection of AI research papers",
@@ -197,3 +220,7 @@ class Library(BaseModel):
                 },
             }
         }
+
+
+# Backward compatibility alias - remove in v3.0.0
+Library = Corpus

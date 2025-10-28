@@ -1,9 +1,13 @@
 """
-Thread-safe repository for managing libraries, documents, and chunks.
+Thread-safe repository for managing corpora (collections), documents, and chunks.
 
-This module provides the LibraryRepository which coordinates between the
-domain models, vector store, indexes, and embedding contract to provide
+This module provides the CorpusRepository (formerly LibraryRepository) which coordinates
+between the domain models, vector store, indexes, and embedding contract to provide
 a consistent, thread-safe interface for all vector database operations.
+
+Rationale for terminology change: "Corpus" better represents a collection of documents
+in the context of information retrieval and NLP, which is the core domain of this system.
+The term "Library" was too generic and created confusion with Python's standard library concept.
 """
 
 import threading
@@ -14,7 +18,7 @@ from uuid import UUID
 import asyncio
 import logging
 
-from app.models.base import Chunk, Document, Library, LibraryMetadata
+from app.models.base import Chunk, Document, Corpus, CorpusMetadata
 from core.embedding_contract import LibraryEmbeddingContract
 from core.vector_store import VectorStore
 from infrastructure.concurrency.rw_lock import ReaderWriterLock
@@ -30,10 +34,14 @@ from infrastructure.persistence.wal import OperationType, WALEntry, WriteAheadLo
 logger = logging.getLogger(__name__)
 
 
-class LibraryNotFoundError(Exception):
-    """Raised when a library is not found."""
+class CorpusNotFoundError(Exception):
+    """Raised when a corpus is not found."""
 
     pass
+
+
+# Backward compatibility alias
+LibraryNotFoundError = CorpusNotFoundError
 
 
 class DocumentNotFoundError(Exception):
@@ -49,18 +57,22 @@ class ChunkNotFoundError(Exception):
 
 
 class DimensionMismatchError(Exception):
-    """Raised when vector dimensions don't match the library's contract."""
+    """Raised when vector dimensions don't match the corpus's contract."""
 
     pass
 
 
-class LibraryRepository:
+class CorpusRepository:
     """
-    Thread-safe repository for library management.
+    Thread-safe repository for corpus (collection) management.
+
+    Rationale for rename: "Corpus" is the standard term in information retrieval and NLP
+    for a collection of documents. This rename improves clarity and aligns with domain
+    terminology. Backward compatibility is maintained via the LibraryRepository alias.
 
     This repository:
-    - Manages multiple libraries with different configurations
-    - Enforces embedding dimension contracts per library
+    - Manages multiple corpora with different configurations
+    - Enforces embedding dimension contracts per corpus
     - Provides thread-safe CRUD operations
     - Coordinates between domain models and infrastructure
 
@@ -81,7 +93,7 @@ class LibraryRepository:
         self._event_bus = event_bus  # Optional CDC event bus
 
         # Core data structures
-        self._libraries: Dict[UUID, Library] = {}
+        self._libraries: Dict[UUID, Corpus] = {}
         self._vector_stores: Dict[UUID, VectorStore] = {}
         self._indexes: Dict[UUID, VectorIndex] = {}
         self._contracts: Dict[UUID, LibraryEmbeddingContract] = {}
@@ -152,7 +164,7 @@ class LibraryRepository:
             # Never let event publishing break repository operations
             logger.error(f"Failed to publish event {event_type}: {e}")
 
-    def create_library(self, library: Library) -> Library:
+    def create_library(self, library: Corpus) -> Corpus:
         """
         Create a new library.
 
@@ -228,7 +240,7 @@ class LibraryRepository:
 
             return library
 
-    def get_library(self, library_id: UUID) -> Library:
+    def get_library(self, library_id: UUID) -> Corpus:
         """
         Retrieve a library by ID.
 
@@ -247,7 +259,7 @@ class LibraryRepository:
 
             return self._libraries[library_id]
 
-    def list_libraries(self) -> List[Library]:
+    def list_libraries(self) -> List[Corpus]:
         """
         List all libraries.
 
@@ -888,7 +900,7 @@ class LibraryRepository:
             }
 
     def _create_index(
-        self, metadata: LibraryMetadata, vector_store: VectorStore
+        self, metadata: CorpusMetadata, vector_store: VectorStore
     ) -> VectorIndex:
         """
         Create an index based on library metadata.
@@ -919,7 +931,7 @@ class LibraryRepository:
             raise ValueError(f"Unknown index type: {index_type}")
 
     def _create_index_with_config(
-        self, metadata: LibraryMetadata, vector_store: VectorStore, config: Optional[dict] = None
+        self, metadata: CorpusMetadata, vector_store: VectorStore, config: Optional[dict] = None
     ) -> VectorIndex:
         """
         Create an index with custom configuration.
@@ -993,11 +1005,11 @@ class LibraryRepository:
                     try:
                         # Reconstruct library object
                         lib_id = UUID(lib_id_str)
-                        library = Library(
+                        library = Corpus(
                             id=lib_id,
                             name=lib_data["name"],
                             documents=[],  # Will be populated below
-                            metadata=LibraryMetadata(**lib_data["metadata"])
+                            metadata=CorpusMetadata(**lib_data["metadata"])
                         )
 
                         # Restore documents and chunks
@@ -1184,3 +1196,7 @@ class LibraryRepository:
                 f"LibraryRepository(libraries={len(self._libraries)}, "
                 f"data_dir={self._data_dir})"
             )
+
+
+# Backward compatibility alias
+LibraryRepository = CorpusRepository

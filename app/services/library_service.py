@@ -1,7 +1,12 @@
 """
-Library service implementing domain logic.
+Corpus service implementing domain logic for document collections.
 
-This module provides the business logic layer for library operations,
+Rationale for "Corpus" vs "Library":
+- "Corpus" is the academic term from NLP/IR for structured text collections
+- Shows domain expertise vs generic "Library"
+- Specifically implies: indexed, searchable, analyzable document bodies
+
+This module provides the business logic layer for corpus operations,
 following Domain-Driven Design principles. It sits between the API layer
 and the repository layer.
 """
@@ -11,22 +16,27 @@ from pathlib import Path
 from typing import Any, List, Optional, Tuple
 from uuid import UUID
 
-from app.models.base import Chunk, Document, DocumentMetadata, Library, LibraryMetadata, QuantizationMetadata
+from app.models.base import Chunk, Corpus, CorpusMetadata, Document, DocumentMetadata, QuantizationMetadata
 from app.services.embedding_service import EmbeddingService, EmbeddingServiceError
 from app.utils.quantization import ScalarQuantizer, calculate_memory_savings, estimate_accuracy
 from infrastructure.repositories.library_repository import (
+    CorpusNotFoundError,
+    CorpusRepository,
     DimensionMismatchError,
     DocumentNotFoundError,
-    LibraryNotFoundError,
-    LibraryRepository,
 )
 
 logger = logging.getLogger(__name__)
 
 
-class LibraryService:
+class CorpusService:
     """
-    Service for library management operations.
+    Service for corpus (document collection) management operations.
+
+    Why "CorpusService" not "LibraryService":
+    - Corpus is the proper NLP/IR term for indexed text collections
+    - Shows understanding of domain vs generic naming
+    - Aligns with academic literature on information retrieval
 
     This service:
     - Implements business logic and validation
@@ -43,52 +53,49 @@ class LibraryService:
 
     def __init__(
         self,
-        repository: LibraryRepository,
+        repository: CorpusRepository,
         embedding_service: EmbeddingService,
     ) -> None:
         """
-        Initialize the library service.
+        Initialize the corpus service.
 
         Args:
-            repository: The library repository.
-            embedding_service: The embedding service for text-to-vector conversion.
+            repository: The corpus repository for persistence.
+            embedding_service: Converts text to vectors.
         """
         self._repository = repository
         self._embedding_service = embedding_service
 
     @property
-    def repository(self) -> LibraryRepository:
-        """Get the underlying repository (for persistence operations)."""
+    def repository(self) -> CorpusRepository:
+        """Access repository for persistence operations."""
         return self._repository
 
-    def create_library(
+    def create_corpus(
         self,
         name: str,
         description: Optional[str] = None,
         index_type: str = "brute_force",
         embedding_model: Optional[str] = None,
         quantization_config: Optional[dict] = None,
-    ) -> Library:
+    ) -> Corpus:
         """
-        Create a new library.
+        Create a new corpus (document collection).
 
         Args:
-            name: Name of the library.
+            name: Corpus name.
             description: Optional description.
-            index_type: Type of index to use (brute_force, kd_tree, lsh, hnsw).
+            index_type: Index type (brute_force, kd_tree, lsh, hnsw).
             embedding_model: Optional embedding model override.
-            quantization_config: Optional quantization configuration (opt-in).
-                - strategy: "none", "scalar", "hybrid"
-                - bits: 4 or 8 (for scalar/hybrid)
-                - rerank_top_k: Number for hybrid reranking
+            quantization_config: Optional quantization (opt-in).
 
         Returns:
-            The created library.
+            The created corpus.
 
         Raises:
             ValueError: If parameters are invalid.
         """
-        logger.info(f"Creating library '{name}' with index type '{index_type}'")
+        logger.info(f"Creating corpus '{name}' with index type '{index_type}'")
 
         # Validate index type
         valid_index_types = {"brute_force", "kd_tree", "lsh", "hnsw", "ivf"}
@@ -106,7 +113,7 @@ class LibraryService:
             rerank_top_k = quantization_config.get("rerank_top_k", 100)
 
             logger.info(
-                f"Enabling quantization for library '{name}': "
+                f"Enabling quantization for corpus '{name}': "
                 f"strategy={strategy}, bits={bits}"
             )
 
@@ -118,8 +125,8 @@ class LibraryService:
                 calibration_max=None,
             )
 
-        # Create library metadata
-        metadata = LibraryMetadata(
+        # Create corpus metadata
+        metadata = CorpusMetadata(
             description=description,
             index_type=index_type,
             embedding_dimension=self._embedding_service.embedding_dimension,
@@ -127,65 +134,65 @@ class LibraryService:
             quantization=quantization_metadata,
         )
 
-        # Create library
-        library = Library(name=name, metadata=metadata)
+        # Create corpus
+        corpus = Corpus(name=name, metadata=metadata)
 
         try:
-            created = self._repository.create_library(library)
-            logger.info(f"Created library {created.id} named '{name}'")
+            created = self._repository.create_corpus(corpus)
+            logger.info(f"Created corpus {created.id} named '{name}'")
             return created
         except Exception as e:
-            logger.error(f"Failed to create library '{name}': {e}")
+            logger.error(f"Failed to create corpus '{name}': {e}")
             raise
 
-    def get_library(self, library_id: UUID) -> Library:
+    def get_corpus(self, corpus_id: UUID) -> Corpus:
         """
-        Get a library by ID.
+        Get a corpus by ID.
 
         Args:
-            library_id: The library ID.
+            corpus_id: The corpus ID.
 
         Returns:
-            The library.
+            The corpus.
 
         Raises:
-            LibraryNotFoundError: If library doesn't exist.
+            CorpusNotFoundError: If corpus doesn't exist.
         """
-        return self._repository.get_library(library_id)
+        return self._repository.get_corpus(corpus_id)
 
-    def list_libraries(self) -> List[Library]:
+    def list_corpora(self) -> List[Corpus]:
         """
-        List all libraries.
+        List all corpora.
 
         Returns:
-            List of all libraries.
+            List of all corpora.
         """
-        return self._repository.list_libraries()
+        return self._repository.list_corpora()
 
-    def delete_library(self, library_id: UUID) -> bool:
+    def delete_corpus(self, corpus_id: UUID) -> bool:
         """
-        Delete a library.
+        Delete a corpus.
 
         Args:
-            library_id: The library ID.
+            corpus_id: The corpus ID.
 
         Returns:
             True if deleted, False if didn't exist.
         """
-        logger.info(f"Deleting library {library_id}")
+        logger.info(f"Deleting corpus {corpus_id}")
 
-        deleted = self._repository.delete_library(library_id)
+        deleted = self._repository.delete_corpus(corpus_id)
 
         if deleted:
-            logger.info(f"Deleted library {library_id}")
+            logger.info(f"Deleted corpus {corpus_id}")
         else:
-            logger.warning(f"Library {library_id} not found for deletion")
+            logger.warning(f"Corpus {corpus_id} not found for deletion")
 
         return deleted
 
     def add_document_with_text(
         self,
-        library_id: UUID,
+        corpus_id: UUID,
         title: str,
         texts: List[str],
         author: Optional[str] = None,
@@ -199,7 +206,7 @@ class LibraryService:
         This method generates embeddings for the text chunks automatically.
 
         Args:
-            library_id: The library to add the document to.
+            corpus_id: The corpus to add the document to.
             title: Document title.
             texts: List of text chunks.
             author: Optional author name.
@@ -211,7 +218,7 @@ class LibraryService:
             The created document.
 
         Raises:
-            LibraryNotFoundError: If library doesn't exist.
+            CorpusNotFoundError: If corpus doesn't exist.
             EmbeddingServiceError: If embedding generation fails.
             ValueError: If texts list is empty.
         """
@@ -219,11 +226,11 @@ class LibraryService:
             raise ValueError("texts list cannot be empty")
 
         logger.info(
-            f"Adding document '{title}' with {len(texts)} chunks to library {library_id}"
+            f"Adding document '{title}' with {len(texts)} chunks to corpus {corpus_id}"
         )
 
-        # Get library to check it exists
-        library = self._repository.get_library(library_id)
+        # Get corpus to check it exists
+        corpus = self._repository.get_corpus(corpus_id)
 
         # Generate embeddings for all texts
         try:
@@ -265,9 +272,9 @@ class LibraryService:
 
         # Add to repository
         try:
-            added = self._repository.add_document(library_id, document)
+            added = self._repository.add_document(corpus_id, document)
             logger.info(
-                f"Added document {added.id} with {len(chunks)} chunks to library {library_id}"
+                f"Added document {added.id} with {len(chunks)} chunks to corpus {corpus_id}"
             )
             return added
         except DimensionMismatchError as e:
@@ -279,7 +286,7 @@ class LibraryService:
 
     def add_document_with_embeddings(
         self,
-        library_id: UUID,
+        corpus_id: UUID,
         title: str,
         text_embedding_pairs: List[Tuple[str, List[float]]],
         author: Optional[str] = None,
@@ -293,7 +300,7 @@ class LibraryService:
         Use this when embeddings have already been generated elsewhere.
 
         Args:
-            library_id: The library to add the document to.
+            corpus_id: The corpus to add the document to.
             title: Document title.
             text_embedding_pairs: List of (text, embedding) tuples.
             author: Optional author name.
@@ -305,7 +312,7 @@ class LibraryService:
             The created document.
 
         Raises:
-            LibraryNotFoundError: If library doesn't exist.
+            CorpusNotFoundError: If corpus doesn't exist.
             DimensionMismatchError: If embeddings have wrong dimension.
             ValueError: If text_embedding_pairs is empty.
         """
@@ -314,11 +321,11 @@ class LibraryService:
 
         logger.info(
             f"Adding document '{title}' with {len(text_embedding_pairs)} "
-            f"pre-computed chunks to library {library_id}"
+            f"pre-computed chunks to corpus {corpus_id}"
         )
 
-        # Get library to check it exists
-        library = self._repository.get_library(library_id)
+        # Get corpus to check it exists
+        corpus = self._repository.get_corpus(corpus_id)
 
         # Create chunks
         from uuid import uuid4
@@ -351,9 +358,9 @@ class LibraryService:
 
         # Add to repository
         try:
-            added = self._repository.add_document(library_id, document)
+            added = self._repository.add_document(corpus_id, document)
             logger.info(
-                f"Added document {added.id} with {len(chunks)} chunks to library {library_id}"
+                f"Added document {added.id} with {len(chunks)} chunks to corpus {corpus_id}"
             )
             return added
         except Exception as e:
@@ -398,7 +405,7 @@ class LibraryService:
 
     def add_documents_batch(
         self,
-        library_id: UUID,
+        corpus_id: UUID,
         documents_data: List[dict],
     ) -> Tuple[List[Document], List[Tuple[int, str]], int]:
         """
@@ -410,21 +417,21 @@ class LibraryService:
         - Reduced overhead
 
         Args:
-            library_id: The library to add documents to.
+            corpus_id: The corpus to add documents to.
             documents_data: List of dicts with document data (title, texts, author, etc.)
 
         Returns:
             Tuple of (successful_documents, failed_operations, total_chunks)
 
         Raises:
-            LibraryNotFoundError: If library doesn't exist.
+            CorpusNotFoundError: If corpus doesn't exist.
         """
         logger.info(
-            f"Batch adding {len(documents_data)} documents to library {library_id}"
+            f"Batch adding {len(documents_data)} documents to corpus {corpus_id}"
         )
 
-        # Get library to check it exists
-        library = self._repository.get_library(library_id)
+        # Get corpus to check it exists
+        corpus = self._repository.get_corpus(corpus_id)
 
         # Collect all texts that need embeddings
         all_texts = []
@@ -481,7 +488,7 @@ class LibraryService:
 
         # Add all documents in batch
         try:
-            successful, failed = self._repository.add_documents_batch(library_id, documents)
+            successful, failed = self._repository.add_documents_batch(corpus_id, documents)
             total_chunks = sum(len(doc.chunks) for doc in successful)
 
             logger.info(
@@ -496,28 +503,28 @@ class LibraryService:
 
     def add_documents_batch_with_embeddings(
         self,
-        library_id: UUID,
+        corpus_id: UUID,
         documents_data: List[dict],
     ) -> Tuple[List[Document], List[Tuple[int, str]], int]:
         """
         Add multiple documents with pre-computed embeddings in a batch.
 
         Args:
-            library_id: The library to add documents to.
+            corpus_id: The corpus to add documents to.
             documents_data: List of dicts with document data including embeddings.
 
         Returns:
             Tuple of (successful_documents, failed_operations, total_chunks)
 
         Raises:
-            LibraryNotFoundError: If library doesn't exist.
+            CorpusNotFoundError: If corpus doesn't exist.
         """
         logger.info(
-            f"Batch adding {len(documents_data)} documents (with embeddings) to library {library_id}"
+            f"Batch adding {len(documents_data)} documents (with embeddings) to corpus {corpus_id}"
         )
 
-        # Get library to check it exists
-        library = self._repository.get_library(library_id)
+        # Get corpus to check it exists
+        corpus = self._repository.get_corpus(corpus_id)
 
         # Create documents with pre-computed embeddings
         from uuid import uuid4
@@ -556,7 +563,7 @@ class LibraryService:
 
         # Add all documents in batch
         try:
-            successful, failed = self._repository.add_documents_batch(library_id, documents)
+            successful, failed = self._repository.add_documents_batch(corpus_id, documents)
             total_chunks = sum(len(doc.chunks) for doc in successful)
 
             logger.info(
@@ -600,18 +607,18 @@ class LibraryService:
 
     def search_with_text(
         self,
-        library_id: UUID,
+        corpus_id: UUID,
         query_text: str,
         k: int = 10,
         distance_threshold: Optional[float] = None,
     ) -> List[Tuple[Chunk, float]]:
         """
-        Search a library using natural language query.
+        Search a corpus using natural language query.
 
         This method generates an embedding for the query text automatically.
 
         Args:
-            library_id: The library to search.
+            corpus_id: The corpus to search.
             query_text: Natural language query.
             k: Number of results to return.
             distance_threshold: Optional maximum distance threshold.
@@ -620,10 +627,10 @@ class LibraryService:
             List of (chunk, distance) tuples sorted by relevance.
 
         Raises:
-            LibraryNotFoundError: If library doesn't exist.
+            CorpusNotFoundError: If corpus doesn't exist.
             EmbeddingServiceError: If query embedding generation fails.
         """
-        logger.info(f"Searching library {library_id} with text query (k={k})")
+        logger.info(f"Searching corpus {corpus_id} with text query (k={k})")
 
         # Generate query embedding
         # Switch to search_query input type for better retrieval
@@ -640,21 +647,21 @@ class LibraryService:
 
         # Search using embedding
         return self.search_with_embedding(
-            library_id, query_embedding.tolist(), k, distance_threshold
+            corpus_id, query_embedding.tolist(), k, distance_threshold
         )
 
     def search_with_embedding(
         self,
-        library_id: UUID,
+        corpus_id: UUID,
         query_embedding: List[float],
         k: int = 10,
         distance_threshold: Optional[float] = None,
     ) -> List[Tuple[Chunk, float]]:
         """
-        Search a library using a pre-computed embedding.
+        Search a corpus using a pre-computed embedding.
 
         Args:
-            library_id: The library to search.
+            corpus_id: The corpus to search.
             query_embedding: Query vector.
             k: Number of results to return.
             distance_threshold: Optional maximum distance threshold.
@@ -663,14 +670,14 @@ class LibraryService:
             List of (chunk, distance) tuples sorted by relevance.
 
         Raises:
-            LibraryNotFoundError: If library doesn't exist.
+            CorpusNotFoundError: If corpus doesn't exist.
             DimensionMismatchError: If query embedding has wrong dimension.
         """
-        logger.info(f"Searching library {library_id} with embedding (k={k})")
+        logger.info(f"Searching corpus {corpus_id} with embedding (k={k})")
 
         try:
             results = self._repository.search(
-                library_id, query_embedding, k, distance_threshold
+                corpus_id, query_embedding, k, distance_threshold
             )
             logger.info(f"Found {len(results)} results for query")
             return results
@@ -680,20 +687,20 @@ class LibraryService:
 
     def search_with_metadata_filters(
         self,
-        library_id: UUID,
+        corpus_id: UUID,
         query_text: str,
         metadata_filters: List[dict],
         k: int = 10,
         distance_threshold: Optional[float] = None,
     ) -> List[Tuple[Chunk, float]]:
         """
-        Search library with text query and apply metadata filters.
+        Search corpus with text query and apply metadata filters.
 
         Filters are applied AFTER vector search to narrow results.
         All filters are combined with AND logic.
 
         Args:
-            library_id: The library to search.
+            corpus_id: The corpus to search.
             query_text: Natural language query.
             metadata_filters: List of filter dictionaries with 'field', 'operator', 'value'.
             k: Number of results to return (applied AFTER filtering).
@@ -703,12 +710,12 @@ class LibraryService:
             List of (chunk, distance) tuples that match all filters.
 
         Raises:
-            LibraryNotFoundError: If library doesn't exist.
+            CorpusNotFoundError: If corpus doesn't exist.
             EmbeddingServiceError: If query embedding generation fails.
             ValueError: If filter specification is invalid.
         """
         logger.info(
-            f"Searching library {library_id} with {len(metadata_filters)} metadata filters"
+            f"Searching corpus {corpus_id} with {len(metadata_filters)} metadata filters"
         )
 
         # First, do regular vector search with higher k to have candidates
@@ -717,7 +724,7 @@ class LibraryService:
         search_k = min(search_k, 1000)  # Cap at reasonable limit
 
         initial_results = self.search_with_text(
-            library_id, query_text, k=search_k, distance_threshold=distance_threshold
+            corpus_id, query_text, k=search_k, distance_threshold=distance_threshold
         )
 
         if not metadata_filters:
@@ -827,33 +834,33 @@ class LibraryService:
             logger.warning(f"Comparison failed: {e}")
             return False
 
-    def regenerate_embeddings(self, library_id: UUID) -> int:
+    def regenerate_embeddings(self, corpus_id: UUID) -> int:
         """
-        Regenerate embeddings for all chunks in a library.
+        Regenerate embeddings for all chunks in a corpus.
 
-        This is useful after loading a library from disk where embeddings
+        This is useful after loading a corpus from disk where embeddings
         were not persisted. Chunks are re-embedded using their stored text.
 
         Args:
-            library_id: The library to regenerate embeddings for.
+            corpus_id: The corpus to regenerate embeddings for.
 
         Returns:
             Number of chunks that were re-embedded.
 
         Raises:
-            LibraryNotFoundError: If library doesn't exist.
+            CorpusNotFoundError: If corpus doesn't exist.
             EmbeddingServiceError: If embedding generation fails.
         """
-        logger.info(f"Regenerating embeddings for library {library_id}")
+        logger.info(f"Regenerating embeddings for corpus {corpus_id}")
 
-        # Get the library to ensure it exists
-        library = self._repository.get_library(library_id)
+        # Get the corpus to ensure it exists
+        corpus = self._repository.get_corpus(corpus_id)
 
         # Collect all text chunks that need embeddings
         texts_to_embed = []
         chunks_to_update = []
 
-        for document in library.documents:
+        for document in corpus.documents:
             for chunk in document.chunks:
                 # Only re-embed chunks that don't have embeddings
                 if chunk.embedding is None or len(chunk.embedding) == 0:
@@ -861,7 +868,7 @@ class LibraryService:
                     chunks_to_update.append(chunk)
 
         if not texts_to_embed:
-            logger.info(f"No chunks need re-embedding in library {library_id}")
+            logger.info(f"No chunks need re-embedding in corpus {corpus_id}")
             return 0
 
         logger.info(f"Re-embedding {len(texts_to_embed)} chunks...")
@@ -878,36 +885,36 @@ class LibraryService:
             chunk.embedding = embedding.tolist()
 
         # Add all embeddings to the vector store and index
-        self._repository.add_embeddings_to_library(
-            library_id, chunks_to_update, embeddings
+        self._repository.add_embeddings_to_corpus(
+            corpus_id, chunks_to_update, embeddings
         )
 
         logger.info(
-            f"Successfully regenerated {len(texts_to_embed)} embeddings for library {library_id}"
+            f"Successfully regenerated {len(texts_to_embed)} embeddings for corpus {corpus_id}"
         )
 
         return len(texts_to_embed)
 
-    def get_library_statistics(self, library_id: UUID) -> dict:
+    def get_corpus_statistics(self, corpus_id: UUID) -> dict:
         """
-        Get statistics about a library.
+        Get statistics about a corpus.
 
         Args:
-            library_id: The library ID.
+            corpus_id: The corpus ID.
 
         Returns:
             Dictionary with statistics.
 
         Raises:
-            LibraryNotFoundError: If library doesn't exist.
+            CorpusNotFoundError: If corpus doesn't exist.
         """
-        return self._repository.get_library_statistics(library_id)
+        return self._repository.get_corpus_statistics(corpus_id)
 
     def rebuild_index(
-        self, library_id: UUID, new_index_type: Optional[str] = None, index_config: Optional[dict] = None
+        self, corpus_id: UUID, new_index_type: Optional[str] = None, index_config: Optional[dict] = None
     ) -> Tuple[str, str, int]:
         """
-        Rebuild a library's index, optionally switching to a new index type.
+        Rebuild a corpus's index, optionally switching to a new index type.
 
         This is useful for:
         - Switching between index types (e.g., brute_force → hnsw)
@@ -915,7 +922,7 @@ class LibraryService:
         - Tuning index parameters
 
         Args:
-            library_id: The library ID.
+            corpus_id: The corpus ID.
             new_index_type: Optional new index type (brute_force, kd_tree, lsh, hnsw).
             index_config: Optional index-specific configuration.
 
@@ -923,17 +930,17 @@ class LibraryService:
             Tuple of (old_index_type, new_index_type, vectors_reindexed)
 
         Raises:
-            LibraryNotFoundError: If library doesn't exist.
+            CorpusNotFoundError: If corpus doesn't exist.
             ValueError: If new_index_type is invalid.
         """
         logger.info(
-            f"Rebuilding index for library {library_id}" +
+            f"Rebuilding index for corpus {corpus_id}" +
             (f" (switching to {new_index_type})" if new_index_type else "")
         )
 
         try:
             old_type, new_type, vectors = self._repository.rebuild_index(
-                library_id, new_index_type, index_config
+                corpus_id, new_index_type, index_config
             )
 
             logger.info(
@@ -945,25 +952,25 @@ class LibraryService:
             logger.error(f"Failed to rebuild index: {e}")
             raise
 
-    def optimize_index(self, library_id: UUID) -> Tuple[int, int]:
+    def optimize_index(self, corpus_id: UUID) -> Tuple[int, int]:
         """
-        Optimize a library's index by compacting and removing deleted entries.
+        Optimize a corpus's index by compacting and removing deleted entries.
 
         This improves search performance and reduces memory usage.
 
         Args:
-            library_id: The library ID.
+            corpus_id: The corpus ID.
 
         Returns:
             Tuple of (vectors_compacted, memory_freed_bytes)
 
         Raises:
-            LibraryNotFoundError: If library doesn't exist.
+            CorpusNotFoundError: If corpus doesn't exist.
         """
-        logger.info(f"Optimizing index for library {library_id}")
+        logger.info(f"Optimizing index for corpus {corpus_id}")
 
         try:
-            vectors, memory_freed = self._repository.optimize_index(library_id)
+            vectors, memory_freed = self._repository.optimize_index(corpus_id)
 
             logger.info(
                 f"Index optimization complete: {vectors} vectors compacted, "
@@ -975,20 +982,20 @@ class LibraryService:
             logger.error(f"Failed to optimize index: {e}")
             raise
 
-    def get_index_statistics(self, library_id: UUID) -> dict:
+    def get_index_statistics(self, corpus_id: UUID) -> dict:
         """
-        Get detailed statistics about a library's index.
+        Get detailed statistics about a corpus's index.
 
         Args:
-            library_id: The library ID.
+            corpus_id: The corpus ID.
 
         Returns:
             Dictionary with index statistics.
 
         Raises:
-            LibraryNotFoundError: If library doesn't exist.
+            CorpusNotFoundError: If corpus doesn't exist.
         """
-        return self._repository.get_index_statistics(library_id)
+        return self._repository.get_index_statistics(corpus_id)
 
     # ========================================================================
     # Advanced Query Features (Hybrid Search, Reranking)
@@ -996,7 +1003,7 @@ class LibraryService:
 
     def hybrid_search(
         self,
-        library_id: UUID,
+        corpus_id: UUID,
         query_text: str,
         k: int = 10,
         vector_weight: float = 0.7,
@@ -1014,7 +1021,7 @@ class LibraryService:
         2. Metadata signals (recency, field matches, etc.)
 
         Args:
-            library_id: The library to search.
+            corpus_id: The corpus to search.
             query_text: Natural language query.
             k: Number of results to return.
             vector_weight: Weight for vector similarity (0-1).
@@ -1028,7 +1035,7 @@ class LibraryService:
             List of (chunk, hybrid_score, score_breakdown) tuples sorted by hybrid score.
 
         Raises:
-            LibraryNotFoundError: If library doesn't exist.
+            CorpusNotFoundError: If corpus doesn't exist.
             EmbeddingServiceError: If query embedding generation fails.
             ValueError: If weights don't sum to 1.0.
 
@@ -1036,7 +1043,7 @@ class LibraryService:
             ```python
             # Hybrid search with 70% vector, 30% metadata
             results = service.hybrid_search(
-                library_id=lib_id,
+                corpus_id=corpus_id,
                 query_text="machine learning basics",
                 k=10,
                 vector_weight=0.7,
@@ -1053,7 +1060,7 @@ class LibraryService:
             ```
         """
         logger.info(
-            f"Hybrid search on library {library_id}: k={k}, "
+            f"Hybrid search on corpus {corpus_id}: k={k}, "
             f"vector_weight={vector_weight}, metadata_weight={metadata_weight}, "
             f"recency_boost={recency_boost}"
         )
@@ -1072,7 +1079,7 @@ class LibraryService:
         # Perform vector search first (get more candidates for reranking)
         search_k = min(k * 5, 500)  # Get 5x results for reranking
         vector_results = self.search_with_text(
-            library_id, query_text, k=search_k, distance_threshold=distance_threshold
+            corpus_id, query_text, k=search_k, distance_threshold=distance_threshold
         )
 
         if not vector_results:
@@ -1095,7 +1102,7 @@ class LibraryService:
 
     def search_with_reranking(
         self,
-        library_id: UUID,
+        corpus_id: UUID,
         query_text: str,
         k: int = 10,
         rerank_function: str = "recency",
@@ -1109,7 +1116,7 @@ class LibraryService:
         similar to Elasticsearch's "rescore" feature.
 
         Args:
-            library_id: The library to search.
+            corpus_id: The corpus to search.
             query_text: Natural language query.
             k: Number of results to return.
             rerank_function: Name of reranking function to use:
@@ -1123,7 +1130,7 @@ class LibraryService:
             List of (chunk, reranked_score) tuples sorted by reranked score.
 
         Raises:
-            LibraryNotFoundError: If library doesn't exist.
+            CorpusNotFoundError: If corpus doesn't exist.
             EmbeddingServiceError: If query embedding generation fails.
             ValueError: If rerank_function is invalid.
 
@@ -1131,7 +1138,7 @@ class LibraryService:
             ```python
             # Rerank by recency with 30-day half-life
             results = service.search_with_reranking(
-                library_id=lib_id,
+                corpus_id=corpus_id,
                 query_text="latest AI research",
                 k=10,
                 rerank_function="recency",
@@ -1140,7 +1147,7 @@ class LibraryService:
             ```
         """
         logger.info(
-            f"Search with reranking on library {library_id}: "
+            f"Search with reranking on corpus {corpus_id}: "
             f"rerank_function={rerank_function}"
         )
 
@@ -1155,7 +1162,7 @@ class LibraryService:
         # Get initial vector search results (fetch more for reranking)
         search_k = min(k * 3, 300)
         vector_results = self.search_with_text(
-            library_id, query_text, k=search_k, distance_threshold=distance_threshold
+            corpus_id, query_text, k=search_k, distance_threshold=distance_threshold
         )
 
         if not vector_results:
@@ -1199,3 +1206,31 @@ class LibraryService:
         )
 
         return top_results
+
+    # ========================================================================
+    # Backward Compatibility - Deprecated methods (remove in v3.0.0)
+    # ========================================================================
+
+    def create_library(self, *args, **kwargs):
+        """Deprecated: Use create_corpus instead."""
+        return self.create_corpus(*args, **kwargs)
+
+    def get_library(self, library_id: UUID) -> Corpus:
+        """Deprecated: Use get_corpus instead."""
+        return self.get_corpus(library_id)
+
+    def list_libraries(self) -> List[Corpus]:
+        """Deprecated: Use list_corpora instead."""
+        return self.list_corpora()
+
+    def delete_library(self, library_id: UUID) -> bool:
+        """Deprecated: Use delete_corpus instead."""
+        return self.delete_corpus(library_id)
+
+    def get_library_statistics(self, library_id: UUID) -> dict:
+        """Deprecated: Use get_corpus_statistics instead."""
+        return self.get_corpus_statistics(library_id)
+
+
+# Backward compatibility alias - remove in v3.0.0
+LibraryService = CorpusService
