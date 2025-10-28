@@ -1,5 +1,23 @@
 """
-Webhook Manager for arrwDB.
+Hook Registry for arrwDB.
+
+This module implements the Hook pattern (also known as Event Hooks) combined with
+the Registry pattern for managing webhook subscriptions and event delivery.
+
+Design Pattern Rationale:
+    - Hook Pattern: Allows external systems to register callback functions (hooks)
+      that get invoked when specific events occur, providing extension points
+      without modifying core application code.
+
+    - Registry Pattern: Provides centralized registration, lookup, and discovery
+      of hooks, similar to Windows Registry or Service Registry. More specific
+      than generic "Manager" pattern.
+
+Why "HookRegistry" over "WebhookManager":
+    - "Registry" emphasizes the registration/lookup mechanism (add, find, remove)
+    - "Hook" is the canonical design pattern name for event-driven callbacks
+    - "Manager" is overused and generic (could manage anything)
+    - "Registry" implies: registration, indexing, discovery, and retrieval
 
 Handles webhook registration, event delivery, retries, and HMAC signature generation.
 """
@@ -34,9 +52,29 @@ from app.webhooks.models import (
 logger = logging.getLogger(__name__)
 
 
-class WebhookManager:
+class HookRegistry:
     """
-    Manages webhooks and event delivery.
+    Registry for managing event hooks (webhooks) and their delivery.
+
+    This class implements two key design patterns:
+
+    1. Hook Pattern (Event Hooks):
+       - Provides extension points where external systems can register callbacks
+       - Hooks are triggered when specific events occur in the application
+       - Allows loose coupling between event producers and consumers
+       - Enables plugin-like architecture without modifying core code
+
+    2. Registry Pattern:
+       - Centralized registration and lookup mechanism for hooks
+       - Index-based retrieval by ID, tenant, status, or event type
+       - Discovery mechanism for finding hooks subscribed to specific events
+       - Similar to Service Registry or Windows Registry for system components
+
+    Why "Registry" over "Manager":
+       - "Registry" is more precise: implies registration, indexing, and lookup
+       - "Manager" is generic and could mean anything (lifecycle, state, resources)
+       - "Registry" emphasizes the primary operations: register, find, remove
+       - Common pattern in frameworks (ServiceRegistry, ComponentRegistry)
 
     Features:
     - HMAC signature generation for security
@@ -46,7 +84,7 @@ class WebhookManager:
     """
 
     def __init__(self):
-        """Initialize webhook manager."""
+        """Initialize the hook registry."""
         self.webhooks: Dict[UUID, Webhook] = {}
         self.deliveries: List[WebhookDelivery] = []
         self._http_client: Optional[httpx.AsyncClient] = None
@@ -78,7 +116,7 @@ class WebhookManager:
         timeout_seconds: int = 30,
     ) -> Webhook:
         """
-        Register a new webhook.
+        Register a new webhook hook in the registry.
 
         Args:
             url: Webhook endpoint URL
@@ -107,12 +145,12 @@ class WebhookManager:
         )
 
         self.webhooks[webhook.id] = webhook
-        logger.info(f"Created webhook {webhook.id} for events: {events}")
+        logger.info(f"Registered webhook hook {webhook.id} for events: {events}")
 
         return webhook
 
     def get_webhook(self, webhook_id: UUID) -> Optional[Webhook]:
-        """Get webhook by ID."""
+        """Look up webhook by ID from the registry."""
         return self.webhooks.get(webhook_id)
 
     def list_webhooks(
@@ -121,7 +159,7 @@ class WebhookManager:
         status: Optional[WebhookStatus] = None,
     ) -> List[Webhook]:
         """
-        List all webhooks with optional filtering.
+        Query the registry for webhooks with optional filtering.
 
         Args:
             tenant_id: Filter by tenant ID
@@ -152,7 +190,7 @@ class WebhookManager:
         timeout_seconds: Optional[int] = None,
     ) -> Optional[Webhook]:
         """
-        Update an existing webhook.
+        Update an existing webhook in the registry.
 
         Args:
             webhook_id: Webhook ID
@@ -187,13 +225,13 @@ class WebhookManager:
             webhook.timeout_seconds = timeout_seconds
 
         webhook.updated_at = datetime.utcnow()
-        logger.info(f"Updated webhook {webhook_id}")
+        logger.info(f"Updated webhook hook {webhook_id} in registry")
 
         return webhook
 
     def delete_webhook(self, webhook_id: UUID) -> bool:
         """
-        Delete a webhook.
+        Remove a webhook from the registry.
 
         Args:
             webhook_id: Webhook ID
@@ -203,7 +241,7 @@ class WebhookManager:
         """
         if webhook_id in self.webhooks:
             del self.webhooks[webhook_id]
-            logger.info(f"Deleted webhook {webhook_id}")
+            logger.info(f"Removed webhook hook {webhook_id} from registry")
             return True
         return False
 
@@ -230,10 +268,11 @@ class WebhookManager:
         tenant_id: Optional[str] = None,
     ):
         """
-        Trigger webhooks for a specific event type.
+        Trigger registered hooks for a specific event type.
 
-        This method finds all webhooks subscribed to the event type
-        and delivers the event to them asynchronously.
+        This method queries the registry to find all hooks subscribed to the event
+        type and delivers the event to them asynchronously. This is the core of
+        the Hook pattern - external systems receive callbacks when events occur.
 
         Args:
             event_type: Type of event
@@ -245,7 +284,7 @@ class WebhookManager:
             type=event_type, data=data, tenant_id=tenant_id
         )
 
-        # Find matching webhooks
+        # Query registry for matching hooks
         matching_webhooks = []
         for webhook in self.webhooks.values():
             # Check if webhook is active
@@ -261,10 +300,10 @@ class WebhookManager:
                 matching_webhooks.append(webhook)
 
         logger.info(
-            f"Triggering {len(matching_webhooks)} webhooks for event {event_type}"
+            f"Triggering {len(matching_webhooks)} hooks from registry for event {event_type}"
         )
 
-        # Deliver to all matching webhooks concurrently
+        # Invoke all matching hooks concurrently
         tasks = [
             self.deliver_event(webhook, event) for webhook in matching_webhooks
         ]
@@ -274,10 +313,10 @@ class WebhookManager:
         self, webhook: Webhook, event: WebhookEvent, attempt: int = 1
     ) -> WebhookDelivery:
         """
-        Deliver event to a single webhook.
+        Deliver event to a single webhook hook.
 
         Args:
-            webhook: Webhook to deliver to
+            webhook: Webhook hook to invoke
             event: Event to deliver
             attempt: Attempt number (for retries)
 
@@ -327,7 +366,7 @@ class WebhookManager:
                 delivery.status = DeliveryStatus.SUCCESS
                 webhook.successful_deliveries += 1
                 logger.info(
-                    f"Successfully delivered event {event.id} to webhook {webhook.id} "
+                    f"Successfully invoked hook {webhook.id} for event {event.id} "
                     f"(attempt {attempt}, {duration_ms}ms)"
                 )
             else:
@@ -335,7 +374,7 @@ class WebhookManager:
 
         except Exception as e:
             logger.warning(
-                f"Failed to deliver event {event.id} to webhook {webhook.id} "
+                f"Failed to invoke hook {webhook.id} for event {event.id} "
                 f"(attempt {attempt}): {e}"
             )
 
@@ -350,7 +389,7 @@ class WebhookManager:
                     seconds=webhook.retry_delay_seconds * attempt
                 )
                 logger.info(
-                    f"Will retry delivery at {delivery.next_retry_at} "
+                    f"Will retry hook invocation at {delivery.next_retry_at} "
                     f"(attempt {attempt + 1}/{webhook.max_retries})"
                 )
 
@@ -359,11 +398,11 @@ class WebhookManager:
                     self._retry_delivery(webhook, event, attempt + 1, delivery.next_retry_at)
                 )
 
-        # Update webhook statistics
+        # Update hook statistics
         webhook.total_deliveries += 1
         webhook.last_triggered_at = datetime.utcnow()
 
-        # Store delivery record
+        # Store delivery record in registry
         self.deliveries.append(delivery)
 
         return delivery
@@ -376,10 +415,10 @@ class WebhookManager:
         retry_at: datetime,
     ):
         """
-        Retry failed delivery after delay.
+        Retry failed hook invocation after delay.
 
         Args:
-            webhook: Webhook to retry
+            webhook: Webhook hook to retry
             event: Event to retry
             attempt: Attempt number
             retry_at: When to retry
@@ -389,7 +428,7 @@ class WebhookManager:
         if delay > 0:
             await asyncio.sleep(delay)
 
-        # Retry delivery
+        # Retry hook invocation
         await self.deliver_event(webhook, event, attempt)
 
     def get_deliveries(
@@ -400,7 +439,7 @@ class WebhookManager:
         limit: int = 100,
     ) -> List[WebhookDelivery]:
         """
-        Get webhook deliveries with filtering.
+        Query delivery records from the registry with filtering.
 
         Args:
             webhook_id: Filter by webhook ID
@@ -457,13 +496,19 @@ class WebhookManager:
         }
 
 
-# Global webhook manager instance
-_webhook_manager: Optional[WebhookManager] = None
+# Global hook registry instance
+_hook_registry: Optional[HookRegistry] = None
 
 
-def get_webhook_manager() -> WebhookManager:
-    """Get global webhook manager instance."""
-    global _webhook_manager
-    if _webhook_manager is None:
-        _webhook_manager = WebhookManager()
-    return _webhook_manager
+def get_hook_registry() -> HookRegistry:
+    """Get global hook registry instance."""
+    global _hook_registry
+    if _hook_registry is None:
+        _hook_registry = HookRegistry()
+    return _hook_registry
+
+
+# Backward compatibility aliases
+WebhookManager = HookRegistry
+get_webhook_manager = get_hook_registry
+_webhook_manager = _hook_registry
