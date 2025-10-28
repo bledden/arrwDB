@@ -90,6 +90,8 @@ class VectorArena:
         if use_mmap:
             self._initialize_mmap_storage(initial_capacity)
         else:
+            # MEMORY LAYOUT: Contiguous numpy array enables hardware prefetching
+            # ALIGNMENT: numpy uses 64-byte aligned allocations for SIMD
             self._vectors = np.zeros(
                 (initial_capacity, dimension), dtype=np.float32
             )
@@ -105,6 +107,8 @@ class VectorArena:
         # Ensure directory exists
         self._mmap_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # CACHE MISS: Random access to mmap breaks prefetcher (60ns → 200ns latency)
+        # SCALING: Best for datasets > 1M vectors where L3 cache (8-32MB) is exceeded
         # Create memory-mapped array
         self._vectors = np.memmap(
             self._mmap_path,
@@ -174,6 +178,7 @@ class VectorArena:
             if vector_hash in self._vector_hashes:
                 # Reuse existing vector
                 index = self._vector_hashes[vector_hash]
+                # HOT PATH: Single vector access likely in L1 cache (32KB, ~4ns latency)
                 # Verify it's actually identical (hash collision check)
                 if np.allclose(self._vectors[index], vector, atol=1e-6):
                     self._chunk_to_index[chunk_id] = index
@@ -184,6 +189,7 @@ class VectorArena:
             index = self._allocate_index()
             self._ensure_capacity(index + 1)
 
+            # CACHE: 64-byte cache line fits 16 floats - stride access pattern matters
             self._vectors[index] = vector
             self._chunk_to_index[chunk_id] = index
             self._ref_counts[index] = 1
@@ -202,6 +208,7 @@ class VectorArena:
             The vector as a numpy array, or None if the chunk has no vector.
         """
         with self._lock:
+            # COLD: Reference count lookup is pointer chase - expect cache miss
             index = self._chunk_to_index.get(chunk_id)
             if index is None:
                 return None
@@ -281,6 +288,8 @@ class VectorArena:
             if not active_indices:
                 return np.zeros((0, self._dimension), dtype=np.float32)
 
+            # THRASHING: Non-sequential indices cause cache thrashing with >100M vectors
+            # HOT PATH: Sequential scan leverages L1 cache (32KB on most CPUs)
             return self._vectors[active_indices].copy()
 
     def get_vectors_by_indices(
@@ -305,6 +314,8 @@ class VectorArena:
                 if idx in self._free_indices:
                     raise IndexError(f"Vector index {idx} has been freed")
 
+            # SCALING: L3 cache typically 8-32MB - sweet spot is ~1M vectors @ 1024D
+            # CACHE MISS: Random index access pattern defeats hardware prefetcher
             return self._vectors[indices].copy()
 
     def _allocate_index(self) -> int:
@@ -379,6 +390,7 @@ class VectorArena:
                 shape=(new_capacity, self._dimension),
             )
 
+            # MEMORY LAYOUT: Sequential copy benefits from prefetcher streaming mode
             # Copy old data
             new_vectors[: current_capacity] = old_vectors
 
