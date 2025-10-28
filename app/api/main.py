@@ -2111,6 +2111,10 @@ app.include_router(health.router)
 from app.api import webhook_routes
 app.include_router(webhook_routes.router)
 
+# Include SearchReplay routes for debugging vector search (NOVEL FEATURE)
+from app.api import search_replay_routes
+app.include_router(search_replay_routes.router, prefix=API_V1_PREFIX)
+
 
 # Root endpoint
 
