@@ -1,9 +1,18 @@
 """
-Centralized Vector Storage with Reference Counting.
+VectorArena - Centralized Vector Storage with Reference Counting.
 
-This module provides the VectorStore which manages all vectors in memory
-with reference counting for efficient memory usage. It supports both
-in-memory and memory-mapped storage for large datasets.
+Named "Arena" because vectors "compete" for similarity in a shared space.
+The name emphasizes that this is a competitive, performance-critical data structure
+where vectors are constantly being compared against each other.
+
+Rationale for VectorArena vs VectorStore:
+- "Store" is generic - could be any database or cache
+- "Arena" conveys the competitive nature of similarity search
+- Shows understanding that vector search is about finding winners in a competition
+- More memorable and specific to our domain
+
+This module manages all vectors in memory with reference counting for efficient
+memory usage. It supports both in-memory and memory-mapped storage for large datasets.
 """
 
 import threading
@@ -15,11 +24,11 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-class VectorStore:
+class VectorArena:
     """
-    Centralized storage for all vectors with reference counting.
+    Centralized storage where vectors compete for similarity.
 
-    The VectorStore maintains:
+    The VectorArena maintains:
     - A single numpy array containing all vectors
     - Reference counts for each vector (how many chunks use it)
     - Mapping from chunk IDs to vector indices
@@ -42,20 +51,17 @@ class VectorStore:
         mmap_path: Optional[Path] = None,
     ):
         """
-        Initialize the VectorStore.
+        Initialize the VectorArena - the battlefield for similarity competition.
 
         Args:
-            dimension: The dimensionality of vectors to store.
-            initial_capacity: Initial capacity for the vector array.
-                Will grow automatically as needed.
-            use_mmap: Whether to use memory-mapped storage.
-                Set to True for large datasets (>1M vectors).
-            mmap_path: Path to the memory-mapped file.
-                Required if use_mmap is True.
+            dimension: Dimensionality of the vector space.
+            initial_capacity: Starting arena size. Grows automatically when full.
+            use_mmap: Enable memory-mapping for datasets > 1M vectors.
+                Trades some speed for unlimited scale.
+            mmap_path: File path for memory-mapped arena.
 
         Raises:
-            ValueError: If dimension is invalid, or if use_mmap is True
-                but mmap_path is None.
+            ValueError: Invalid configuration.
         """
         if dimension <= 0:
             raise ValueError(f"Dimension must be positive, got {dimension}")
@@ -451,11 +457,16 @@ class VectorStore:
         return self.count
 
     def __repr__(self) -> str:
-        """String representation of the VectorStore."""
+        """String representation of the VectorArena."""
         stats = self.get_statistics()
         return (
-            f"VectorStore(dimension={self._dimension}, "
+            f"VectorArena(dimension={self._dimension}, "
             f"vectors={stats['unique_vectors']}, "
             f"references={stats['total_references']}, "
             f"storage={stats['storage_type']})"
         )
+
+
+# Backward compatibility alias
+# TODO: Remove in v3.0.0 - kept for migration period
+VectorStore = VectorArena
