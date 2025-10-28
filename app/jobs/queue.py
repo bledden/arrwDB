@@ -1,11 +1,24 @@
 """
-Background job queue for long-running async operations.
+Background reactor for long-running async operations.
+
+This module implements the Reactor pattern - an event-driven architecture that
+actively responds to and processes background jobs. Unlike a passive queue that
+simply stores items, a reactor monitors events and dispatches them to appropriate
+handlers for processing.
+
+The Reactor pattern (popularized by Node.js, Twisted, and other async frameworks)
+emphasizes:
+- Event-driven processing: Jobs are events that trigger reactive handlers
+- Non-blocking I/O: Async workers process jobs without blocking
+- Event demultiplexing: Multiple workers handle different jobs concurrently
+- Active response: The system actively reacts to job submission, not passive storage
 
 Provides:
-- Async worker pool for parallel job execution
+- Async worker pool for parallel job execution (reactive processing)
 - Job status tracking and progress reporting
 - Result persistence and retrieval
 - Cancellation and retry support
+- Event-driven job dispatch to registered handlers
 """
 
 import asyncio
@@ -119,24 +132,41 @@ class Job:
         }
 
 
-class JobQueue:
+class BackgroundReactor:
     """
-    Background job queue with async worker pool.
+    Background reactor implementing the Reactor pattern for async job processing.
+
+    The Reactor pattern is a well-established event-driven architecture (used in
+    Node.js, Twisted, nginx) that actively responds to events rather than passively
+    storing them. This reactor:
+
+    1. **Event Registration**: Handlers register for specific job types (events)
+    2. **Event Demultiplexing**: Worker pool monitors and dispatches jobs concurrently
+    3. **Event Handling**: Dispatches jobs to appropriate handlers for processing
+    4. **Non-blocking I/O**: Async/await ensures reactive, non-blocking execution
+
+    Why "Reactor" over "Queue":
+    - "Queue" implies passive storage of items waiting to be retrieved
+    - "Reactor" emphasizes active, event-driven response to job submissions
+    - Better reflects the async, event-driven architecture of the system
+    - Aligns with established patterns from async frameworks (Twisted, Node.js)
+    - Communicates reactive processing vs. passive buffering
 
     Features:
-    - Parallel job execution with configurable workers
+    - Parallel job execution with configurable workers (event demultiplexing)
     - Job status tracking and progress reporting
     - Automatic retry on failure
     - Cancellation support
     - Result persistence
+    - Event-driven handler registration and dispatch
     """
 
     def __init__(self, num_workers: int = 4):
         """
-        Initialize job queue.
+        Initialize background reactor.
 
         Args:
-            num_workers: Number of worker tasks
+            num_workers: Number of worker tasks for event demultiplexing
         """
         self._num_workers = num_workers
         self._queue: asyncio.Queue = asyncio.Queue()
@@ -151,15 +181,18 @@ class JobQueue:
         self._completed_jobs = 0
         self._failed_jobs = 0
 
-        logger.info(f"JobQueue initialized with {num_workers} workers")
+        logger.info(f"BackgroundReactor initialized with {num_workers} workers")
 
     def register_handler(self, job_type: JobType, handler: Callable):
         """
-        Register a handler for a job type.
+        Register an event handler for a job type (Reactor pattern: Event Registration).
+
+        This implements the event registration phase of the Reactor pattern, where
+        handlers subscribe to specific job types (events) they want to process.
 
         Args:
-            job_type: Type of job
-            handler: Async function to execute job
+            job_type: Type of job (event) to handle
+            handler: Async function to execute when job type is dispatched
                      Signature: async def handler(job: Job) -> Any
 
         Example:
@@ -170,7 +203,7 @@ class JobQueue:
                 # ... import documents ...
                 return {"imported": len(documents)}
 
-            queue.register_handler(JobType.BATCH_IMPORT, handle_batch_import)
+            reactor.register_handler(JobType.BATCH_IMPORT, handle_batch_import)
             ```
         """
         self._handlers[job_type] = handler
@@ -184,11 +217,13 @@ class JobQueue:
         max_retries: int = 3,
     ) -> str:
         """
-        Submit a job to the queue.
+        Submit a job event to the reactor for processing.
+
+        This triggers the reactor's event-driven processing pipeline.
 
         Args:
-            job_type: Type of job
-            params: Job parameters
+            job_type: Type of job (event type)
+            params: Job parameters (event data)
             library_id: Associated library (optional)
             max_retries: Maximum retry attempts
 
@@ -197,7 +232,7 @@ class JobQueue:
 
         Example:
             ```python
-            job_id = await queue.submit(
+            job_id = await reactor.submit(
                 JobType.BATCH_IMPORT,
                 {"documents": [...]},
                 library_id=lib_id
@@ -216,7 +251,7 @@ class JobQueue:
 
         await self._queue.put(job.job_id)
 
-        logger.info(f"Job {job.job_id} ({job_type.value}) submitted to queue")
+        logger.info(f"Job {job.job_id} ({job_type.value}) submitted to reactor for processing")
 
         return job.job_id
 
@@ -292,7 +327,10 @@ class JobQueue:
 
     async def _worker(self, worker_id: int):
         """
-        Background worker that processes jobs from the queue.
+        Background worker that reactively processes jobs (Reactor pattern: Event Demultiplexing).
+
+        Workers continuously monitor for job events and dispatch them to handlers,
+        implementing the event demultiplexing phase of the Reactor pattern.
 
         Args:
             worker_id: Worker identifier
@@ -315,7 +353,7 @@ class JobQueue:
                 if job.status == JobStatus.CANCELLED:
                     continue
 
-                # Execute job
+                # Reactively execute job (dispatch to handler)
                 await self._execute_job(job, worker_id)
 
             except Exception as e:
@@ -325,7 +363,10 @@ class JobQueue:
 
     async def _execute_job(self, job: Job, worker_id: int):
         """
-        Execute a single job.
+        Execute a single job (Reactor pattern: Event Handling).
+
+        Dispatches the job event to its registered handler for processing,
+        implementing the event handling phase of the Reactor pattern.
 
         Args:
             job: Job to execute
@@ -393,30 +434,35 @@ class JobQueue:
 
     async def start(self):
         """
-        Start the job queue workers.
+        Start the background reactor workers.
+
+        Activates the reactor's event processing loop, starting worker tasks
+        that will reactively process incoming job events.
 
         Call this during application startup.
         """
         if self._running:
-            logger.warning("JobQueue already running")
+            logger.warning("BackgroundReactor already running")
             return
 
-        # Capture event loop
+        # Capture event loop (reactor event loop)
         self._loop = asyncio.get_running_loop()
-        logger.info(f"JobQueue captured event loop: {self._loop}")
+        logger.info(f"BackgroundReactor captured event loop: {self._loop}")
 
         self._running = True
 
-        # Start workers
+        # Start workers (event demultiplexing pool)
         for i in range(self._num_workers):
             worker_task = asyncio.create_task(self._worker(i))
             self._workers.append(worker_task)
 
-        logger.info(f"JobQueue started with {self._num_workers} workers")
+        logger.info(f"BackgroundReactor started with {self._num_workers} workers")
 
     async def stop(self):
         """
-        Stop the job queue workers.
+        Stop the background reactor workers.
+
+        Gracefully shuts down the reactor's event processing loop.
 
         Call this during application shutdown.
         Waits for running jobs to complete.
@@ -424,21 +470,21 @@ class JobQueue:
         if not self._running:
             return
 
-        logger.info("Stopping JobQueue...")
+        logger.info("Stopping BackgroundReactor...")
         self._running = False
 
         # Wait for workers to finish
         if self._workers:
             await asyncio.gather(*self._workers, return_exceptions=True)
 
-        logger.info("JobQueue stopped")
+        logger.info("BackgroundReactor stopped")
 
     def get_statistics(self) -> Dict[str, Any]:
         """
-        Get job queue statistics.
+        Get background reactor statistics.
 
         Returns:
-            Statistics dictionary
+            Statistics dictionary with reactor metrics
         """
         pending = sum(1 for j in self._jobs.values() if j.status == JobStatus.PENDING)
         running = sum(1 for j in self._jobs.values() if j.status == JobStatus.RUNNING)
@@ -455,20 +501,25 @@ class JobQueue:
         }
 
 
-# Global job queue instance
-_global_job_queue: Optional[JobQueue] = None
+# Global background reactor instance
+_global_job_queue: Optional[BackgroundReactor] = None
 
 
-def get_job_queue() -> JobQueue:
+def get_job_queue() -> BackgroundReactor:
     """
-    Get the global job queue instance.
+    Get the global background reactor instance.
 
     Creates the instance on first call (singleton pattern).
 
     Returns:
-        The global JobQueue instance
+        The global BackgroundReactor instance
     """
     global _global_job_queue
     if _global_job_queue is None:
-        _global_job_queue = JobQueue(num_workers=4)
+        _global_job_queue = BackgroundReactor(num_workers=4)
     return _global_job_queue
+
+
+# Backward compatibility alias
+# This allows existing code to continue using JobQueue while we migrate to BackgroundReactor
+JobQueue = BackgroundReactor
