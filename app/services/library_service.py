@@ -138,7 +138,7 @@ class CorpusService:
         corpus = Corpus(name=name, metadata=metadata)
 
         try:
-            created = self._repository.create_corpus(corpus)
+            created = self._repository.create_library(corpus)
             logger.info(f"Created corpus {created.id} named '{name}'")
             return created
         except Exception as e:
@@ -158,7 +158,7 @@ class CorpusService:
         Raises:
             CorpusNotFoundError: If corpus doesn't exist.
         """
-        return self._repository.get_corpus(corpus_id)
+        return self._repository.get_library(corpus_id)
 
     def list_corpora(self) -> List[Corpus]:
         """
@@ -167,7 +167,7 @@ class CorpusService:
         Returns:
             List of all corpora.
         """
-        return self._repository.list_corpora()
+        return self._repository.list_libraries()
 
     def delete_corpus(self, corpus_id: UUID) -> bool:
         """
@@ -181,7 +181,7 @@ class CorpusService:
         """
         logger.info(f"Deleting corpus {corpus_id}")
 
-        deleted = self._repository.delete_corpus(corpus_id)
+        deleted = self._repository.delete_library(corpus_id)
 
         if deleted:
             logger.info(f"Deleted corpus {corpus_id}")
@@ -230,7 +230,7 @@ class CorpusService:
         )
 
         # Get corpus to check it exists
-        corpus = self._repository.get_corpus(corpus_id)
+        corpus = self._repository.get_library(corpus_id)
 
         # Generate embeddings for all texts
         try:
@@ -325,7 +325,7 @@ class CorpusService:
         )
 
         # Get corpus to check it exists
-        corpus = self._repository.get_corpus(corpus_id)
+        corpus = self._repository.get_library(corpus_id)
 
         # Create chunks
         from uuid import uuid4
@@ -431,7 +431,7 @@ class CorpusService:
         )
 
         # Get corpus to check it exists
-        corpus = self._repository.get_corpus(corpus_id)
+        corpus = self._repository.get_library(corpus_id)
 
         # Collect all texts that need embeddings
         all_texts = []
@@ -524,7 +524,7 @@ class CorpusService:
         )
 
         # Get corpus to check it exists
-        corpus = self._repository.get_corpus(corpus_id)
+        corpus = self._repository.get_library(corpus_id)
 
         # Create documents with pre-computed embeddings
         from uuid import uuid4
@@ -854,7 +854,7 @@ class CorpusService:
         logger.info(f"Regenerating embeddings for corpus {corpus_id}")
 
         # Get the corpus to ensure it exists
-        corpus = self._repository.get_corpus(corpus_id)
+        corpus = self._repository.get_library(corpus_id)
 
         # Collect all text chunks that need embeddings
         texts_to_embed = []
@@ -885,7 +885,7 @@ class CorpusService:
             chunk.embedding = embedding.tolist()
 
         # Add all embeddings to the vector store and index
-        self._repository.add_embeddings_to_corpus(
+        self._repository.add_embeddings_to_library(
             corpus_id, chunks_to_update, embeddings
         )
 
@@ -908,7 +908,7 @@ class CorpusService:
         Raises:
             CorpusNotFoundError: If corpus doesn't exist.
         """
-        return self._repository.get_corpus_statistics(corpus_id)
+        return self._repository.get_library_statistics(corpus_id)
 
     def rebuild_index(
         self, corpus_id: UUID, new_index_type: Optional[str] = None, index_config: Optional[dict] = None
