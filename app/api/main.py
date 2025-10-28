@@ -2139,6 +2139,14 @@ app.include_router(query_expansion_routes.router, prefix=API_V1_PREFIX)
 from app.api import vector_drift_routes
 app.include_router(vector_drift_routes.router, prefix=API_V1_PREFIX)
 
+# Include AdaptiveReranking routes for smart reranking (NOVEL FEATURE)
+from app.api import adaptive_reranking_routes
+app.include_router(adaptive_reranking_routes.router, prefix=API_V1_PREFIX)
+
+# Include HybridFusion routes for multi-strategy fusion (NOVEL FEATURE)
+from app.api import hybrid_fusion_routes
+app.include_router(hybrid_fusion_routes.router, prefix=API_V1_PREFIX)
+
 
 # Root endpoint
 
