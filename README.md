@@ -16,6 +16,7 @@ arrwDB is a production-grade vector database designed for semantic search, RAG (
 
 ### Key Features
 
+#### Core Infrastructure
  **Real-Time Streaming** - NDJSON batch ingestion with sub-second performance
  **WebSocket Support** - Bidirectional real-time communication for live search
  **Webhooks API** - Event notifications with HMAC signatures and automatic retries
@@ -28,6 +29,19 @@ arrwDB is a production-grade vector database designed for semantic search, RAG (
  **Docker Support** - Development and production Docker Compose configurations
  **Comprehensive Testing** - 156+ tests with 95-100% coverage on core infrastructure
  **Production Ready** - Rate limiting, monitoring, security, persistence
+
+#### Novel Features (Not in Other Vector DBs)
+ **Search Replay** - Complete HNSW search path recording for debugging & transparency
+ **Temperature Search** - LLM-inspired result sampling (exploration/exploitation control)
+ **Index Oracle** - Intelligent index recommendation based on workload analysis
+ **Embedding Health Monitor** - Statistical quality detection (outliers, degeneracy, drift)
+ **Vector Clustering** - K-means semantic grouping with auto cluster count estimation
+ **Query Expansion** - Automatic query rewriting with RRF fusion (3 strategies)
+ **Vector Drift Detection** - Kolmogorov-Smirnov test for distribution monitoring
+ **Adaptive Reranking** - Feedback-based learning (clicks, dwell time, bookmarks)
+ **Hybrid Fusion** - Multi-strategy result merging (RRF, linear, confidence-based)
+
+See [NOVEL_FEATURES.md](docs/NOVEL_FEATURES.md) for complete documentation of the 9 unique features.
 
 ---
 
@@ -493,6 +507,7 @@ export WEBSOCKET_MAX_CONNECTIONS=1000
 
 | Document | Description |
 |----------|-------------|
+| [NOVEL_FEATURES.md](docs/NOVEL_FEATURES.md) | 9 unique features not in other vector databases |
 | [DOCKER_DEPLOYMENT.md](docs/DOCKER_DEPLOYMENT.md) | Complete Docker deployment guide |
 | [TEST_COVERAGE_ROADMAP.md](docs/TEST_COVERAGE_ROADMAP.md) | Test strategy and coverage plan |
 | [PERFORMANCE_BENCHMARKS.md](docs/PERFORMANCE_BENCHMARKS.md) | Detailed performance results |
@@ -530,9 +545,9 @@ This project is proprietary software. All rights reserved.
 
 ---
 
-**Last Updated**: October 27, 2025
-**Version**: 2.0.0
-**Status**:  Production Ready with Enterprise Features
+**Last Updated**: October 28, 2025
+**Version**: 2.1.0
+**Status**:  Production Ready with 9 Unique Novel Features
 
 ---
 
