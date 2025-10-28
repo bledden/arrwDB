@@ -2127,6 +2127,10 @@ app.include_router(index_oracle_routes.router, prefix=API_V1_PREFIX)
 from app.api import embedding_health_routes
 app.include_router(embedding_health_routes.router, prefix=API_V1_PREFIX)
 
+# Include VectorClustering routes for semantic clustering (NOVEL FEATURE)
+from app.api import vector_clustering_routes
+app.include_router(vector_clustering_routes.router, prefix=API_V1_PREFIX)
+
 
 # Root endpoint
 
