@@ -298,7 +298,7 @@ class TestAddDocumentWithText:
         mock_repository.add_document.side_effect = capture_document
 
         result = library_service.add_document_with_text(
-            library_id=library_id,
+            corpus_id=library_id,
             title="Test Doc",
             texts=["Chunk 1", "Chunk 2"],
         )
@@ -360,7 +360,7 @@ class TestAddDocumentWithEmbeddings:
         ]
 
         result = library_service.add_document_with_embeddings(
-            library_id=library_id,
+            corpus_id=library_id,
             title="Test Doc",
             text_embedding_pairs=text_embedding_pairs,
             tags=["test"],
@@ -377,7 +377,7 @@ class TestAddDocumentWithEmbeddings:
 
         with pytest.raises(ValueError, match="text_embedding_pairs cannot be empty"):
             library_service.add_document_with_embeddings(
-                library_id=library_id,
+                corpus_id=library_id,
                 title="Empty Doc",
                 text_embedding_pairs=[],
             )
@@ -429,7 +429,7 @@ class TestAddDocumentWithEmbeddings:
         ]
 
         result = library_service.add_document_with_embeddings(
-            library_id=library_id,
+            corpus_id=library_id,
             title="Test Doc",
             text_embedding_pairs=text_embedding_pairs,
             author="Test Author",
@@ -476,7 +476,7 @@ class TestSearchWithText:
         mock_repository.search.return_value = search_results
 
         results = library_service.search_with_text(
-            library_id=library_id,
+            corpus_id=library_id,
             query_text="test query",
             k=10,
         )
@@ -517,7 +517,7 @@ class TestSearchWithEmbedding:
         mock_repository.search.return_value = search_results
 
         results = library_service.search_with_embedding(
-            library_id=library_id,
+            corpus_id=library_id,
             query_embedding=query_embedding,
             k=10,
         )
@@ -537,7 +537,7 @@ class TestSearchWithEmbedding:
         mock_repository.search.return_value = []
 
         results = library_service.search_with_embedding(
-            library_id=library_id,
+            corpus_id=library_id,
             query_embedding=query_embedding,
             k=5,
             distance_threshold=0.5,
