@@ -551,6 +551,7 @@ See [NOVEL_FEATURES.md](docs/NOVEL_FEATURES.md) for complete API documentation a
 |----------|-------------|
 | [NOVEL_FEATURES.md](docs/NOVEL_FEATURES.md) | 9 unique features not in other vector databases |
 | [COMPETITIVE_ANALYSIS_2025.md](docs/COMPETITIVE_ANALYSIS_2025.md) | Deep competitive analysis vs Pinecone, Weaviate, Qdrant, Milvus, Chroma |
+| [SCALING_TO_BILLIONS_ROADMAP.md](docs/SCALING_TO_BILLIONS_ROADMAP.md) | Technical roadmap: 10M → 1B vectors, 200ms → 10ms latency |
 | [DOCKER_DEPLOYMENT.md](docs/DOCKER_DEPLOYMENT.md) | Complete Docker deployment guide |
 | [TEST_COVERAGE_ROADMAP.md](docs/TEST_COVERAGE_ROADMAP.md) | Test strategy and coverage plan |
 | [PERFORMANCE_BENCHMARKS.md](docs/PERFORMANCE_BENCHMARKS.md) | Detailed performance results |
