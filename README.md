@@ -1,4 +1,4 @@
-# arrwDB - Production Vector Database 🚀
+# arrwDB - Production Vector Database 
 
 **Enterprise-grade vector database with real-time streaming, WebSocket support, webhooks, and comprehensive testing**
 
@@ -10,28 +10,28 @@
 
 ---
 
-## 🎯 Overview
+##  Overview
 
 arrwDB is a production-grade vector database designed for semantic search, RAG (Retrieval-Augmented Generation), and AI applications. Built from the ground up with performance, scalability, and developer experience in mind.
 
 ### Key Features
 
-✅ **Real-Time Streaming** - NDJSON batch ingestion with sub-second performance
-✅ **WebSocket Support** - Bidirectional real-time communication for live search
-✅ **Webhooks API** - Event notifications with HMAC signatures and automatic retries
-✅ **Event Bus & CDC** - Change data capture with pub/sub event system
-✅ **Background Job Queue** - Async processing with configurable worker pools
-✅ **Multiple Index Types** - BruteForce, KD-Tree, LSH, HNSW, IVF
-✅ **Hybrid Search** - Combine semantic and keyword search with reranking
-✅ **Metadata Filtering** - Advanced query filtering on document metadata
-✅ **Health Checks** - Kubernetes-ready liveness and readiness probes
-✅ **Docker Support** - Development and production Docker Compose configurations
-✅ **Comprehensive Testing** - 156+ tests with 95-100% coverage on core infrastructure
-✅ **Production Ready** - Rate limiting, monitoring, security, persistence
+ **Real-Time Streaming** - NDJSON batch ingestion with sub-second performance
+ **WebSocket Support** - Bidirectional real-time communication for live search
+ **Webhooks API** - Event notifications with HMAC signatures and automatic retries
+ **Event Bus & CDC** - Change data capture with pub/sub event system
+ **Background Job Queue** - Async processing with configurable worker pools
+ **Multiple Index Types** - BruteForce, KD-Tree, LSH, HNSW, IVF
+ **Hybrid Search** - Combine semantic and keyword search with reranking
+ **Metadata Filtering** - Advanced query filtering on document metadata
+ **Health Checks** - Kubernetes-ready liveness and readiness probes
+ **Docker Support** - Development and production Docker Compose configurations
+ **Comprehensive Testing** - 156+ tests with 95-100% coverage on core infrastructure
+ **Production Ready** - Rate limiting, monitoring, security, persistence
 
 ---
 
-## 📊 Performance Metrics
+##  Performance Metrics
 
 ### Async Infrastructure (Validated & Tested)
 - **Event Bus**: 470,000 events/sec throughput, 0.14ms P99 latency (47x target)
@@ -54,7 +54,7 @@ arrwDB is a production-grade vector database designed for semantic search, RAG (
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Option 1: Docker (Recommended)
 
@@ -122,7 +122,7 @@ curl -X POST http://localhost:8000/v1/libraries/{library_id}/search \
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 arrwDB/
@@ -171,7 +171,7 @@ arrwDB/
 
 ---
 
-## 📡 Real-Time Features
+##  Real-Time Features
 
 ### 1. NDJSON Streaming Ingestion
 Batch upload documents with automatic embedding generation:
@@ -283,7 +283,7 @@ curl -X POST http://localhost:8000/v1/libraries/{library_id}/search/hybrid \
 
 ---
 
-## 🔧 API Reference
+##  API Reference
 
 ### Core REST Endpoints
 
@@ -328,7 +328,7 @@ curl -X POST http://localhost:8000/v1/libraries/{library_id}/search/hybrid \
 
 ---
 
-## 🧪 Testing
+##  Testing
 
 ### Comprehensive Test Suite
 
@@ -354,19 +354,19 @@ python3 -m pytest tests/ --cov=app --cov-report=html
 
 | Module | Tests | Coverage | Status |
 |--------|-------|----------|--------|
-| Event Bus | 23 tests | 97% | ✅ Passing |
-| Job Queue | 34 tests | 98% | ✅ Passing |
-| Job Handlers | 19 tests | 95% | ✅ Passing |
-| WebSocket Manager | 25 tests | 100% | ✅ Passing |
-| API Key Management | 33 tests | 100% | ✅ Passing |
-| Streaming | 13 tests | 78% | ✅ Passing |
-| Hybrid Search | 32 tests | 76% | ✅ Passing |
-| **Performance Benchmarks** | 10 tests | N/A | ✅ All targets exceeded |
-| **Total** | **156+ tests** | **95-100%** | **✅ All passing** |
+| Event Bus | 23 tests | 97% |  Passing |
+| Job Queue | 34 tests | 98% |  Passing |
+| Job Handlers | 19 tests | 95% |  Passing |
+| WebSocket Manager | 25 tests | 100% |  Passing |
+| API Key Management | 33 tests | 100% |  Passing |
+| Streaming | 13 tests | 78% |  Passing |
+| Hybrid Search | 32 tests | 76% |  Passing |
+| **Performance Benchmarks** | 10 tests | N/A |  All targets exceeded |
+| **Total** | **156+ tests** | **95-100%** | ** All passing** |
 
 ---
 
-## 📈 Monitoring & Observability
+##  Monitoring & Observability
 
 ### Health Checks
 ```bash
@@ -399,7 +399,7 @@ curl http://localhost:8000/v1/libraries/{id}/statistics
 
 ---
 
-## ⚙️ Configuration
+##  Configuration
 
 ### Environment Variables
 
@@ -440,56 +440,56 @@ export WEBSOCKET_MAX_CONNECTIONS=1000
 
 ---
 
-## ✅ Recently Completed (October 2025)
+##  Recently Completed (October 2025)
 
 ### Testing & Quality Assurance
-- ✅ Comprehensive test suite with 156+ tests (100% pass rate)
-- ✅ Event Bus, Job Queue, WebSocket tests (95-100% coverage)
-- ✅ API Key Management tests (33 tests, 100% passing)
-- ✅ Streaming tests (13 tests for NDJSON and search streaming)
-- ✅ Hybrid Search tests (32 tests for scoring and reranking)
-- ✅ Performance benchmarks validating 2-142x performance targets
+-  Comprehensive test suite with 156+ tests (100% pass rate)
+-  Event Bus, Job Queue, WebSocket tests (95-100% coverage)
+-  API Key Management tests (33 tests, 100% passing)
+-  Streaming tests (13 tests for NDJSON and search streaming)
+-  Hybrid Search tests (32 tests for scoring and reranking)
+-  Performance benchmarks validating 2-142x performance targets
 
 ### Infrastructure & DevOps
-- ✅ Docker Compose for development (`docker-compose.dev.yml`)
-- ✅ Docker Compose for production (`docker-compose.prod.yml`)
-- ✅ Multi-stage Dockerfile with optimizations
-- ✅ Health check endpoints (liveness, readiness, detailed)
-- ✅ Prometheus metrics support
-- ✅ Comprehensive Docker deployment guide
+-  Docker Compose for development (`docker-compose.dev.yml`)
+-  Docker Compose for production (`docker-compose.prod.yml`)
+-  Multi-stage Dockerfile with optimizations
+-  Health check endpoints (liveness, readiness, detailed)
+-  Prometheus metrics support
+-  Comprehensive Docker deployment guide
 
 ### Features & APIs
-- ✅ Webhooks API with HMAC signatures
-- ✅ Webhook delivery tracking and retry logic
-- ✅ Hybrid search with metadata scoring
-- ✅ Pre-built reranking functions
-- ✅ Streaming search with formatted results
-- ✅ NDJSON batch document ingestion
+-  Webhooks API with HMAC signatures
+-  Webhook delivery tracking and retry logic
+-  Hybrid search with metadata scoring
+-  Pre-built reranking functions
+-  Streaming search with formatted results
+-  NDJSON batch document ingestion
 
 ### Documentation
-- ✅ Docker deployment guide ([DOCKER_DEPLOYMENT.md](docs/DOCKER_DEPLOYMENT.md))
-- ✅ Test coverage roadmap ([TEST_COVERAGE_ROADMAP.md](docs/TEST_COVERAGE_ROADMAP.md))
-- ✅ Performance benchmarks ([PERFORMANCE_BENCHMARKS.md](docs/PERFORMANCE_BENCHMARKS.md))
-- ✅ Comprehensive API documentation
+-  Docker deployment guide ([DOCKER_DEPLOYMENT.md](docs/DOCKER_DEPLOYMENT.md))
+-  Test coverage roadmap ([TEST_COVERAGE_ROADMAP.md](docs/TEST_COVERAGE_ROADMAP.md))
+-  Performance benchmarks ([PERFORMANCE_BENCHMARKS.md](docs/PERFORMANCE_BENCHMARKS.md))
+-  Comprehensive API documentation
 
 ---
 
-## 🚧 In Development
+##  In Development
 
 ### MVP Features (In Progress)
-- 🔄 Python SDK for client integration
-- 🔄 Cost tracking and budget management
-- 🔄 Prompt caching for duplicate detection
-- 🔄 Analytics dashboard API endpoints
+-  Python SDK for client integration
+-  Cost tracking and budget management
+-  Prompt caching for duplicate detection
+-  Analytics dashboard API endpoints
 
 ### Infrastructure (Planned)
-- ⏳ CI/CD pipeline (GitHub Actions)
-- ⏳ Kubernetes deployment manifests
-- ⏳ Grafana dashboards for monitoring
+-  CI/CD pipeline (GitHub Actions)
+-  Kubernetes deployment manifests
+-  Grafana dashboards for monitoring
 
 ---
 
-## 📚 Documentation
+##  Documentation
 
 | Document | Description |
 |----------|-------------|
@@ -502,7 +502,7 @@ export WEBSOCKET_MAX_CONNECTIONS=1000
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 We welcome contributions! Please:
 
@@ -515,13 +515,13 @@ We welcome contributions! Please:
 
 ---
 
-## 📄 License
+##  License
 
 This project is proprietary software. All rights reserved.
 
 ---
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - **Cohere** - Embedding API
 - **FastAPI** - Modern Python web framework
@@ -532,8 +532,8 @@ This project is proprietary software. All rights reserved.
 
 **Last Updated**: October 27, 2025
 **Version**: 2.0.0
-**Status**: ✅ Production Ready with Enterprise Features
+**Status**:  Production Ready with Enterprise Features
 
 ---
 
-**Built with ❤️ for high-performance semantic search and AI applications**
+**Built with  for high-performance semantic search and AI applications**
