@@ -2,11 +2,11 @@
 Python SDK client for the Vector Database API.
 
 This module provides a high-level Python client for interacting with
-the Vector Database REST API.
+the Vector Database REST API, including webhooks, jobs, and health monitoring.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Callable
 from uuid import UUID
 
 import requests
@@ -435,6 +435,259 @@ class VectorDBClient:
         response = self._request(
             "POST", f"/libraries/{library_id}/search/filtered", json=payload
         )
+        return response.json()
+
+    # Webhook Operations
+
+    def create_webhook(
+        self,
+        url: str,
+        events: List[str],
+        description: Optional[str] = None,
+        max_retries: int = 3,
+        timeout_seconds: int = 30,
+    ) -> Dict[str, Any]:
+        """
+        Create a webhook to receive event notifications.
+
+        Args:
+            url: Webhook endpoint URL
+            events: List of event types to subscribe to
+            description: Optional description
+            max_retries: Maximum retry attempts on failure
+            timeout_seconds: Request timeout
+
+        Returns:
+            Created webhook with secret for HMAC verification
+        """
+        payload = {
+            "url": url,
+            "events": events,
+            "description": description,
+            "max_retries": max_retries,
+            "timeout_seconds": timeout_seconds,
+        }
+
+        response = self._request("POST", "/api/v1/webhooks", json=payload)
+        return response.json()
+
+    def list_webhooks(self) -> List[Dict[str, Any]]:
+        """
+        List all registered webhooks.
+
+        Returns:
+            List of webhooks
+        """
+        response = self._request("GET", "/api/v1/webhooks")
+        return response.json()["webhooks"]
+
+    def get_webhook(self, webhook_id: str) -> Dict[str, Any]:
+        """
+        Get webhook details.
+
+        Args:
+            webhook_id: Webhook UUID
+
+        Returns:
+            Webhook details
+        """
+        response = self._request("GET", f"/api/v1/webhooks/{webhook_id}")
+        return response.json()
+
+    def update_webhook(
+        self,
+        webhook_id: str,
+        url: Optional[str] = None,
+        events: Optional[List[str]] = None,
+        description: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Update webhook configuration.
+
+        Args:
+            webhook_id: Webhook UUID
+            url: New URL
+            events: New event subscriptions
+            description: New description
+            status: New status (active, paused, disabled)
+
+        Returns:
+            Updated webhook
+        """
+        payload = {}
+        if url:
+            payload["url"] = url
+        if events:
+            payload["events"] = events
+        if description:
+            payload["description"] = description
+        if status:
+            payload["status"] = status
+
+        response = self._request(
+            "PATCH", f"/api/v1/webhooks/{webhook_id}", json=payload
+        )
+        return response.json()
+
+    def delete_webhook(self, webhook_id: str) -> None:
+        """
+        Delete a webhook.
+
+        Args:
+            webhook_id: Webhook UUID
+        """
+        self._request("DELETE", f"/api/v1/webhooks/{webhook_id}")
+
+    def get_webhook_deliveries(
+        self, webhook_id: str, status: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Get webhook delivery history.
+
+        Args:
+            webhook_id: Webhook UUID
+            status: Optional status filter (success, failed, pending)
+
+        Returns:
+            List of delivery attempts
+        """
+        params = {}
+        if status:
+            params["status"] = status
+
+        response = self._request(
+            "GET", f"/api/v1/webhooks/{webhook_id}/deliveries", params=params
+        )
+        return response.json()["deliveries"]
+
+    def get_webhook_stats(self, webhook_id: str) -> Dict[str, Any]:
+        """
+        Get webhook statistics.
+
+        Args:
+            webhook_id: Webhook UUID
+
+        Returns:
+            Statistics including success rate and delivery counts
+        """
+        response = self._request("GET", f"/api/v1/webhooks/{webhook_id}/stats")
+        return response.json()
+
+    def test_webhook(self, webhook_id: str) -> Dict[str, Any]:
+        """
+        Send a test event to a webhook.
+
+        Args:
+            webhook_id: Webhook UUID
+
+        Returns:
+            Test delivery result
+        """
+        response = self._request("POST", f"/api/v1/webhooks/{webhook_id}/test")
+        return response.json()
+
+    # Health & Monitoring
+
+    def readiness_check(self) -> Dict[str, Any]:
+        """
+        Check if API and all dependencies are ready.
+
+        Returns:
+            Readiness status with dependency checks
+        """
+        response = self._request("GET", "/ready")
+        return response.json()
+
+    def detailed_health(self) -> Dict[str, Any]:
+        """
+        Get detailed health information for all components.
+
+        Returns:
+            Detailed component status
+        """
+        response = self._request("GET", "/health/detailed")
+        return response.json()
+
+    # Job Management (for background operations)
+
+    def submit_job(
+        self, job_type: str, payload: Dict[str, Any], wait: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Submit a background job.
+
+        Args:
+            job_type: Type of job (batch_import, index_rebuild, etc.)
+            payload: Job-specific payload
+            wait: If True, block until job completes
+
+        Returns:
+            Job status
+        """
+        response = self._request(
+            "POST", f"/v1/jobs/{job_type}", json=payload
+        )
+        job = response.json()
+
+        if wait:
+            # Poll for completion
+            import time
+            job_id = job["id"]
+            while True:
+                status = self.get_job_status(job_id)
+                if status["status"] in ["completed", "failed", "cancelled"]:
+                    return status
+                time.sleep(1)
+
+        return job
+
+    def get_job_status(self, job_id: str) -> Dict[str, Any]:
+        """
+        Get job status.
+
+        Args:
+            job_id: Job UUID
+
+        Returns:
+            Job status including progress and result
+        """
+        response = self._request("GET", f"/v1/jobs/{job_id}")
+        return response.json()
+
+    def cancel_job(self, job_id: str) -> Dict[str, Any]:
+        """
+        Cancel a running job.
+
+        Args:
+            job_id: Job UUID
+
+        Returns:
+            Updated job status
+        """
+        response = self._request("POST", f"/v1/jobs/{job_id}/cancel")
+        return response.json()
+
+    def list_jobs(
+        self, status: Optional[str] = None, job_type: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        List jobs with optional filtering.
+
+        Args:
+            status: Filter by status (pending, running, completed, failed)
+            job_type: Filter by job type
+
+        Returns:
+            List of jobs
+        """
+        params = {}
+        if status:
+            params["status"] = status
+        if job_type:
+            params["type"] = job_type
+
+        response = self._request("GET", "/v1/jobs", params=params)
         return response.json()
 
     def __repr__(self) -> str:
