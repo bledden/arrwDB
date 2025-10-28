@@ -2131,6 +2131,14 @@ app.include_router(embedding_health_routes.router, prefix=API_V1_PREFIX)
 from app.api import vector_clustering_routes
 app.include_router(vector_clustering_routes.router, prefix=API_V1_PREFIX)
 
+# Include QueryExpansion routes for query rewriting (NOVEL FEATURE)
+from app.api import query_expansion_routes
+app.include_router(query_expansion_routes.router, prefix=API_V1_PREFIX)
+
+# Include VectorDrift routes for distribution shift detection (NOVEL FEATURE)
+from app.api import vector_drift_routes
+app.include_router(vector_drift_routes.router, prefix=API_V1_PREFIX)
+
 
 # Root endpoint
 
