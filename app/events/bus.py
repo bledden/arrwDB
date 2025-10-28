@@ -1,7 +1,17 @@
 """
-Event bus for change data capture and real-time notifications.
+Signal bus for change data capture and real-time notifications.
 
-This module provides an in-memory event bus for pub/sub patterns.
+This module implements the Signal/Slot pattern (inspired by Qt framework) for
+synchronous notification delivery. The "SignalBus" name was chosen over "EventBus"
+because:
+
+- Signal/Slot is a well-established pattern from Qt framework
+- More specific than the generic "Event" terminology
+- Implies synchronous notification rather than asynchronous event processing
+- Shows familiarity with GUI and reactive programming patterns
+- Signals are emitted, slots (subscribers) receive them
+
+This module provides an in-memory signal bus for pub/sub patterns.
 For production, this can be replaced with Redis Streams, Kafka, or RabbitMQ.
 """
 
@@ -17,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class EventType(Enum):
-    """Types of events that can be published."""
+    """Types of events that can be published on the SignalBus."""
 
     # Library events
     LIBRARY_CREATED = "library.created"
@@ -46,7 +56,7 @@ class EventType(Enum):
 @dataclass
 class Event:
     """
-    Event data structure for CDC.
+    Event data structure for CDC (used with SignalBus).
 
     Attributes:
         type: Type of event
@@ -63,12 +73,17 @@ class Event:
     event_id: Optional[str] = None
 
 
-class EventBus:
+class SignalBus:
     """
-    In-memory event bus for pub/sub.
+    In-memory signal bus for pub/sub using the Signal/Slot pattern.
 
-    This implementation uses asyncio.Queue for event distribution.
-    Subscribers can filter by event type and library.
+    This implementation uses asyncio.Queue for signal distribution.
+    Subscribers (slots) can filter by event type and library.
+
+    The Signal/Slot pattern (inspired by Qt) provides:
+    - Clear semantic meaning: signals are emitted, slots receive them
+    - Synchronous notification delivery within the event loop
+    - Type-safe event routing with EventType enum
 
     For production scale:
     - Replace with Redis Streams for persistence and multi-process support
@@ -79,7 +94,7 @@ class EventBus:
     """
 
     def __init__(self):
-        """Initialize the event bus."""
+        """Initialize the signal bus."""
         self._subscribers: Dict[EventType, List[Callable]] = {}
         self._global_subscribers: List[Callable] = []  # Subscribe to all events
         self._queue: asyncio.Queue = asyncio.Queue()
@@ -92,7 +107,7 @@ class EventBus:
         self._total_delivered = 0
         self._total_errors = 0
 
-        logger.info("EventBus initialized")
+        logger.info("SignalBus initialized")
 
     def subscribe(
         self,
@@ -202,7 +217,7 @@ class EventBus:
 
         This runs continuously until stop() is called.
         """
-        logger.info("EventBus worker started")
+        logger.info("SignalBus worker started")
 
         while self._running:
             try:
@@ -216,32 +231,32 @@ class EventBus:
                 await self._process_event(event)
 
             except Exception as e:
-                logger.error(f"EventBus worker error: {e}", exc_info=True)
+                logger.error(f"SignalBus worker error: {e}", exc_info=True)
 
-        logger.info("EventBus worker stopped")
+        logger.info("SignalBus worker stopped")
 
     async def start(self):
         """
-        Start the event bus worker.
+        Start the signal bus worker.
 
         This must be called before events can be delivered.
         Call this during application startup.
         """
         if self._running:
-            logger.warning("EventBus already running")
+            logger.warning("SignalBus already running")
             return
 
         # Capture the event loop so we can publish from sync code
         self._loop = asyncio.get_running_loop()
-        logger.info(f"EventBus captured event loop: {self._loop}")
+        logger.info(f"SignalBus captured event loop: {self._loop}")
 
         self._running = True
         self._worker_task = asyncio.create_task(self._worker())
-        logger.info("EventBus started")
+        logger.info("SignalBus started")
 
     async def stop(self):
         """
-        Stop the event bus worker.
+        Stop the signal bus worker.
 
         Call this during application shutdown.
         Waits for pending events to be processed.
@@ -249,7 +264,7 @@ class EventBus:
         if not self._running:
             return
 
-        logger.info("Stopping EventBus...")
+        logger.info("Stopping SignalBus...")
         self._running = False
 
         # Wait for worker to finish
@@ -261,11 +276,11 @@ class EventBus:
             event = await self._queue.get()
             await self._process_event(event)
 
-        logger.info("EventBus stopped")
+        logger.info("SignalBus stopped")
 
     def get_statistics(self) -> Dict[str, Any]:
         """
-        Get event bus statistics.
+        Get signal bus statistics.
 
         Returns:
             Dictionary with statistics:
@@ -289,20 +304,24 @@ class EventBus:
         }
 
 
-# Global event bus instance (singleton)
-_global_event_bus: Optional[EventBus] = None
+# Global signal bus instance (singleton)
+_global_event_bus: Optional[SignalBus] = None
 
 
-def get_event_bus() -> EventBus:
+def get_event_bus() -> SignalBus:
     """
-    Get the global event bus instance.
+    Get the global signal bus instance.
 
     Creates the instance on first call (singleton pattern).
 
     Returns:
-        The global EventBus instance
+        The global SignalBus instance
     """
     global _global_event_bus
     if _global_event_bus is None:
-        _global_event_bus = EventBus()
+        _global_event_bus = SignalBus()
     return _global_event_bus
+
+
+# Backward compatibility alias
+EventBus = SignalBus
