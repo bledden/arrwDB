@@ -23,7 +23,7 @@ class FusionRequest(BaseModel):
     """Request for fusion."""
 
     results_by_strategy: Dict[str, List[Dict[str, float]]]
-    method: str = Field("rrf", regex="^(linear|rrf|learned)$")
+    method: str = Field("rrf", pattern="^(linear|rrf|learned)$")
     weights: Optional[Dict[str, float]] = None
 
 

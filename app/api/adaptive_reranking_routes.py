@@ -24,7 +24,7 @@ class FeedbackSignalRequest(BaseModel):
     """Request model for feedback signal."""
 
     vector_id: str
-    signal_type: str = Field(..., regex="^(click|dwell|skip|bookmark)$")
+    signal_type: str = Field(..., pattern="^(click|dwell|skip|bookmark)$")
     strength: float = Field(..., ge=0.0, le=1.0)
 
 
@@ -33,7 +33,7 @@ class RerankRequest(BaseModel):
 
     results: List[Dict[str, float]]  # [{"vector_id": "uuid", "score": 0.9}, ...]
     feedback: List[FeedbackSignalRequest]
-    method: str = Field("hybrid", regex="^(feedback|diversity|hybrid)$")
+    method: str = Field("hybrid", pattern="^(feedback|diversity|hybrid)$")
 
 
 class RerankResponse(BaseModel):

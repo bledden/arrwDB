@@ -45,8 +45,8 @@ class SearchWithExpansionRequest(BaseModel):
 
     query: str
     k: int = Field(10, ge=1, le=100)
-    strategy: str = Field("balanced", regex="^(conservative|balanced|aggressive)$")
-    fusion_method: str = Field("rrf", regex="^(rrf|weighted)$")
+    strategy: str = Field("balanced", pattern="^(conservative|balanced|aggressive)$")
+    fusion_method: str = Field("rrf", pattern="^(rrf|weighted)$")
 
 
 # ============================================================================
@@ -57,7 +57,7 @@ class SearchWithExpansionRequest(BaseModel):
 @router.post("/expand", response_model=ExpansionResponse)
 async def expand_query(
     query: str = Query(..., min_length=1),
-    strategy: str = Query("balanced", regex="^(conservative|balanced|aggressive)$"),
+    strategy: str = Query("balanced", pattern="^(conservative|balanced|aggressive)$"),
     max_expansions: int = Query(5, ge=1, le=20),
 ):
     """

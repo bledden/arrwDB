@@ -69,7 +69,7 @@ class ClusterGuidelinesResponse(BaseModel):
 async def analyze_corpus_clusters(
     corpus_id: UUID,
     n_clusters: Optional[int] = Query(None, ge=2, le=100),
-    algorithm: str = Query("auto", regex="^(auto|kmeans|hdbscan)$"),
+    algorithm: str = Query("auto", pattern="^(auto|kmeans|hdbscan)$"),
     sample_size: Optional[int] = Query(None, ge=100, le=10000),
     library_service: CorpusService = Depends(get_library_service),
 ):
