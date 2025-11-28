@@ -1,0 +1,17 @@
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /Users/bledden/Documents/arrwDB/rust/indexes/Cargo.toml
+workspace: /Users/bledden/Documents/arrwDB/rust/Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /Users/bledden/Documents/arrwDB/rust/vector_store/Cargo.toml
+workspace: /Users/bledden/Documents/arrwDB/rust/Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /Users/bledden/Documents/arrwDB/rust/wal/Cargo.toml
+workspace: /Users/bledden/Documents/arrwDB/rust/Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /Users/bledden/Documents/arrwDB/rust/snapshot/Cargo.toml
+workspace: /Users/bledden/Documents/arrwDB/rust/Cargo.toml
+warning: virtual workspace defaulting to `resolver = "1"` despite one or more workspace members being on edition 2021 which implies `resolver = "2"`
+note: to keep the current resolver, specify `workspace.resolver = "1"` in the workspace root's manifest
+note: to use the edition 2021 resolver, specify `workspace.resolver = "2"` in the workspace root's manifest
+note: for more details see https://doc.rust-lang.org/cargo/reference/resolver.html#resolver-versions
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.11s
