@@ -788,7 +788,7 @@ def add_document(
     - **tags**: Optional list of tags
     """
     document = service.add_document_with_text(
-        library_id=library_id,
+        corpus_id=library_id,
         title=body.title,
         texts=body.texts,
         author=body.author,
@@ -831,7 +831,7 @@ def add_document_with_embeddings(
     ]
 
     document = service.add_document_with_embeddings(
-        library_id=library_id,
+        corpus_id=library_id,
         title=body.title,
         text_embedding_pairs=text_embedding_pairs,
         author=body.author,
@@ -1100,7 +1100,7 @@ def search(
     index_type = library.metadata.index_type
 
     results = service.search_with_text(
-        library_id=library_id,
+        corpus_id=library_id,
         query_text=body.query,
         k=body.k,
         distance_threshold=body.distance_threshold,
@@ -1194,7 +1194,7 @@ def search_with_embedding(
     start_time = time.time()
 
     results = service.search_with_embedding(
-        library_id=library_id,
+        corpus_id=library_id,
         query_embedding=body.embedding,
         k=body.k,
         distance_threshold=body.distance_threshold,
@@ -1305,7 +1305,7 @@ def search_with_metadata(
     ]
 
     results = service.search_with_metadata_filters(
-        library_id=library_id,
+        corpus_id=library_id,
         query_text=body.query,
         metadata_filters=filters_dict,
         k=body.k,
@@ -1432,7 +1432,7 @@ def hybrid_search(
     start_time = time.time()
 
     results = service.hybrid_search(
-        library_id=library_id,
+        corpus_id=library_id,
         query_text=body.query,
         k=body.k,
         vector_weight=body.vector_weight,
@@ -1563,7 +1563,7 @@ def search_with_reranking(
     start_time = time.time()
 
     results = service.search_with_reranking(
-        library_id=library_id,
+        corpus_id=library_id,
         query_text=body.query,
         k=body.k,
         rerank_function=body.rerank_function,
