@@ -770,9 +770,9 @@ def get_index_statistics(
 )
 @limiter.limit(settings.RATE_LIMIT_DOCUMENT_ADD)
 def add_document(
-    req: Request,
+    request: Request,
     library_id: UUID,
-    request: AddDocumentRequest,
+    body: AddDocumentRequest,
     service: LibraryService = Depends(get_library_service),
 ):
     """
@@ -789,12 +789,12 @@ def add_document(
     """
     document = service.add_document_with_text(
         library_id=library_id,
-        title=request.title,
-        texts=request.texts,
-        author=request.author,
-        document_type=request.document_type,
-        source_url=request.source_url,
-        tags=request.tags,
+        title=body.title,
+        texts=body.texts,
+        author=body.author,
+        document_type=body.document_type,
+        source_url=body.source_url,
+        tags=body.tags,
     )
     return document
 
@@ -808,9 +808,9 @@ def add_document(
 )
 @limiter.limit(settings.RATE_LIMIT_DOCUMENT_ADD)
 def add_document_with_embeddings(
-    req: Request,
+    request: Request,
     library_id: UUID,
-    request: AddDocumentWithEmbeddingsRequest,
+    body: AddDocumentWithEmbeddingsRequest,
     service: LibraryService = Depends(get_library_service),
 ):
     """
@@ -827,17 +827,17 @@ def add_document_with_embeddings(
     """
     # Convert chunks to tuples
     text_embedding_pairs = [
-        (chunk.text, chunk.embedding) for chunk in request.chunks
+        (chunk.text, chunk.embedding) for chunk in body.chunks
     ]
 
     document = service.add_document_with_embeddings(
         library_id=library_id,
-        title=request.title,
+        title=body.title,
         text_embedding_pairs=text_embedding_pairs,
-        author=request.author,
-        document_type=request.document_type,
-        source_url=request.source_url,
-        tags=request.tags,
+        author=body.author,
+        document_type=body.document_type,
+        source_url=body.source_url,
+        tags=body.tags,
     )
     return document
 
@@ -888,9 +888,9 @@ def delete_document(
 )
 @limiter.limit("10/minute")
 def batch_add_documents(
-    req: Request,
+    request: Request,
     library_id: UUID,
-    request: BatchAddDocumentsRequest,
+    body: BatchAddDocumentsRequest,
     service: LibraryService = Depends(get_library_service),
 ):
     """
@@ -915,7 +915,7 @@ def batch_add_documents(
     start_time = time.time()
 
     # Convert request models to dicts for service layer
-    documents_data = [doc.model_dump() for doc in request.documents]
+    documents_data = [doc.model_dump() for doc in body.documents]
 
     try:
         successful, failed, total_chunks = service.add_documents_batch(
@@ -933,7 +933,7 @@ def batch_add_documents(
             results.append(BatchOperationResult(success=False, error=error))
 
         return BatchAddDocumentsResponse(
-            total_requested=len(request.documents),
+            total_requested=len(body.documents),
             successful=len(successful),
             failed=len(failed),
             results=results,
@@ -955,9 +955,9 @@ def batch_add_documents(
 )
 @limiter.limit("10/minute")
 def batch_add_documents_with_embeddings(
-    req: Request,
+    request: Request,
     library_id: UUID,
-    request: BatchAddDocumentsWithEmbeddingsRequest,
+    body: BatchAddDocumentsWithEmbeddingsRequest,
     service: LibraryService = Depends(get_library_service),
 ):
     """
@@ -975,7 +975,7 @@ def batch_add_documents_with_embeddings(
     start_time = time.time()
 
     # Convert request models to dicts for service layer
-    documents_data = [doc.model_dump() for doc in request.documents]
+    documents_data = [doc.model_dump() for doc in body.documents]
 
     try:
         successful, failed, total_chunks = service.add_documents_batch_with_embeddings(
@@ -993,7 +993,7 @@ def batch_add_documents_with_embeddings(
             results.append(BatchOperationResult(success=False, error=error))
 
         return BatchAddDocumentsResponse(
-            total_requested=len(request.documents),
+            total_requested=len(body.documents),
             successful=len(successful),
             failed=len(failed),
             results=results,
@@ -1015,8 +1015,8 @@ def batch_add_documents_with_embeddings(
 )
 @limiter.limit("10/minute")
 def batch_delete_documents(
-    req: Request,
-    request: BatchDeleteDocumentsRequest,
+    request: Request,
+    body: BatchDeleteDocumentsRequest,
     service: LibraryService = Depends(get_library_service),
 ):
     """
@@ -1037,7 +1037,7 @@ def batch_delete_documents(
     start_time = time.time()
 
     try:
-        successful, failed = service.delete_documents_batch(request.document_ids)
+        successful, failed = service.delete_documents_batch(body.document_ids)
 
         processing_time_ms = (time.time() - start_time) * 1000
 
@@ -1052,7 +1052,7 @@ def batch_delete_documents(
             )
 
         return BatchDeleteDocumentsResponse(
-            total_requested=len(request.document_ids),
+            total_requested=len(body.document_ids),
             successful=len(successful),
             failed=len(failed),
             results=results,
@@ -1074,9 +1074,9 @@ def batch_delete_documents(
 )
 @limiter.limit(settings.RATE_LIMIT_SEARCH)
 def search(
-    req: Request,
+    request: Request,
     library_id: UUID,
-    request: SearchRequest,
+    body: SearchRequest,
     include_embeddings: bool = Query(default=False, description="Include embeddings in response"),
     service: LibraryService = Depends(get_library_service),
 ) -> Union[SearchResponse, SearchResponseSlim]:
@@ -1101,9 +1101,9 @@ def search(
 
     results = service.search_with_text(
         library_id=library_id,
-        query_text=request.query,
-        k=request.k,
-        distance_threshold=request.distance_threshold,
+        query_text=body.query,
+        k=body.k,
+        distance_threshold=body.distance_threshold,
     )
 
     query_time_ms = (time.time() - start_time) * 1000
@@ -1173,9 +1173,9 @@ def search(
 )
 @limiter.limit(settings.RATE_LIMIT_SEARCH)
 def search_with_embedding(
-    req: Request,
+    request: Request,
     library_id: UUID,
-    request: SearchWithEmbeddingRequest,
+    body: SearchWithEmbeddingRequest,
     include_embeddings: bool = Query(default=False, description="Include embeddings in response"),
     service: LibraryService = Depends(get_library_service),
 ) -> Union[SearchResponse, SearchResponseSlim]:
@@ -1195,9 +1195,9 @@ def search_with_embedding(
 
     results = service.search_with_embedding(
         library_id=library_id,
-        query_embedding=request.embedding,
-        k=request.k,
-        distance_threshold=request.distance_threshold,
+        query_embedding=body.embedding,
+        k=body.k,
+        distance_threshold=body.distance_threshold,
     )
 
     query_time_ms = (time.time() - start_time) * 1000
@@ -1254,9 +1254,9 @@ def search_with_embedding(
 )
 @limiter.limit(settings.RATE_LIMIT_SEARCH)
 def search_with_metadata(
-    req: Request,
+    request: Request,
     library_id: UUID,
-    request: SearchWithMetadataRequest,
+    body: SearchWithMetadataRequest,
     include_embeddings: bool = Query(default=False, description="Include embeddings in response"),
     service: LibraryService = Depends(get_library_service),
 ) -> Union[SearchResponse, SearchResponseSlim]:
@@ -1301,15 +1301,15 @@ def search_with_metadata(
             "operator": f.operator,
             "value": f.value,
         }
-        for f in request.metadata_filters
+        for f in body.metadata_filters
     ]
 
     results = service.search_with_metadata_filters(
         library_id=library_id,
-        query_text=request.query,
+        query_text=body.query,
         metadata_filters=filters_dict,
-        k=request.k,
-        distance_threshold=request.distance_threshold,
+        k=body.k,
+        distance_threshold=body.distance_threshold,
     )
 
     query_time_ms = (time.time() - start_time) * 1000
@@ -1368,9 +1368,9 @@ def search_with_metadata(
 )
 @limiter.limit(settings.RATE_LIMIT_SEARCH)
 def hybrid_search(
-    req: Request,
+    request: Request,
     library_id: UUID,
-    request: HybridSearchRequest,
+    body: HybridSearchRequest,
     service: LibraryService = Depends(get_library_service),
 ) -> HybridSearchResponse:
     """
@@ -1433,13 +1433,13 @@ def hybrid_search(
 
     results = service.hybrid_search(
         library_id=library_id,
-        query_text=request.query,
-        k=request.k,
-        vector_weight=request.vector_weight,
-        metadata_weight=request.metadata_weight,
-        recency_boost=request.recency_boost,
-        recency_half_life_days=request.recency_half_life_days,
-        distance_threshold=request.distance_threshold,
+        query_text=body.query,
+        k=body.k,
+        vector_weight=body.vector_weight,
+        metadata_weight=body.metadata_weight,
+        recency_boost=body.recency_boost,
+        recency_half_life_days=body.recency_half_life_days,
+        distance_threshold=body.distance_threshold,
     )
 
     query_time_ms = (time.time() - start_time) * 1000
@@ -1484,10 +1484,10 @@ def hybrid_search(
         query_time_ms=round(query_time_ms, 2),
         total_results=len(search_results),
         scoring_config={
-            "vector_weight": request.vector_weight,
-            "metadata_weight": request.metadata_weight,
-            "recency_boost": request.recency_boost,
-            "recency_half_life_days": request.recency_half_life_days,
+            "vector_weight": body.vector_weight,
+            "metadata_weight": body.metadata_weight,
+            "recency_boost": body.recency_boost,
+            "recency_half_life_days": body.recency_half_life_days,
         },
     )
 
@@ -1500,9 +1500,9 @@ def hybrid_search(
 )
 @limiter.limit(settings.RATE_LIMIT_SEARCH)
 def search_with_reranking(
-    req: Request,
+    request: Request,
     library_id: UUID,
-    request: RerankSearchRequest,
+    body: RerankSearchRequest,
     service: LibraryService = Depends(get_library_service),
 ) -> RerankSearchResponse:
     """
@@ -1564,11 +1564,11 @@ def search_with_reranking(
 
     results = service.search_with_reranking(
         library_id=library_id,
-        query_text=request.query,
-        k=request.k,
-        rerank_function=request.rerank_function,
-        rerank_params=request.rerank_params or {},
-        distance_threshold=request.distance_threshold,
+        query_text=body.query,
+        k=body.k,
+        rerank_function=body.rerank_function,
+        rerank_params=body.rerank_params or {},
+        distance_threshold=body.distance_threshold,
     )
 
     query_time_ms = (time.time() - start_time) * 1000
@@ -1599,8 +1599,8 @@ def search_with_reranking(
         results=search_results,
         query_time_ms=round(query_time_ms, 2),
         total_results=len(search_results),
-        rerank_function=request.rerank_function,
-        rerank_params=request.rerank_params or {},
+        rerank_function=body.rerank_function,
+        rerank_params=body.rerank_params or {},
     )
 
 
