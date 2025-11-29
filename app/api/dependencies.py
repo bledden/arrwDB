@@ -85,3 +85,40 @@ def get_library_service(
         The library service instance.
     """
     return LibraryService(repository, embedding_service)
+
+
+# Module-level singletons for health checks and startup routines
+# These are lazily initialized on first access
+_embedding_service_instance = None
+_library_service_instance = None
+
+
+def _get_embedding_service_singleton():
+    """Get or create the embedding service singleton."""
+    global _embedding_service_instance
+    if _embedding_service_instance is None:
+        try:
+            _embedding_service_instance = get_embedding_service()
+        except Exception:
+            return None
+    return _embedding_service_instance
+
+
+def _get_library_service_singleton():
+    """Get or create the library service singleton."""
+    global _library_service_instance
+    if _library_service_instance is None:
+        try:
+            repo = get_library_repository()
+            emb = _get_embedding_service_singleton()
+            if emb:
+                _library_service_instance = LibraryService(repo, emb)
+        except Exception:
+            return None
+    return _library_service_instance
+
+
+# Expose as module-level for backward compatibility with health checks
+# These are evaluated lazily when first accessed
+embedding_service = _get_embedding_service_singleton()
+library_service = _get_library_service_singleton()
