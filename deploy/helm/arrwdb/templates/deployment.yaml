@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "arrwdb.fullname" . }}
+  labels:
+    {{- include "arrwdb.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "arrwdb.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "arrwdb.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "arrwdb.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.arrwdb.port }}
+              protocol: TCP
+          env:
+            - name: ARRWDB_HOST
+              value: {{ .Values.arrwdb.host | quote }}
+            - name: ARRWDB_PORT
+              value: {{ .Values.arrwdb.port | quote }}
+            - name: ARRWDB_WORKERS
+              value: {{ .Values.arrwdb.workers | quote }}
+            - name: ARRWDB_LOG_LEVEL
+              value: {{ .Values.arrwdb.logLevel | quote }}
+            - name: ARRWDB_EMBEDDING_MODEL
+              value: {{ .Values.arrwdb.embedding.model | quote }}
+            - name: ARRWDB_EMBEDDING_DEVICE
+              value: {{ .Values.arrwdb.embedding.device | quote }}
+            - name: ARRWDB_EMBEDDING_BATCH_SIZE
+              value: {{ .Values.arrwdb.embedding.batchSize | quote }}
+            - name: ARRWDB_DEFAULT_INDEX_TYPE
+              value: {{ .Values.arrwdb.index.defaultType | quote }}
+            - name: ARRWDB_HNSW_M
+              value: {{ .Values.arrwdb.index.hnsw.m | quote }}
+            - name: ARRWDB_HNSW_EF_CONSTRUCTION
+              value: {{ .Values.arrwdb.index.hnsw.efConstruction | quote }}
+            - name: ARRWDB_HNSW_EF_SEARCH
+              value: {{ .Values.arrwdb.index.hnsw.efSearch | quote }}
+            {{- if .Values.arrwdb.auth.enabled }}
+            - name: ARRWDB_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "arrwdb.apiKeySecretName" . }}
+                  key: {{ .Values.arrwdb.auth.existingSecretKey }}
+            {{- end }}
+            {{- if .Values.persistence.enabled }}
+            - name: ARRWDB_DATA_DIR
+              value: /data
+            {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.persistence.enabled }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          {{- end }}
+      {{- if .Values.persistence.enabled }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (include "arrwdb.fullname" .) }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

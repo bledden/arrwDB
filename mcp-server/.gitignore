@@ -1,0 +1,8 @@
+# Build artifacts
+target/
+*.pyc
+__pycache__/
+*.egg-info/
+dist/
+build/
+.eggs/

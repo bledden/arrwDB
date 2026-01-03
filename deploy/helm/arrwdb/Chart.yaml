@@ -1,0 +1,18 @@
+apiVersion: v2
+name: arrwdb
+description: A Helm chart for arrwDB - production-grade vector database with 9 novel features
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - vector-database
+  - embeddings
+  - ai
+  - machine-learning
+  - semantic-search
+home: https://github.com/bledden/arrwDB
+sources:
+  - https://github.com/bledden/arrwDB
+maintainers:
+  - name: Blake Ledden
+    email: blake.ledden@gmail.com

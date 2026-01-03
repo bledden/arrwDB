@@ -1,0 +1,47 @@
+[package]
+name = "arrwdb-mcp"
+version = "0.1.0"
+edition = "2021"
+authors = ["Blake Ledden <blake.ledden@gmail.com>"]
+description = "MCP (Model Context Protocol) server for arrwDB vector database"
+license = "Apache-2.0"
+repository = "https://github.com/bledden/arrwDB"
+keywords = ["mcp", "vector-database", "ai", "llm", "embeddings"]
+categories = ["database", "development-tools"]
+
+[dependencies]
+# MCP SDK
+rmcp = { version = "0.8", features = ["server", "transport-io"] }
+
+# Async runtime
+tokio = { version = "1.41", features = ["full"] }
+
+# HTTP client for arrwDB API
+reqwest = { version = "0.12", features = ["json"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# CLI
+clap = { version = "4.5", features = ["derive", "env"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[[bin]]
+name = "arrwdb-mcp"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

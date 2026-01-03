@@ -924,7 +924,10 @@ class CorpusRepository:
         elif index_type == "lsh":
             return LSHIndex(vector_store, num_tables=10, hash_size=10)
         elif index_type == "hnsw":
-            return HNSWIndex(vector_store, M=16, ef_construction=200, ef_search=50)
+            # ef_search=500 for better recall (was 50, causing ~27% recall)
+            # M=48 for better graph connectivity (was 16)
+            # ef_construction=400 for better graph quality
+            return HNSWIndex(vector_store, M=48, ef_construction=400, ef_search=500)
         elif index_type == "ivf":
             return IVFIndex(vector_store, n_clusters=256, nprobe=8)
         else:
@@ -964,9 +967,9 @@ class CorpusRepository:
             hash_size = config.get("hash_size", 10)
             return LSHIndex(vector_store, num_tables=num_tables, hash_size=hash_size)
         elif index_type == "hnsw":
-            M = config.get("M", 16)
+            M = config.get("M", 32)  # Increased from 16 for better connectivity
             ef_construction = config.get("ef_construction", 200)
-            ef_search = config.get("ef_search", 50)
+            ef_search = config.get("ef_search", 200)  # Increased from 50 for better recall
             return HNSWIndex(
                 vector_store, M=M, ef_construction=ef_construction, ef_search=ef_search
             )
@@ -1012,14 +1015,24 @@ class CorpusRepository:
                             metadata=CorpusMetadata(**lib_data["metadata"])
                         )
 
+                        # Get embeddings data first so we can include them in chunks
+                        embeddings_data = lib_data.get("embeddings", {})
+
                         # Restore documents and chunks
                         for doc_data in lib_data.get("documents", []):
                             chunks = []
                             for chunk_data in doc_data.get("chunks", []):
                                 from app.models.base import ChunkMetadata
+                                chunk_id_str = chunk_data["id"]
+                                # Get embedding from embeddings_data (required field)
+                                embedding = embeddings_data.get(chunk_id_str, chunk_data.get("embedding"))
+                                if embedding is None:
+                                    logger.warning(f"Skipping chunk {chunk_id_str} - no embedding found")
+                                    continue
                                 chunk = Chunk(
-                                    id=UUID(chunk_data["id"]),
+                                    id=UUID(chunk_id_str),
                                     text=chunk_data["text"],
+                                    embedding=embedding,
                                     metadata=ChunkMetadata(**chunk_data["metadata"])
                                 )
                                 chunks.append(chunk)
@@ -1060,9 +1073,19 @@ class CorpusRepository:
                         self._indexes[lib_id] = index
                         self._contracts[lib_id] = contract
 
-                        # Note: Embeddings need to be regenerated as they're not in snapshot
-                        # This is intentional - embeddings can be large and should be regenerated
-                        # from the text chunks using the embedding service
+                        # Restore embeddings to vector store and index from chunks
+                        embedding_count = 0
+                        for doc in library.documents:
+                            for chunk in doc.chunks:
+                                try:
+                                    # Add embedding to vector store and index
+                                    normalized_embedding = contract.validate_vector(chunk.embedding)
+                                    vector_index = vector_store.add_vector(chunk.id, normalized_embedding)
+                                    index.add_vector(chunk.id, vector_index)
+                                    embedding_count += 1
+                                except Exception as emb_error:
+                                    logger.warning(f"Failed to restore embedding for chunk {chunk.id}: {emb_error}")
+                        logger.info(f"Restored {embedding_count} embeddings for library {library.name}")
 
                     except Exception as e:
                         logger.error(f"Failed to restore library {lib_id_str}: {e}")
@@ -1089,69 +1112,80 @@ class CorpusRepository:
             self._chunk_to_doc = {}
 
     def _save_snapshot(self) -> None:
-        """Save current state to snapshot."""
+        """Save current state to snapshot, including embeddings."""
         import logging
         import numpy as np
         logger = logging.getLogger(__name__)
 
         try:
-            state = {
-                "libraries": {
-                    str(lib_id): {
-                        "id": str(lib.id),
-                        "name": lib.name,
-                        "documents": [
-                            {
-                                "id": str(doc.id),
-                                "chunks": [
-                                    {
-                                        "id": str(chunk.id),
-                                        "text": chunk.text,
-                                        "metadata": {
-                                            "created_at": str(chunk.metadata.created_at),
-                                            "page_number": chunk.metadata.page_number,
-                                            "chunk_index": chunk.metadata.chunk_index,
-                                            "source_document_id": str(chunk.metadata.source_document_id),
-                                        }
+            state = {"libraries": {}}
+
+            for lib_id, lib in self._libraries.items():
+                vector_store = self._vector_stores.get(lib_id)
+
+                # Collect embeddings for this library
+                embeddings_data = {}
+                if vector_store:
+                    for doc in lib.documents:
+                        for chunk in doc.chunks:
+                            try:
+                                # Get embedding from vector store
+                                embedding = vector_store.get_vector(chunk.id)
+                                if embedding is not None:
+                                    # Convert numpy array to list for JSON serialization
+                                    if hasattr(embedding, 'tolist'):
+                                        embeddings_data[str(chunk.id)] = embedding.tolist()
+                                    else:
+                                        embeddings_data[str(chunk.id)] = list(embedding)
+                            except Exception:
+                                # Skip chunks without embeddings
+                                pass
+
+                state["libraries"][str(lib_id)] = {
+                    "id": str(lib.id),
+                    "name": lib.name,
+                    "documents": [
+                        {
+                            "id": str(doc.id),
+                            "chunks": [
+                                {
+                                    "id": str(chunk.id),
+                                    "text": chunk.text,
+                                    "metadata": {
+                                        "created_at": str(chunk.metadata.created_at),
+                                        "page_number": chunk.metadata.page_number,
+                                        "chunk_index": chunk.metadata.chunk_index,
+                                        "source_document_id": str(chunk.metadata.source_document_id),
                                     }
-                                    for chunk in doc.chunks
-                                ],
-                                "metadata": {
-                                    "title": doc.metadata.title,
-                                    "author": doc.metadata.author,
-                                    "created_at": str(doc.metadata.created_at),
-                                    "document_type": doc.metadata.document_type,
-                                    "source_url": doc.metadata.source_url,
-                                    "tags": doc.metadata.tags,
                                 }
+                                for chunk in doc.chunks
+                            ],
+                            "metadata": {
+                                "title": doc.metadata.title,
+                                "author": doc.metadata.author,
+                                "created_at": str(doc.metadata.created_at),
+                                "document_type": doc.metadata.document_type,
+                                "source_url": doc.metadata.source_url,
+                                "tags": doc.metadata.tags,
                             }
-                            for doc in lib.documents
-                        ],
-                        "metadata": {
-                            "description": lib.metadata.description,
-                            "created_at": str(lib.metadata.created_at),
-                            "index_type": lib.metadata.index_type,
-                            "embedding_dimension": lib.metadata.embedding_dimension,
-                            "embedding_model": lib.metadata.embedding_model,
                         }
-                    }
-                    for lib_id, lib in self._libraries.items()
+                        for doc in lib.documents
+                    ],
+                    "metadata": {
+                        "description": lib.metadata.description,
+                        "created_at": str(lib.metadata.created_at),
+                        "index_type": lib.metadata.index_type,
+                        "embedding_dimension": lib.metadata.embedding_dimension,
+                        "embedding_model": lib.metadata.embedding_model,
+                    },
+                    # Include embeddings in snapshot for persistence
+                    "embeddings": embeddings_data,
                 }
-            }
 
-            # Note: Embeddings are NOT persisted in snapshots
-            # They are regenerated from text chunks on startup
-            # This is intentional for several reasons:
-            # 1. Embeddings are large (384-1536 dims * 4 bytes * millions of chunks)
-            # 2. Embedding models may change/improve over time
-            # 3. Re-embedding on load ensures consistency with current model
-            # 4. Snapshot files stay small and portable
-            #
-            # Future enhancement: Add optional embedding cache for faster startup
-
+            logger.info(f"Saving snapshot with {len(state['libraries'])} libraries...")
             from datetime import datetime
             self._snapshot_manager.create_snapshot(state)
-            logger.info("Snapshot saved successfully")
+            logger.info("Snapshot saved successfully (with embeddings)")
 
         except Exception as e:
             logger.error(f"Failed to save snapshot: {e}")

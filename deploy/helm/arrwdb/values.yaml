@@ -1,0 +1,170 @@
+# Default values for arrwDB
+# This is a YAML-formatted file.
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/bledden/arrwdb
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: arrwdb.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: arrwdb-tls
+  #    hosts:
+  #      - arrwdb.local
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# arrwDB configuration
+arrwdb:
+  # Server configuration
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+
+  # Logging
+  logLevel: "info"
+
+  # Authentication (optional)
+  auth:
+    enabled: false
+    # API key for authentication
+    apiKey: ""
+    # Use existing secret for API key
+    existingSecret: ""
+    existingSecretKey: "api-key"
+
+  # Embedding model configuration
+  embedding:
+    # Model to use: "sentence-transformers/all-MiniLM-L6-v2" or custom
+    model: "sentence-transformers/all-MiniLM-L6-v2"
+    # Device: "cpu", "cuda", or "mps"
+    device: "cpu"
+    # Batch size for embedding
+    batchSize: 32
+
+  # Index defaults
+  index:
+    # Default index type: hnsw, ivf, lsh, kdtree, brute_force
+    defaultType: "hnsw"
+    # HNSW parameters
+    hnsw:
+      m: 16
+      efConstruction: 200
+      efSearch: 50
+
+  # Novel features configuration
+  features:
+    # Temperature search
+    temperatureSearch:
+      enabled: true
+    # Index oracle
+    indexOracle:
+      enabled: true
+    # Embedding health monitor
+    embeddingHealth:
+      enabled: true
+    # Search replay (debug)
+    searchReplay:
+      enabled: false
+
+# Persistence
+persistence:
+  enabled: true
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  # Use existing PVC
+  existingClaim: ""
+
+# Node selection
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Liveness and readiness probes
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Metrics (Prometheus)
+metrics:
+  enabled: false
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
