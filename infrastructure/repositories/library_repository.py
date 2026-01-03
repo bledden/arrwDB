@@ -24,7 +24,6 @@ from core.vector_store import VectorStore
 from infrastructure.concurrency.rw_lock import ReaderWriterLock
 from infrastructure.indexes.base import VectorIndex
 from infrastructure.indexes.brute_force import BruteForceIndex
-from infrastructure.indexes.hnsw import HNSWIndex
 from infrastructure.indexes.ivf import IVFIndex
 from infrastructure.indexes.kd_tree import KDTreeIndex
 from infrastructure.indexes.lsh import LSHIndex
@@ -32,6 +31,10 @@ from infrastructure.persistence.snapshot import SnapshotManager
 from infrastructure.persistence.wal import OperationType, WALEntry, WriteAheadLog
 
 logger = logging.getLogger(__name__)
+
+# Use Python HNSW for stability (Rust backend has a bug with large k values)
+# TODO: Fix Rust HNSW segfault on search with k=100 and re-enable
+from infrastructure.indexes.hnsw import HNSWIndex
 
 
 class CorpusNotFoundError(Exception):
