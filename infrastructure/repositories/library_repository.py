@@ -32,9 +32,13 @@ from infrastructure.persistence.wal import OperationType, WALEntry, WriteAheadLo
 
 logger = logging.getLogger(__name__)
 
-# Use Python HNSW for stability (Rust backend has a bug with large k values)
-# TODO: Fix Rust HNSW segfault on search with k=100 and re-enable
-from infrastructure.indexes.hnsw import HNSWIndex
+# Use Rust HNSW if available (4-5x faster), fall back to Python
+try:
+    from infrastructure.indexes.rust_hnsw_wrapper import RustHNSWIndexWrapper as HNSWIndex
+    logger.info("Using Rust HNSW backend (4-5x faster)")
+except ImportError:
+    from infrastructure.indexes.hnsw import HNSWIndex
+    logger.warning("Rust HNSW not available, using Python fallback")
 
 
 class CorpusNotFoundError(Exception):

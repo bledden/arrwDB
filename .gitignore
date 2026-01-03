@@ -70,3 +70,6 @@ docs/DEMO_NARRATION_SCRIPT.md
 docs/DEMO_VIDEO_SCRIPT.md
 docs/DEMO_VIDEO_SCRIPT_ENHANCED.md
 docs/INTERVIEW_RESPONSES.md
+
+# Rust build artifacts
+rust/target/

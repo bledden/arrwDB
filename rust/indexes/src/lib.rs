@@ -528,7 +528,10 @@ impl RustHNSWIndex {
         visited.insert(entry_point.to_string());
 
         let vectors = self.vectors.read();
-        let entry_vec = vectors.get(entry_point).unwrap();
+        let entry_vec = match vectors.get(entry_point) {
+            Some(v) => v,
+            None => return Vec::new(), // Entry point not found, return empty
+        };
         let entry_dist = cosine_distance(query, entry_vec);
         drop(vectors);
 
@@ -560,7 +563,10 @@ impl RustHNSWIndex {
                             visited.insert(neighbor_id.clone());
 
                             let vectors = self.vectors.read();
-                            let neighbor_vec = vectors.get(neighbor_id).unwrap();
+                            let neighbor_vec = match vectors.get(neighbor_id) {
+                                Some(v) => v,
+                                None => continue, // Skip missing neighbors
+                            };
                             let neighbor_dist = cosine_distance(query, neighbor_vec);
                             drop(vectors);
 
