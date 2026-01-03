@@ -9,7 +9,8 @@ Dataset: Random normalized vectors
 | Index Type | Vectors | Dim | Insert Rate | Search p50 | Search p95 | QPS | Recall@10 |
 |------------|---------|-----|-------------|------------|------------|-----|-----------|
 | **brute_force** | 10,000 | 1024 | 1,048 vec/s | 12.34ms | 13.49ms | 80 | **1.000** |
-| **hnsw** (high-quality) | 10,000 | 1024 | 76 vec/s | 20.6ms | - | 48 | **0.987** |
+| **hnsw** (Rust backend) | 10,000 | 1024 | 121 vec/s | 14.75ms | 15.79ms | 66 | **0.986** |
+| hnsw (Python fallback) | 10,000 | 1024 | 76 vec/s | 20.6ms | - | 48 | 0.987 |
 | hnsw (balanced) | 10,000 | 1024 | 114 vec/s | 12.84ms | 13.38ms | 78 | 0.715 |
 | hnsw (old defaults) | 10,000 | 1024 | 174-181 vec/s | 9ms | 9.6ms | 110 | 0.27 |
 
@@ -23,10 +24,10 @@ arrwDB vs other vector databases (1M vectors, ~1000 dim, from VDBBench):
 | Milvus | 3,465 | 2.2ms | 95.3% | 16c/64GB cloud |
 | Qdrant Cloud | 1,242 | 6.4ms | 94.7% | 16c/64GB cloud |
 | Pinecone | 1,147 | 13.7ms | 92.6% | p2.x8 pod |
-| **arrwDB** | 48-78 | 20.6ms | **98.7%** | M1 MacBook (single-threaded) |
+| **arrwDB** (Rust) | 66 | 14.75ms | **98.6%** | M1 MacBook (single-threaded) |
 
-**Key insight**: arrwDB achieves **best-in-class recall (98.7%)** at the cost of throughput.
-With Rust backend enabled and proper parallelization, QPS could reach 500-1000+ range.
+**Key insight**: arrwDB achieves **best-in-class recall (98.6%)** at the cost of throughput.
+Rust backend provides +59% insert rate and -28% latency vs Python fallback.
 
 ## HNSW Parameter Tuning
 
@@ -53,6 +54,39 @@ The low recall was caused by:
 3. **Naive neighbor selection** - Uses simple nearest-M instead of diversity-aware RobustPrune (documented in code, would add +15-20% recall)
 
 ## Detailed Results
+
+### HNSW Index (Rust Backend - Default)
+
+```
+Dataset:        random
+Vectors:        10,000
+Dimension:      1024
+Index Type:     hnsw (Rust)
+------------------------------------------------------------
+Insert Time:    82.47s
+Insert Rate:    121 vec/s
+------------------------------------------------------------
+Search p50:     14.75ms
+Search p95:     15.79ms
+Search p99:     19.04ms
+Search QPS:     66
+Recall@10:      0.986
+------------------------------------------------------------
+Novel Features:
+  Index Oracle:     hnsw
+```
+
+**Rust vs Python Performance:**
+| Metric | Python | Rust | Improvement |
+|--------|--------|------|-------------|
+| Insert Rate | 76 vec/s | 121 vec/s | **+59%** |
+| Search p50 | 20.6ms | 14.75ms | **-28%** |
+| Search QPS | 48 | 66 | **+38%** |
+| Recall@10 | 0.987 | 0.986 | ~same |
+
+Note: The Rust backend handles HNSW graph operations, but HTTP API overhead
+(serialization, network, Python FastAPI) still dominates latency. Pure Rust
+benchmarks without HTTP would show significantly higher throughput.
 
 ### Brute Force Index (Baseline)
 
