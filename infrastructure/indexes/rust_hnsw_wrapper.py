@@ -164,6 +164,7 @@ class RustHNSWIndexWrapper(VectorIndex):
         query_vector: NDArray[np.float32],
         k: int,
         distance_threshold: Optional[float] = None,
+        ef_override: Optional[int] = None,
     ) -> List[Tuple[UUID, float]]:
         """
         Search for k nearest neighbors.
@@ -172,6 +173,8 @@ class RustHNSWIndexWrapper(VectorIndex):
             query_vector: The query vector (must be normalized).
             k: Number of nearest neighbors to return.
             distance_threshold: Optional maximum distance threshold.
+            ef_override: Optional ef_search override for this query. If None,
+                uses the index default with adaptive scaling based on index size.
 
         Returns:
             List of (vector_id, distance) tuples sorted by distance.
@@ -189,11 +192,30 @@ class RustHNSWIndexWrapper(VectorIndex):
                 f"store dimension {expected_dim}"
             )
 
-        # Search in Rust index
-        results = self._rust_index.search(query_vector, k, distance_threshold)
+        # Search in Rust index with optional ef_override
+        results = self._rust_index.search(query_vector, k, distance_threshold, ef_override)
 
         # Convert string IDs back to UUIDs
         return [(UUID(vid_str), dist) for vid_str, dist in results]
+
+    def set_ef_search(self, ef_search: int) -> None:
+        """
+        Update the ef_search parameter dynamically.
+
+        Args:
+            ef_search: New ef_search value. Must be positive.
+
+        Raises:
+            ValueError: If ef_search is not positive.
+        """
+        if ef_search <= 0:
+            raise ValueError(f"ef_search must be positive, got {ef_search}")
+        self._rust_index.set_ef_search(ef_search)
+        self._ef_search = ef_search
+
+    def get_ef_search(self) -> int:
+        """Get current ef_search value."""
+        return self._rust_index.get_ef_search()
 
     def rebuild(self) -> None:
         """

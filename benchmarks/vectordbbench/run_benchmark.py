@@ -358,12 +358,13 @@ def main():
                         help="Index type to benchmark")
     parser.add_argument("--output", default=None, help="Output JSON file for results")
     parser.add_argument("--cache-dir", default="~/.cache/arrwdb_bench", help="Dataset cache dir")
+    parser.add_argument("--timeout", type=int, default=300, help="Request timeout in seconds (default 300 for large datasets)")
 
     args = parser.parse_args()
 
     # Create client
     logger.info(f"Connecting to arrwDB at {args.url}...")
-    client = ArrwDBClient(base_url=args.url, api_key=args.api_key)
+    client = ArrwDBClient(base_url=args.url, api_key=args.api_key, timeout=args.timeout)
 
     # Check health
     try:

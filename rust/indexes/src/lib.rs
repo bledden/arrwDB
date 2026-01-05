@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use parking_lot::RwLock;
 use rand::Rng;
+use rayon::prelude::*;
 
 mod distance;
 mod node;
@@ -215,6 +216,7 @@ impl RustHNSWIndex {
     ///     query_vector: NumPy array of shape (dimension,)
     ///     k: Number of nearest neighbors to return
     ///     distance_threshold: Optional maximum distance threshold
+    ///     ef_override: Optional ef_search override (uses index default if None)
     ///
     /// Returns:
     ///     List of (vector_id, distance) tuples sorted by distance
@@ -224,6 +226,7 @@ impl RustHNSWIndex {
         query_vector: PyReadonlyArray1<f32>,
         k: usize,
         distance_threshold: Option<f32>,
+        ef_override: Option<usize>,
     ) -> PyResult<&'py PyList> {
         let query_data = query_vector.as_slice()?.to_vec();
 
@@ -264,11 +267,24 @@ impl RustHNSWIndex {
             }
         }
 
-        // Search layer 0 with ef_search
+        // Use ef_override if provided, otherwise use index default
+        // Also apply adaptive scaling based on index size for better recall at scale
+        let index_size = self.nodes.read().len();
+        let base_ef = ef_override.unwrap_or(self.ef_search);
+        // Scale ef with index size: min(base_ef * (1 + log10(size/1000)), 10000)
+        let scaled_ef = if index_size > 1000 {
+            let scale_factor = 1.0 + (index_size as f64 / 1000.0).log10();
+            ((base_ef as f64 * scale_factor) as usize).min(10000)
+        } else {
+            base_ef
+        };
+        let effective_ef = scaled_ef.max(k);
+
+        // Search layer 0 with effective ef
         let mut candidates = self.search_layer(
             &query_data,
             &current,
-            self.ef_search.max(k),
+            effective_ef,
             0,
         );
 
@@ -288,6 +304,137 @@ impl RustHNSWIndex {
         }
 
         Ok(result)
+    }
+
+    /// Update ef_search parameter dynamically.
+    fn set_ef_search(&mut self, ef_search: usize) -> PyResult<()> {
+        if ef_search == 0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "ef_search must be positive",
+            ));
+        }
+        self.ef_search = ef_search;
+        Ok(())
+    }
+
+    /// Get current ef_search value.
+    fn get_ef_search(&self) -> usize {
+        self.ef_search
+    }
+
+    /// Batch search for k nearest neighbors across multiple queries in parallel.
+    ///
+    /// Args:
+    ///     query_vectors: List of NumPy arrays, each of shape (dimension,)
+    ///     k: Number of nearest neighbors to return per query
+    ///     distance_threshold: Optional maximum distance threshold
+    ///
+    /// Returns:
+    ///     List of results, where each result is a list of (vector_id, distance) tuples
+    fn batch_search<'py>(
+        &self,
+        py: Python<'py>,
+        query_vectors: &'py PyList,
+        k: usize,
+        distance_threshold: Option<f32>,
+    ) -> PyResult<&'py PyList> {
+        // Convert queries to Vec<Vec<f32>>
+        let queries: Vec<Vec<f32>> = query_vectors
+            .iter()
+            .map(|q| {
+                let arr: PyReadonlyArray1<f32> = q.extract()?;
+                Ok(arr.as_slice()?.to_vec())
+            })
+            .collect::<PyResult<Vec<_>>>()?;
+
+        // Validate dimensions
+        for (i, q) in queries.iter().enumerate() {
+            if q.len() != self.dimension {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "Query {} dimension {} doesn't match index dimension {}",
+                    i, q.len(), self.dimension
+                )));
+            }
+        }
+
+        if k == 0 {
+            return Err(pyo3::exceptions::PyValueError::new_err("k must be positive"));
+        }
+
+        let entry_point = self.entry_point.read();
+        if entry_point.is_none() {
+            let outer = PyList::empty(py);
+            for _ in 0..queries.len() {
+                outer.append(PyList::empty(py))?;
+            }
+            return Ok(outer);
+        }
+        let entry_id = entry_point.as_ref().unwrap().clone();
+        drop(entry_point);
+
+        // Get entry level
+        let nodes = self.nodes.read();
+        let entry_level = nodes.get(&entry_id).map(|n| n.level).unwrap_or(0);
+        drop(nodes);
+
+        // Apply adaptive ef_search scaling based on index size
+        let index_size = self.nodes.read().len();
+        let base_ef = self.ef_search;
+        // Scale ef with index size: min(base_ef * (1 + log10(size/1000)), 10000)
+        let scaled_ef = if index_size > 1000 {
+            let scale_factor = 1.0 + (index_size as f64 / 1000.0).log10();
+            ((base_ef as f64 * scale_factor) as usize).min(10000)
+        } else {
+            base_ef
+        };
+        let effective_ef = scaled_ef.max(k);
+
+        // Process all queries in parallel using rayon
+        let results: Vec<Vec<(String, f32)>> = queries
+            .par_iter()
+            .map(|query_data| {
+                // Start from entry point
+                let mut current = entry_id.clone();
+
+                // Search upper layers
+                for lc in (1..=entry_level).rev() {
+                    let nearest = self.search_layer(query_data, &current, 1, lc);
+                    if !nearest.is_empty() {
+                        current = nearest[0].0.clone();
+                    }
+                }
+
+                // Search layer 0 with adaptive ef_search
+                let mut candidates = self.search_layer(
+                    query_data,
+                    &current,
+                    effective_ef,
+                    0,
+                );
+
+                // Apply distance threshold if specified
+                if let Some(threshold) = distance_threshold {
+                    candidates.retain(|(_, dist)| *dist <= threshold);
+                }
+
+                // Return top k
+                candidates.truncate(k);
+                candidates
+            })
+            .collect();
+
+        // Convert results to Python
+        let outer = PyList::empty(py);
+        for query_result in results {
+            let inner = PyList::empty(py);
+            for (vid, dist) in query_result {
+                let tuple = (vid, dist).to_object(py);
+                inner.append(tuple)?;
+            }
+            outer.append(inner)?;
+        }
+
+        Ok(outer)
     }
 
     /// Get the number of vectors in the index.
@@ -636,10 +783,11 @@ impl RustHNSWIndex {
         drop(vectors);
         drop(nodes);
 
-        // Compute distances to all neighbors
+        // Compute distances to all neighbors in parallel using rayon
         let vectors = self.vectors.read();
-        let mut neighbor_dists: Vec<(String, f32)> = neighbors
-            .iter()
+        let neighbor_list: Vec<_> = neighbors.iter().cloned().collect();
+        let mut neighbor_dists: Vec<(String, f32)> = neighbor_list
+            .par_iter()
             .filter_map(|nid| {
                 vectors.get(nid).map(|nvec| {
                     (nid.clone(), cosine_distance(&node_vec, nvec))

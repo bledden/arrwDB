@@ -29,6 +29,77 @@ arrwDB vs other vector databases (1M vectors, ~1000 dim, from VDBBench):
 **Key insight**: arrwDB achieves **best-in-class recall (98.6%)** at the cost of throughput.
 Rust backend provides +59% insert rate and -28% latency vs Python fallback.
 
+## 1M Vector Scaling Analysis
+
+### Results at 1M Vectors (Before Adaptive Scaling)
+
+```
+Dataset:        random
+Vectors:        1,000,000
+Dimension:      1024
+Index Type:     hnsw (Rust)
+------------------------------------------------------------
+Insert Time:    43,560s (~12 hours)
+Insert Rate:    23 vec/s
+------------------------------------------------------------
+Search p50:     39.33ms
+Search p95:     41.95ms
+Search p99:     43.15ms
+Search QPS:     25
+Recall@10:      0.069  ← CRITICAL FAILURE
+------------------------------------------------------------
+```
+
+### Root Cause: ef_search Doesn't Scale with Dataset Size
+
+We observed recall degradation as dataset size increased:
+
+| Vectors | Recall@10 | ef_search | Notes |
+|---------|-----------|-----------|-------|
+| 1,000 | 100% | 500 | Perfect recall |
+| 5,000 | 100% | 500 | Still perfect |
+| 10,000 | 98% | 500 | Minor degradation |
+| 20,000 | 91.5% | 500 | Noticeable drop |
+| 1,000,000 | **6.9%** | 500 | Collapse |
+
+**Problem**: Fixed `ef_search=500` becomes insufficient as the graph grows. HNSW requires
+exploring more candidates in larger graphs to maintain recall.
+
+### Solution: Adaptive ef_search Scaling
+
+We implemented automatic ef_search scaling based on index size:
+
+```
+scale_factor = 1.0 + log10(index_size / 1000)
+effective_ef = min(base_ef * scale_factor, 10000)
+```
+
+**Expected scaling at different sizes:**
+
+| Index Size | Scale Factor | ef_search (base=500) |
+|------------|--------------|----------------------|
+| 1,000 | 1.0 | 500 |
+| 10,000 | 2.0 | 1,000 |
+| 100,000 | 3.0 | 1,500 |
+| 1,000,000 | 4.0 | 2,000 |
+
+### New Features in Rust HNSW
+
+1. **Adaptive ef_search** - Automatically scales with index size
+2. **Query-time ef_override** - Pass explicit ef_search per query
+3. **Dynamic set_ef_search()** - Update default ef_search at runtime
+
+```python
+# Use adaptive scaling (automatic)
+results = index.search(query, k=10)
+
+# Override for specific queries requiring higher recall
+results = index.search(query, k=10, ef_override=2000)
+
+# Change default ef_search
+index.set_ef_search(1000)
+```
+
 ## HNSW Parameter Tuning
 
 We identified and fixed low HNSW recall (27% → 98.7%):
