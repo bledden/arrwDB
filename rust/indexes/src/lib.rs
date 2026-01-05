@@ -581,7 +581,8 @@ impl RustHNSWIndex {
             let candidates = self.search_layer(vector, &current, self.ef_construction, lc);
 
             // Select M best neighbors
-            let m = if lc == 0 { self.m } else { self.m };
+            // HNSW paper: layer 0 uses 2*M connections, upper layers use M
+            let m = if lc == 0 { self.m * 2 } else { self.m };
             let neighbors = self.select_neighbors(candidates.clone(), m);
 
             // Connect bidirectionally
@@ -697,12 +698,11 @@ impl RustHNSWIndex {
         let nodes = self.nodes.read();
 
         while let Some(current) = candidates.pop() {
-            // Stop if current is farther than worst result
-            if current.dist > -results.peek().unwrap().dist {
-                break;
-            }
+            // Get the worst distance in results (for comparison)
+            let worst_result_dist = -results.peek().unwrap().dist;
 
-            // Explore neighbors
+            // Explore neighbors FIRST (before checking termination)
+            // This ensures we don't miss good neighbors of border candidates
             if let Some(node) = nodes.get(&current.id) {
                 if let Some(layer_neighbors) = node.neighbors.get(&layer) {
                     for neighbor_id in layer_neighbors {
@@ -717,8 +717,8 @@ impl RustHNSWIndex {
                             let neighbor_dist = cosine_distance(query, neighbor_vec);
                             drop(vectors);
 
-                            // Add to results if better than worst or we have room
-                            if neighbor_dist < -results.peek().unwrap().dist || results.len() < ef {
+                            // Add to candidates if better than worst result or we have room
+                            if neighbor_dist < worst_result_dist || results.len() < ef {
                                 candidates.push(Candidate {
                                     id: neighbor_id.clone(),
                                     dist: neighbor_dist,
@@ -735,6 +735,14 @@ impl RustHNSWIndex {
                             }
                         }
                     }
+                }
+            }
+
+            // Check termination AFTER exploring neighbors
+            // Stop when all remaining candidates are farther than worst result
+            if let Some(next_candidate) = candidates.peek() {
+                if next_candidate.dist > -results.peek().unwrap().dist && results.len() >= ef {
+                    break;
                 }
             }
         }
@@ -757,7 +765,8 @@ impl RustHNSWIndex {
 
     /// Prune a node's connections to maintain maximum connection count.
     fn prune_connections(&self, node_id: &str, layer: usize) {
-        let m_max = if layer == 0 { self.m } else { self.m };
+        // HNSW paper: layer 0 uses 2*M connections, upper layers use M
+        let m_max = if layer == 0 { self.m * 2 } else { self.m };
 
         let nodes = self.nodes.read();
         let neighbors = if let Some(node) = nodes.get(node_id) {
