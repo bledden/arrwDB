@@ -89,7 +89,8 @@ impl RustHNSWIndex {
             ef_construction,
             ef_search,
             max_level,
-            ml: 1.0 / (2.0_f64).ln(),
+            // HNSW paper: ml = 1/ln(M) for proper level distribution
+            ml: 1.0 / (m as f64).ln(),
             nodes: Arc::new(RwLock::new(HashMap::new())),
             entry_point: Arc::new(RwLock::new(None)),
             dimension,
@@ -543,14 +544,14 @@ impl RustHNSWIndex {
 }
 
 impl RustHNSWIndex {
-    /// Generate random level for a new node.
+    /// Generate random level for a new node using HNSW paper formula.
+    /// level = floor(-ln(uniform_random) * ml) where ml = 1/ln(M)
     fn random_level(&self) -> usize {
         let mut rng = rand::thread_rng();
-        let mut level = 0;
-        while rng.gen::<f64>() < 0.5 && level < self.max_level {
-            level += 1;
-        }
-        level
+        let uniform: f64 = rng.gen();
+        // Avoid log(0) by using max with small epsilon
+        let level = ((-uniform.max(1e-10).ln()) * self.ml).floor() as usize;
+        level.min(self.max_level)
     }
 
     /// Insert a node into the graph.
@@ -756,11 +757,66 @@ impl RustHNSWIndex {
         result_vec
     }
 
-    /// Select M best neighbors from candidates.
+    /// Select M best neighbors from candidates using HNSW heuristic.
+    /// This algorithm ensures diversity by preferring neighbors that are
+    /// not too close to already selected neighbors.
     fn select_neighbors(&self, mut candidates: Vec<(String, f32)>, m: usize) -> Vec<(String, f32)> {
+        if candidates.len() <= m {
+            return candidates;
+        }
+
+        // Sort by distance (ascending)
         candidates.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-        candidates.truncate(m);
-        candidates
+
+        let vectors = self.vectors.read();
+        let mut selected: Vec<(String, f32)> = Vec::with_capacity(m);
+        let mut working_queue = candidates;
+
+        // Heuristic selection: pick candidates that add diversity
+        while selected.len() < m && !working_queue.is_empty() {
+            // Take the closest remaining candidate
+            let (cand_id, cand_dist) = working_queue.remove(0);
+
+            // Get candidate vector
+            let cand_vec = match vectors.get(&cand_id) {
+                Some(v) => v,
+                None => continue,
+            };
+
+            // Check if this candidate is closer to query than to any selected neighbor
+            // This ensures we don't add redundant neighbors that are clustered together
+            let mut is_good = true;
+            for (sel_id, _) in &selected {
+                if let Some(sel_vec) = vectors.get(sel_id) {
+                    let dist_to_selected = cosine_distance(cand_vec, sel_vec);
+                    // If candidate is closer to a selected neighbor than to query,
+                    // it might be redundant, but we still consider it if we need more neighbors
+                    if dist_to_selected < cand_dist {
+                        is_good = false;
+                        break;
+                    }
+                }
+            }
+
+            if is_good {
+                selected.push((cand_id, cand_dist));
+            } else if selected.len() + working_queue.len() < m {
+                // If we might not have enough candidates, add it anyway
+                selected.push((cand_id, cand_dist));
+            }
+        }
+
+        // If we still don't have enough, add remaining candidates by distance
+        if selected.len() < m && !working_queue.is_empty() {
+            for (cand_id, cand_dist) in working_queue {
+                if selected.len() >= m {
+                    break;
+                }
+                selected.push((cand_id, cand_dist));
+            }
+        }
+
+        selected
     }
 
     /// Prune a node's connections to maintain maximum connection count.
