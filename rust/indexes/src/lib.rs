@@ -254,13 +254,15 @@ impl RustHNSWIndex {
         drop(entry_point);
 
         // Get entry level
-        let nodes = self.nodes.read();
-        let entry_level = nodes.get(&entry_id).map(|n| n.level).unwrap_or(0);
+        let entry_level = {
+            let nodes = self.nodes.read();
+            nodes.get(&entry_id).map(|n| n.level).unwrap_or(0)
+        }; // Lock released here
 
         // Start from entry point
         let mut current = entry_id;
 
-        // Search upper layers
+        // Search upper layers (greedy search with ef=1)
         for lc in (1..=entry_level).rev() {
             let nearest = self.search_layer(&query_data, &current, 1, lc);
             if !nearest.is_empty() {
@@ -544,14 +546,17 @@ impl RustHNSWIndex {
 }
 
 impl RustHNSWIndex {
-    /// Generate random level for a new node using HNSW paper formula.
-    /// level = floor(-ln(uniform_random) * ml) where ml = 1/ln(M)
+    /// Generate random level for a new node using coin-flip method.
+    /// This creates more nodes at higher levels than the HNSW paper formula,
+    /// resulting in denser upper layers and better navigation at scale.
     fn random_level(&self) -> usize {
         let mut rng = rand::thread_rng();
-        let uniform: f64 = rng.gen();
-        // Avoid log(0) by using max with small epsilon
-        let level = ((-uniform.max(1e-10).ln()) * self.ml).floor() as usize;
-        level.min(self.max_level)
+        let mut level = 0;
+        // Coin-flip: 50% chance to go up each level
+        while rng.gen::<f64>() < 0.5 && level < self.max_level {
+            level += 1;
+        }
+        level
     }
 
     /// Insert a node into the graph.
