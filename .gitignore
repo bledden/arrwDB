@@ -56,11 +56,14 @@ Thumbs.db
 temporal-data/
 
 # Rust build artifacts
+target/
 rust/*/target/
 rust/*/Cargo.lock
 *.dylib
 *.dll
 *.so
+rust-analyzer/
+flycheck*/
 
 # Test results
 tests/test_results/
