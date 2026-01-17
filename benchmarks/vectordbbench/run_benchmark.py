@@ -12,6 +12,11 @@ Usage:
 Datasets:
     sift-10k: 10,000 128-dim SIFT vectors (downloads automatically)
     random: Randomly generated vectors (specify --dim and --size)
+
+Checkpointing:
+    The benchmark automatically saves progress every 10,000 vectors.
+    If interrupted, re-run with the same parameters to resume.
+    Checkpoint file: ~/.cache/arrwdb_bench/checkpoint.json
 """
 
 import argparse
@@ -37,6 +42,70 @@ except ImportError:
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Checkpointing functions
+# =============================================================================
+
+@dataclass
+class CheckpointState:
+    """State saved for resuming interrupted benchmarks."""
+    library_id: str
+    dataset_name: str
+    num_vectors: int
+    dimension: int
+    index_type: str
+    vectors_inserted: int
+    insert_start_time: float
+    seed: int = 42
+
+
+def get_checkpoint_path(cache_dir: Path) -> Path:
+    """Get path to checkpoint file."""
+    return cache_dir / "checkpoint.json"
+
+
+def save_checkpoint(cache_dir: Path, state: CheckpointState) -> None:
+    """Save checkpoint state to disk."""
+    checkpoint_path = get_checkpoint_path(cache_dir)
+    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(checkpoint_path, "w") as f:
+        json.dump(asdict(state), f, indent=2)
+    logger.info(f"Checkpoint saved: {state.vectors_inserted}/{state.num_vectors} vectors")
+
+
+def load_checkpoint(cache_dir: Path) -> CheckpointState | None:
+    """Load checkpoint state from disk if it exists."""
+    checkpoint_path = get_checkpoint_path(cache_dir)
+    if not checkpoint_path.exists():
+        return None
+    try:
+        with open(checkpoint_path, "r") as f:
+            data = json.load(f)
+        return CheckpointState(**data)
+    except (json.JSONDecodeError, KeyError, TypeError) as e:
+        logger.warning(f"Failed to load checkpoint: {e}")
+        return None
+
+
+def clear_checkpoint(cache_dir: Path) -> None:
+    """Remove checkpoint file after successful completion."""
+    checkpoint_path = get_checkpoint_path(cache_dir)
+    if checkpoint_path.exists():
+        checkpoint_path.unlink()
+        logger.info("Checkpoint cleared")
+
+
+def checkpoint_matches(state: CheckpointState, dataset_name: str, num_vectors: int,
+                       dimension: int, index_type: str) -> bool:
+    """Check if checkpoint matches current benchmark parameters."""
+    return (
+        state.dataset_name == dataset_name and
+        state.num_vectors == num_vectors and
+        state.dimension == dimension and
+        state.index_type == index_type
+    )
 
 
 @dataclass
@@ -165,6 +234,8 @@ def run_benchmark(
     ground_truth: np.ndarray,
     index_type: str = "hnsw",
     dataset_name: str = "unknown",
+    cache_dir: Path | None = None,
+    checkpoint: CheckpointState | None = None,
 ) -> BenchmarkResult:
     """Run full benchmark suite.
 
@@ -175,6 +246,8 @@ def run_benchmark(
         ground_truth: Ground truth for recall calculation.
         index_type: Index type to use.
         dataset_name: Name for results.
+        cache_dir: Directory for checkpoint files.
+        checkpoint: Existing checkpoint to resume from.
 
     Returns:
         BenchmarkResult with all metrics.
@@ -182,23 +255,34 @@ def run_benchmark(
     num_vectors, dim = base.shape
     num_queries = query.shape[0]
 
-    # Create library
-    logger.info(f"Creating library with {index_type} index...")
-    library = client.create_library(
-        name=f"benchmark_{dataset_name}_{int(time.time())}",
-        description=f"Benchmark: {num_vectors} vectors, dim={dim}",
-        index_type=index_type,
-    )
-    library_id = library["id"]
+    # Resume from checkpoint or create new library
+    if checkpoint and checkpoint_matches(checkpoint, dataset_name, num_vectors, dim, index_type):
+        library_id = checkpoint.library_id
+        start_idx = checkpoint.vectors_inserted
+        insert_start = checkpoint.insert_start_time
+        logger.info(f"Resuming from checkpoint: {start_idx}/{num_vectors} vectors already inserted")
+        logger.info(f"Library ID: {library_id}")
+    else:
+        # Create new library
+        logger.info(f"Creating library with {index_type} index...")
+        library = client.create_library(
+            name=f"benchmark_{dataset_name}_{int(time.time())}",
+            description=f"Benchmark: {num_vectors} vectors, dim={dim}",
+            index_type=index_type,
+        )
+        library_id = library["id"]
+        start_idx = 0
+        insert_start = time.time()
+        logger.info(f"Created library: {library_id}")
 
     # =========================================================================
     # Insertion benchmark
     # =========================================================================
-    logger.info(f"Inserting {num_vectors} vectors...")
+    logger.info(f"Inserting {num_vectors} vectors (starting from {start_idx})...")
     batch_size = 1000
-    insert_start = time.time()
+    checkpoint_interval = 10000  # Save checkpoint every 10k vectors
 
-    for i in range(0, num_vectors, batch_size):
+    for i in range(start_idx, num_vectors, batch_size):
         batch = base[i:i + batch_size]
         texts = [f"doc_{j}" for j in range(i, min(i + batch_size, num_vectors))]
 
@@ -211,8 +295,21 @@ def run_benchmark(
             chunks=chunks,
         )
 
-        if (i + batch_size) % 10000 == 0:
-            logger.info(f"  Inserted {i + batch_size}/{num_vectors}")
+        vectors_done = i + batch_size
+        if vectors_done % checkpoint_interval == 0:
+            logger.info(f"  Inserted {vectors_done}/{num_vectors}")
+            # Save checkpoint
+            if cache_dir:
+                state = CheckpointState(
+                    library_id=library_id,
+                    dataset_name=dataset_name,
+                    num_vectors=num_vectors,
+                    dimension=dim,
+                    index_type=index_type,
+                    vectors_inserted=vectors_done,
+                    insert_start_time=insert_start,
+                )
+                save_checkpoint(cache_dir, state)
 
     insert_time = time.time() - insert_start
     insert_throughput = num_vectors / insert_time
@@ -359,8 +456,26 @@ def main():
     parser.add_argument("--output", default=None, help="Output JSON file for results")
     parser.add_argument("--cache-dir", default="~/.cache/arrwdb_bench", help="Dataset cache dir")
     parser.add_argument("--timeout", type=int, default=300, help="Request timeout in seconds (default 300 for large datasets)")
+    parser.add_argument("--no-checkpoint", action="store_true", help="Disable checkpointing")
+    parser.add_argument("--clear-checkpoint", action="store_true", help="Clear existing checkpoint and start fresh")
 
     args = parser.parse_args()
+
+    # Setup cache directory
+    cache_dir = Path(args.cache_dir).expanduser()
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    # Handle checkpoint clearing
+    if args.clear_checkpoint:
+        clear_checkpoint(cache_dir)
+        logger.info("Cleared existing checkpoint, starting fresh")
+
+    # Load existing checkpoint if available
+    checkpoint = None
+    if not args.no_checkpoint:
+        checkpoint = load_checkpoint(cache_dir)
+        if checkpoint:
+            logger.info(f"Found checkpoint: {checkpoint.vectors_inserted}/{checkpoint.num_vectors} vectors")
 
     # Create client
     logger.info(f"Connecting to arrwDB at {args.url}...")
@@ -375,8 +490,6 @@ def main():
         sys.exit(1)
 
     # Load dataset
-    cache_dir = Path(args.cache_dir).expanduser()
-
     if args.dataset == "sift-10k":
         base, query, gt = download_sift_dataset(cache_dir)
     else:
@@ -394,7 +507,13 @@ def main():
         ground_truth=gt[:args.queries],
         index_type=args.index_type,
         dataset_name=args.dataset,
+        cache_dir=cache_dir if not args.no_checkpoint else None,
+        checkpoint=checkpoint,
     )
+
+    # Clear checkpoint on successful completion
+    if not args.no_checkpoint:
+        clear_checkpoint(cache_dir)
 
     # Print results
     print("\n" + "=" * 60)
