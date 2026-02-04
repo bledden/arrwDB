@@ -91,6 +91,10 @@ configure_structured_logging(
 )
 logger = logging.getLogger(__name__)
 
+# Initialize telemetry (OpenTelemetry + Sentry)
+from app.telemetry import init_telemetry
+init_telemetry()
+
 # Initialize rate limiter
 limiter = Limiter(
     key_func=get_remote_address,
@@ -119,6 +123,12 @@ app.state.limiter = limiter
 
 # Add rate limit exception handler
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Instrument FastAPI with OpenTelemetry (if enabled)
+if os.getenv("OTEL_ENABLED", "false").lower() == "true":
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    FastAPIInstrumentor.instrument_app(app)
+    logger.info("FastAPI OpenTelemetry instrumentation enabled")
 
 # ============================================================
 # Middleware Configuration
@@ -1989,6 +1999,14 @@ async def shutdown_event() -> None:
             logger.info("✓ State saved successfully")
     except Exception as e:
         logger.error(f"✗ Failed to save state: {e}")
+
+    # Flush telemetry
+    try:
+        from app.telemetry import shutdown_telemetry
+        shutdown_telemetry()
+        logger.info("✓ Telemetry flushed")
+    except Exception as e:
+        logger.error(f"✗ Failed to flush telemetry: {e}")
 
     logger.info("=" * 60)
     logger.info("Shutdown complete")

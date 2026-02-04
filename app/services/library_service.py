@@ -19,6 +19,9 @@ from uuid import UUID
 from app.models.base import Chunk, Corpus, CorpusMetadata, Document, DocumentMetadata, QuantizationMetadata
 from app.services.embedding_service import EmbeddingService, EmbeddingServiceError
 from app.utils.quantization import ScalarQuantizer, calculate_memory_savings, estimate_accuracy
+from app.telemetry import get_tracer
+
+_tracer = get_tracer("arrwdb.library_service")
 from infrastructure.repositories.library_repository import (
     CorpusNotFoundError,
     CorpusRepository,
@@ -233,60 +236,76 @@ class CorpusService:
             f"Adding document '{title}' with {len(texts)} chunks to corpus {corpus_id}"
         )
 
-        # Get corpus to check it exists
-        corpus = self._repository.get_library(corpus_id)
+        with _tracer.start_as_current_span(
+            "corpus.add_document",
+            attributes={
+                "corpus.id": str(corpus_id),
+                "document.title": title,
+                "document.chunks_count": len(texts),
+            },
+        ) as span:
+            # Get corpus to check it exists
+            corpus = self._repository.get_library(corpus_id)
 
-        # Generate embeddings for all texts
-        try:
-            embeddings = self._embedding_service.embed_texts(texts)
-        except EmbeddingServiceError as e:
-            logger.error(f"Failed to generate embeddings: {e}")
-            raise
+            # Generate embeddings for all texts
+            with _tracer.start_as_current_span(
+                "embedding.generate_batch",
+                attributes={"batch.size": len(texts)},
+            ):
+                try:
+                    embeddings = self._embedding_service.embed_texts(texts)
+                except EmbeddingServiceError as e:
+                    logger.error(f"Failed to generate embeddings: {e}")
+                    span.record_exception(e)
+                    raise
 
-        # Create chunks
-        chunks = []
-        doc_metadata = DocumentMetadata(
-            title=title,
-            author=author,
-            document_type=document_type,
-            source_url=source_url,
-            tags=tags or [],
-        )
-
-        # We'll set the document ID after creating the document
-        # For now, use a placeholder
-        from uuid import uuid4
-
-        doc_id = uuid4()
-
-        for i, (text, embedding) in enumerate(zip(texts, embeddings)):
-            from app.models.base import ChunkMetadata
-
-            chunk_metadata = ChunkMetadata(
-                chunk_index=i, source_document_id=doc_id
+            # Create chunks
+            chunks = []
+            doc_metadata = DocumentMetadata(
+                title=title,
+                author=author,
+                document_type=document_type,
+                source_url=source_url,
+                tags=tags or [],
             )
 
-            chunk = Chunk(
-                text=text, embedding=embedding.tolist(), metadata=chunk_metadata
-            )
-            chunks.append(chunk)
+            # We'll set the document ID after creating the document
+            # For now, use a placeholder
+            from uuid import uuid4
 
-        # Create document with the same ID used in chunk metadata
-        document = Document(id=doc_id, chunks=chunks, metadata=doc_metadata)
+            doc_id = uuid4()
 
-        # Add to repository
-        try:
-            added = self._repository.add_document(corpus_id, document)
-            logger.info(
-                f"Added document {added.id} with {len(chunks)} chunks to corpus {corpus_id}"
-            )
-            return added
-        except DimensionMismatchError as e:
-            logger.error(f"Dimension mismatch when adding document: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"Failed to add document: {e}")
-            raise
+            for i, (text, embedding) in enumerate(zip(texts, embeddings)):
+                from app.models.base import ChunkMetadata
+
+                chunk_metadata = ChunkMetadata(
+                    chunk_index=i, source_document_id=doc_id
+                )
+
+                chunk = Chunk(
+                    text=text, embedding=embedding.tolist(), metadata=chunk_metadata
+                )
+                chunks.append(chunk)
+
+            # Create document with the same ID used in chunk metadata
+            document = Document(id=doc_id, chunks=chunks, metadata=doc_metadata)
+
+            # Add to repository
+            with _tracer.start_as_current_span("vector_store.insert"):
+                try:
+                    added = self._repository.add_document(corpus_id, document)
+                    logger.info(
+                        f"Added document {added.id} with {len(chunks)} chunks to corpus {corpus_id}"
+                    )
+                    return added
+                except DimensionMismatchError as e:
+                    logger.error(f"Dimension mismatch when adding document: {e}")
+                    span.record_exception(e)
+                    raise
+                except Exception as e:
+                    logger.error(f"Failed to add document: {e}")
+                    span.record_exception(e)
+                    raise
 
     def add_document_with_embeddings(
         self,
@@ -636,23 +655,31 @@ class CorpusService:
         """
         logger.info(f"Searching corpus {corpus_id} with text query (k={k})")
 
-        # Generate query embedding
-        # Switch to search_query input type for better retrieval
-        original_input_type = self._embedding_service.input_type
-        try:
-            self._embedding_service.change_input_type("search_query")
-            query_embedding = self._embedding_service.embed_text(query_text)
-        except EmbeddingServiceError as e:
-            logger.error(f"Failed to generate query embedding: {e}")
-            raise
-        finally:
-            # Restore original input type
-            self._embedding_service.change_input_type(original_input_type)
+        with _tracer.start_as_current_span(
+            "corpus.search",
+            attributes={"corpus.id": str(corpus_id), "search.k": k},
+        ) as span:
+            # Generate query embedding
+            with _tracer.start_as_current_span("embedding.generate_query"):
+                original_input_type = self._embedding_service.input_type
+                try:
+                    self._embedding_service.change_input_type("search_query")
+                    query_embedding = self._embedding_service.embed_text(query_text)
+                except EmbeddingServiceError as e:
+                    logger.error(f"Failed to generate query embedding: {e}")
+                    span.record_exception(e)
+                    raise
+                finally:
+                    self._embedding_service.change_input_type(original_input_type)
 
-        # Search using embedding
-        return self.search_with_embedding(
-            corpus_id, query_embedding.tolist(), k, distance_threshold
-        )
+            # Search using embedding
+            with _tracer.start_as_current_span("vector_store.search"):
+                results = self.search_with_embedding(
+                    corpus_id, query_embedding.tolist(), k, distance_threshold
+                )
+
+            span.set_attribute("search.results_count", len(results))
+            return results
 
     def search_with_embedding(
         self,
@@ -942,19 +969,26 @@ class CorpusService:
             (f" (switching to {new_index_type})" if new_index_type else "")
         )
 
-        try:
-            old_type, new_type, vectors = self._repository.rebuild_index(
-                corpus_id, new_index_type, index_config
-            )
+        with _tracer.start_as_current_span(
+            "index.rebuild",
+            attributes={"corpus.id": str(corpus_id), "index.new_type": new_index_type or "same"},
+        ) as span:
+            try:
+                old_type, new_type, vectors = self._repository.rebuild_index(
+                    corpus_id, new_index_type, index_config
+                )
 
-            logger.info(
-                f"Index rebuild complete: {old_type} → {new_type}, {vectors} vectors reindexed"
-            )
+                span.set_attribute("index.old_type", old_type)
+                span.set_attribute("index.vectors_reindexed", vectors)
+                logger.info(
+                    f"Index rebuild complete: {old_type} → {new_type}, {vectors} vectors reindexed"
+                )
 
-            return old_type, new_type, vectors
-        except Exception as e:
-            logger.error(f"Failed to rebuild index: {e}")
-            raise
+                return old_type, new_type, vectors
+            except Exception as e:
+                logger.error(f"Failed to rebuild index: {e}")
+                span.record_exception(e)
+                raise
 
     def optimize_index(self, corpus_id: UUID) -> Tuple[int, int]:
         """
@@ -973,17 +1007,24 @@ class CorpusService:
         """
         logger.info(f"Optimizing index for corpus {corpus_id}")
 
-        try:
-            vectors, memory_freed = self._repository.optimize_index(corpus_id)
+        with _tracer.start_as_current_span(
+            "index.optimize",
+            attributes={"corpus.id": str(corpus_id)},
+        ) as span:
+            try:
+                vectors, memory_freed = self._repository.optimize_index(corpus_id)
 
-            logger.info(
-                f"Index optimization complete: {vectors} vectors compacted, "
-                f"{memory_freed} bytes freed"
-            )
+                span.set_attribute("index.vectors_compacted", vectors)
+                span.set_attribute("index.memory_freed_bytes", memory_freed)
+                logger.info(
+                    f"Index optimization complete: {vectors} vectors compacted, "
+                    f"{memory_freed} bytes freed"
+                )
 
-            return vectors, memory_freed
-        except Exception as e:
-            logger.error(f"Failed to optimize index: {e}")
+                return vectors, memory_freed
+            except Exception as e:
+                logger.error(f"Failed to optimize index: {e}")
+                span.record_exception(e)
             raise
 
     def get_index_statistics(self, corpus_id: UUID) -> dict:

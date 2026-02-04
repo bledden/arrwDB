@@ -143,6 +143,13 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         # Store in request state for access in routes
         request.state.request_id = request_id
 
+        # Attach request_id to Sentry scope for cross-referencing with logs
+        try:
+            import sentry_sdk
+            sentry_sdk.set_tag("request_id", request_id)
+        except Exception:
+            pass
+
         # Store request start time for latency tracking
         request.state.start_time = time.time()
 

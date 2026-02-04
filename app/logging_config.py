@@ -33,6 +33,13 @@ class JSONFormatter(logging.Formatter):
             "message": record.getMessage(),
         }
 
+        # Add OpenTelemetry trace context (injected by LoggingInstrumentor)
+        trace_id = getattr(record, "otelTraceID", "0")
+        span_id = getattr(record, "otelSpanID", "0")
+        if trace_id != "0":
+            log_data["trace_id"] = trace_id
+            log_data["span_id"] = span_id
+
         # Add exception info if present
         if record.exc_info:
             log_data["exception"] = self.formatException(record.exc_info)

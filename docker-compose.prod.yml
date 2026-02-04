@@ -32,6 +32,14 @@ services:
       - RATE_LIMIT_PER_MINUTE=60
       - RATE_LIMIT_BURST=10
 
+      # Telemetry (optional)
+      - OTEL_ENABLED=${OTEL_ENABLED:-false}
+      - OTEL_SERVICE_NAME=arrwdb
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-production}
+      - SENTRY_TRACES_SAMPLE_RATE=${SENTRY_TRACES_SAMPLE_RATE:-1.0}
+
       # Embedding Service
       - COHERE_API_KEY=${COHERE_API_KEY}
       - EMBEDDING_MODEL=embed-english-v3.0
