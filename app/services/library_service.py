@@ -71,6 +71,10 @@ class CorpusService:
         """Access repository for persistence operations."""
         return self._repository
 
+    def _get_vector_store(self, corpus_id: UUID):
+        """Get the vector store for a corpus by ID."""
+        return self._repository._vector_stores[corpus_id]
+
     def create_corpus(
         self,
         name: str,

@@ -546,17 +546,16 @@ impl RustHNSWIndex {
 }
 
 impl RustHNSWIndex {
-    /// Generate random level for a new node using coin-flip method.
-    /// This creates more nodes at higher levels than the HNSW paper formula,
-    /// resulting in denser upper layers and better navigation at scale.
+    /// Generate random level for a new node using HNSW paper formula.
+    /// level = floor(-ln(uniform(0,1)) * ml) where ml = 1/ln(M).
+    /// With M=48: ~97.4% at level 0, ~2.4% at level 1, ~0.06% at level 2.
+    /// This creates sparse upper layers that act as "highways" for fast
+    /// long-range navigation during greedy descent.
     fn random_level(&self) -> usize {
         let mut rng = rand::thread_rng();
-        let mut level = 0;
-        // Coin-flip: 50% chance to go up each level
-        while rng.gen::<f64>() < 0.5 && level < self.max_level {
-            level += 1;
-        }
-        level
+        let uniform: f64 = rng.gen();
+        let level = (-uniform.max(1e-10).ln() * self.ml).floor() as usize;
+        level.min(self.max_level)
     }
 
     /// Insert a node into the graph.
@@ -762,13 +761,68 @@ impl RustHNSWIndex {
         result_vec
     }
 
-    /// Select M best neighbors from candidates.
-    /// Uses simple selection (closest M neighbors) which works well for most cases.
-    fn select_neighbors(&self, mut candidates: Vec<(String, f32)>, m: usize) -> Vec<(String, f32)> {
-        // Sort by distance (ascending) and take top M
+    /// HNSW paper Algorithm 4: diversity-aware neighbor selection with backfill.
+    /// Selects neighbors that are close to the query AND diverse (not too close
+    /// to each other), preventing clique formation. Always returns exactly min(m, candidates.len())
+    /// neighbors by backfilling from discarded candidates if needed.
+    fn select_neighbors_heuristic(
+        &self,
+        mut candidates: Vec<(String, f32)>,
+        m: usize,
+        vectors: &HashMap<String, Vec<f32>>,
+    ) -> Vec<(String, f32)> {
+        if candidates.len() <= m {
+            return candidates;
+        }
+
+        // Sort by distance ascending (closest first)
         candidates.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-        candidates.truncate(m);
-        candidates
+
+        let mut selected: Vec<(String, f32)> = Vec::with_capacity(m);
+        let mut discarded: Vec<(String, f32)> = Vec::new();
+
+        for (cand_id, cand_dist) in candidates {
+            if selected.len() >= m {
+                break;
+            }
+
+            // Check if this candidate is closer to query than to any already-selected neighbor
+            let is_diverse = if let Some(cand_vec) = vectors.get(&cand_id) {
+                selected.iter().all(|(sel_id, _)| {
+                    if let Some(sel_vec) = vectors.get(sel_id) {
+                        let inter_dist = cosine_distance(cand_vec, sel_vec);
+                        // Keep candidate if it's closer to query than to the selected neighbor
+                        cand_dist <= inter_dist
+                    } else {
+                        true // keep if we can't compute distance
+                    }
+                })
+            } else {
+                true // keep if we can't find vector
+            };
+
+            if is_diverse {
+                selected.push((cand_id, cand_dist));
+            } else {
+                discarded.push((cand_id, cand_dist));
+            }
+        }
+
+        // Backfill from discarded (already sorted by distance) to guarantee M neighbors
+        for (id, dist) in discarded {
+            if selected.len() >= m {
+                break;
+            }
+            selected.push((id, dist));
+        }
+
+        selected
+    }
+
+    /// Select M best neighbors from candidates using heuristic selection.
+    fn select_neighbors(&self, candidates: Vec<(String, f32)>, m: usize) -> Vec<(String, f32)> {
+        let vectors = self.vectors.read();
+        self.select_neighbors_heuristic(candidates, m, &vectors)
     }
 
     /// Prune a node's connections to maintain maximum connection count.
@@ -803,7 +857,7 @@ impl RustHNSWIndex {
         // Compute distances to all neighbors in parallel using rayon
         let vectors = self.vectors.read();
         let neighbor_list: Vec<_> = neighbors.iter().cloned().collect();
-        let mut neighbor_dists: Vec<(String, f32)> = neighbor_list
+        let neighbor_dists: Vec<(String, f32)> = neighbor_list
             .par_iter()
             .filter_map(|nid| {
                 vectors.get(nid).map(|nvec| {
@@ -811,12 +865,12 @@ impl RustHNSWIndex {
                 })
             })
             .collect();
+
+        // Use heuristic selection (diversity-aware with backfill)
+        let selected = self.select_neighbors_heuristic(neighbor_dists, m_max, &vectors);
         drop(vectors);
 
-        // Keep only m_max nearest
-        neighbor_dists.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-        neighbor_dists.truncate(m_max);
-        let new_neighbors: HashSet<String> = neighbor_dists.iter().map(|(id, _)| id.clone()).collect();
+        let new_neighbors: HashSet<String> = selected.iter().map(|(id, _)| id.clone()).collect();
 
         // Remove pruned connections bidirectionally
         let to_remove: Vec<String> = neighbors.difference(&new_neighbors).cloned().collect();

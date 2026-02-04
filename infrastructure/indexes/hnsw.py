@@ -112,13 +112,13 @@ class HNSWIndex(VectorIndex):
 
         self._vector_store = vector_store
         self._M = M
-        self._M_max = M  # Max connections at layer 0
+        self._M_max = 2 * M  # Max connections at layer 0 (HNSW paper: 2*M)
         self._M_max_upper = M  # Max connections at upper layers
         self._ef_construction = ef_construction
         self._ef_search = ef_search
         self._max_level = max_level
-        # WHY: Using 1/log(2) for exponential level distribution - gives proper skip-list structure
-        self._ml = 1.0 / np.log(2.0)  # Normalization factor for level generation
+        # HNSW paper: ml = 1/ln(M) for proper level distribution
+        self._ml = 1.0 / np.log(M)  # Normalization factor for level generation
         # WATCH OUT: RLock required to prevent deadlock when search happens during concurrent add
         self._lock = threading.RLock()
         self._rng = np.random.RandomState(seed)
@@ -298,29 +298,62 @@ class HNSWIndex(VectorIndex):
         self, candidates: List[Tuple[UUID, float]], M: int
     ) -> List[Tuple[UUID, float]]:
         """
-        Select M best neighbors from candidates.
+        HNSW paper Algorithm 4: diversity-aware neighbor selection with backfill.
 
-        Uses simple nearest-neighbor selection. While RobustPrune-style diversity
-        selection can help prevent hub formation in some datasets, benchmarks show
-        that for high-dimensional vectors (1024 dim), the computational overhead
-        of diversity checking outweighs the recall benefits.
-
-        The key to good recall is proper parameter tuning (M=32, ef_search=200)
-        rather than complex neighbor selection heuristics.
+        Selects neighbors that are close to the query AND diverse (not too close
+        to each other), preventing clique formation. Always returns exactly
+        min(M, len(candidates)) neighbors by backfilling from discarded candidates.
 
         Args:
             candidates: List of (vector_id, distance) tuples.
             M: Number of neighbors to select.
 
         Returns:
-            M nearest neighbors sorted by distance.
+            Up to M neighbors selected for diversity.
         """
-        if not candidates:
+        if not candidates or M == 0:
             return []
 
-        # Sort by distance (closest first) and take M nearest
+        if len(candidates) <= M:
+            return sorted(candidates, key=lambda x: x[1])
+
+        # Sort by distance ascending (closest first)
         sorted_candidates = sorted(candidates, key=lambda x: x[1])
-        return sorted_candidates[:M]
+
+        selected: List[Tuple[UUID, float]] = []
+        discarded: List[Tuple[UUID, float]] = []
+
+        for cand_id, cand_dist in sorted_candidates:
+            if len(selected) >= M:
+                break
+
+            # Check diversity: candidate should be closer to query than to
+            # any already-selected neighbor
+            is_diverse = True
+            cand_vec = self._vector_store.get_vector_by_index(
+                self._nodes[cand_id].vector_index
+            )
+            for sel_id, _ in selected:
+                sel_vec = self._vector_store.get_vector_by_index(
+                    self._nodes[sel_id].vector_index
+                )
+                inter_dist = self._compute_distance(cand_vec, sel_vec)
+                if cand_dist > inter_dist:
+                    is_diverse = False
+                    break
+
+            if is_diverse:
+                selected.append((cand_id, cand_dist))
+            else:
+                discarded.append((cand_id, cand_dist))
+
+        # Backfill from discarded (already sorted by distance) to guarantee M
+        for item in discarded:
+            if len(selected) >= M:
+                break
+            selected.append(item)
+
+        return selected
 
     def _prune_connections(self, node_id: UUID, layer: int) -> None:
         """
@@ -452,10 +485,13 @@ class HNSWIndex(VectorIndex):
                 if len(nearest) > 0:
                     current = nearest[0][0]
 
-            # PERF CLIFF: ef_search must be >= k, but ef > 500 wastes CPU on diminishing returns
-            # FAILURE MODE: If k > ef_search, returns < k results silently. Must use max(ef_search, k)
+            # Adaptive ef_search scaling: increase ef with index size for better recall
+            size = len(self._nodes)
+            ef = max(self._ef_search, k)
+            if size > 1000:
+                ef = int(ef * (1.0 + np.log10(size / 1000.0)))
             candidates = self._search_layer(
-                query_vector, current, max(self._ef_search, k), 0
+                query_vector, current, ef, 0
             )
 
             # Apply distance threshold if specified
@@ -487,16 +523,15 @@ class HNSWIndex(VectorIndex):
 
     def _random_level(self) -> int:
         """
-        Randomly generate a level for a new node.
+        Randomly generate a level for a new node using HNSW paper formula.
 
-        Uses exponential decay to ensure higher layers are sparser.
+        level = floor(-ln(uniform(0,1)) * ml) where ml = 1/ln(M).
+        With M=48: ~97.4% at level 0, ~2.4% at level 1, ~0.06% at level 2.
+        Creates sparse upper layers that act as "highways" for navigation.
         """
-        # WHY: Using coin-flip method instead of -log(uniform)*ml - rejection sampling is 3x faster
-        # DEGRADES: If most nodes get level=0, upper layers become too sparse and search degrades
-        level = 0
-        while self._rng.random() < 0.5 and level < self._max_level:
-            level += 1
-        return level
+        uniform = max(self._rng.random(), 1e-10)
+        level = int(-np.log(uniform) * self._ml)
+        return min(level, self._max_level)
 
     def rebuild(self) -> None:
         """
