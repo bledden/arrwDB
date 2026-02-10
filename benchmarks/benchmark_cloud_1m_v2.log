@@ -1,0 +1,245 @@
+2026-02-04 19:19:50,152 - INFO - Checkpoint cleared
+2026-02-04 19:19:50,152 - INFO - Cleared existing checkpoint, starting fresh
+2026-02-04 19:19:50,153 - INFO - Connecting to arrwDB at http://localhost:8000...
+2026-02-04 19:19:50,157 - INFO - Server health: {'status': 'healthy', 'version': '1.0.0', 'timestamp': '2026-02-04T19:19:50.156740'}
+2026-02-04 19:20:19,653 - INFO - Computing ground truth...
+2026-02-04 19:20:29,648 - INFO - Generated random: 1000000 base, 100 queries, dim=1024
+2026-02-04 19:20:29,649 - INFO - Creating library with hnsw index...
+2026-02-04 19:20:29,668 - INFO - Created library: 806c13c2-01af-4ef3-9094-6bab514d631e
+2026-02-04 19:20:29,668 - INFO - Inserting 1000000 vectors (starting from 0)...
+2026-02-04 19:51:31,565 - INFO -   Inserted 10000/1000000
+2026-02-04 19:51:31,565 - INFO - Checkpoint saved: 10000/1000000 vectors
+2026-02-04 20:44:15,458 - INFO -   Inserted 20000/1000000
+2026-02-04 20:44:15,459 - INFO - Checkpoint saved: 20000/1000000 vectors
+2026-02-04 21:43:44,591 - INFO -   Inserted 30000/1000000
+2026-02-04 21:43:44,591 - INFO - Checkpoint saved: 30000/1000000 vectors
+2026-02-04 22:45:07,735 - INFO -   Inserted 40000/1000000
+2026-02-04 22:45:07,736 - INFO - Checkpoint saved: 40000/1000000 vectors
+2026-02-04 23:47:37,264 - INFO -   Inserted 50000/1000000
+2026-02-04 23:47:37,264 - INFO - Checkpoint saved: 50000/1000000 vectors
+2026-02-05 00:51:09,520 - INFO -   Inserted 60000/1000000
+2026-02-05 00:51:09,521 - INFO - Checkpoint saved: 60000/1000000 vectors
+2026-02-05 01:55:22,959 - INFO -   Inserted 70000/1000000
+2026-02-05 01:55:22,960 - INFO - Checkpoint saved: 70000/1000000 vectors
+2026-02-05 03:00:34,478 - INFO -   Inserted 80000/1000000
+2026-02-05 03:00:34,479 - INFO - Checkpoint saved: 80000/1000000 vectors
+2026-02-05 04:06:19,807 - INFO -   Inserted 90000/1000000
+2026-02-05 04:06:19,807 - INFO - Checkpoint saved: 90000/1000000 vectors
+2026-02-05 05:12:33,512 - INFO -   Inserted 100000/1000000
+2026-02-05 05:12:33,512 - INFO - Checkpoint saved: 100000/1000000 vectors
+2026-02-05 06:18:58,425 - INFO -   Inserted 110000/1000000
+2026-02-05 06:18:58,425 - INFO - Checkpoint saved: 110000/1000000 vectors
+2026-02-05 07:25:57,696 - INFO -   Inserted 120000/1000000
+2026-02-05 07:25:57,697 - INFO - Checkpoint saved: 120000/1000000 vectors
+2026-02-05 08:33:08,782 - INFO -   Inserted 130000/1000000
+2026-02-05 08:33:08,782 - INFO - Checkpoint saved: 130000/1000000 vectors
+2026-02-05 09:40:27,050 - INFO -   Inserted 140000/1000000
+2026-02-05 09:40:27,050 - INFO - Checkpoint saved: 140000/1000000 vectors
+2026-02-05 10:48:01,852 - INFO -   Inserted 150000/1000000
+2026-02-05 10:48:01,852 - INFO - Checkpoint saved: 150000/1000000 vectors
+2026-02-05 11:55:40,499 - INFO -   Inserted 160000/1000000
+2026-02-05 11:55:40,500 - INFO - Checkpoint saved: 160000/1000000 vectors
+2026-02-05 13:03:31,243 - INFO -   Inserted 170000/1000000
+2026-02-05 13:03:31,243 - INFO - Checkpoint saved: 170000/1000000 vectors
+2026-02-05 14:11:33,682 - INFO -   Inserted 180000/1000000
+2026-02-05 14:11:33,682 - INFO - Checkpoint saved: 180000/1000000 vectors
+2026-02-05 15:19:51,062 - INFO -   Inserted 190000/1000000
+2026-02-05 15:19:51,063 - INFO - Checkpoint saved: 190000/1000000 vectors
+2026-02-05 16:28:13,936 - INFO -   Inserted 200000/1000000
+2026-02-05 16:28:13,936 - INFO - Checkpoint saved: 200000/1000000 vectors
+2026-02-05 17:36:46,524 - INFO -   Inserted 210000/1000000
+2026-02-05 17:36:46,524 - INFO - Checkpoint saved: 210000/1000000 vectors
+2026-02-05 18:45:29,829 - INFO -   Inserted 220000/1000000
+2026-02-05 18:45:29,830 - INFO - Checkpoint saved: 220000/1000000 vectors
+2026-02-05 19:54:14,094 - INFO -   Inserted 230000/1000000
+2026-02-05 19:54:14,095 - INFO - Checkpoint saved: 230000/1000000 vectors
+2026-02-05 21:03:16,083 - INFO -   Inserted 240000/1000000
+2026-02-05 21:03:16,083 - INFO - Checkpoint saved: 240000/1000000 vectors
+2026-02-05 22:12:16,615 - INFO -   Inserted 250000/1000000
+2026-02-05 22:12:16,616 - INFO - Checkpoint saved: 250000/1000000 vectors
+2026-02-05 23:21:25,164 - INFO -   Inserted 260000/1000000
+2026-02-05 23:21:25,165 - INFO - Checkpoint saved: 260000/1000000 vectors
+2026-02-06 00:30:33,883 - INFO -   Inserted 270000/1000000
+2026-02-06 00:30:33,884 - INFO - Checkpoint saved: 270000/1000000 vectors
+2026-02-06 01:39:50,905 - INFO -   Inserted 280000/1000000
+2026-02-06 01:39:50,906 - INFO - Checkpoint saved: 280000/1000000 vectors
+2026-02-06 02:49:13,559 - INFO -   Inserted 290000/1000000
+2026-02-06 02:49:13,560 - INFO - Checkpoint saved: 290000/1000000 vectors
+2026-02-06 03:58:37,401 - INFO -   Inserted 300000/1000000
+2026-02-06 03:58:37,402 - INFO - Checkpoint saved: 300000/1000000 vectors
+2026-02-06 05:08:08,375 - INFO -   Inserted 310000/1000000
+2026-02-06 05:08:08,375 - INFO - Checkpoint saved: 310000/1000000 vectors
+2026-02-06 06:17:48,982 - INFO -   Inserted 320000/1000000
+2026-02-06 06:17:48,983 - INFO - Checkpoint saved: 320000/1000000 vectors
+2026-02-06 07:27:22,431 - INFO -   Inserted 330000/1000000
+2026-02-06 07:27:22,432 - INFO - Checkpoint saved: 330000/1000000 vectors
+2026-02-06 08:37:11,362 - INFO -   Inserted 340000/1000000
+2026-02-06 08:37:11,362 - INFO - Checkpoint saved: 340000/1000000 vectors
+2026-02-06 09:46:52,799 - INFO -   Inserted 350000/1000000
+2026-02-06 09:46:52,799 - INFO - Checkpoint saved: 350000/1000000 vectors
+2026-02-06 10:56:33,400 - INFO -   Inserted 360000/1000000
+2026-02-06 10:56:33,401 - INFO - Checkpoint saved: 360000/1000000 vectors
+2026-02-06 12:06:15,522 - INFO -   Inserted 370000/1000000
+2026-02-06 12:06:15,523 - INFO - Checkpoint saved: 370000/1000000 vectors
+2026-02-06 13:16:08,147 - INFO -   Inserted 380000/1000000
+2026-02-06 13:16:08,148 - INFO - Checkpoint saved: 380000/1000000 vectors
+2026-02-06 14:25:54,309 - INFO -   Inserted 390000/1000000
+2026-02-06 14:25:54,310 - INFO - Checkpoint saved: 390000/1000000 vectors
+2026-02-06 15:35:51,226 - INFO -   Inserted 400000/1000000
+2026-02-06 15:35:51,227 - INFO - Checkpoint saved: 400000/1000000 vectors
+2026-02-06 16:45:49,934 - INFO -   Inserted 410000/1000000
+2026-02-06 16:45:49,935 - INFO - Checkpoint saved: 410000/1000000 vectors
+2026-02-06 17:55:58,354 - INFO -   Inserted 420000/1000000
+2026-02-06 17:55:58,355 - INFO - Checkpoint saved: 420000/1000000 vectors
+2026-02-06 19:06:05,705 - INFO -   Inserted 430000/1000000
+2026-02-06 19:06:05,706 - INFO - Checkpoint saved: 430000/1000000 vectors
+2026-02-06 20:16:14,346 - INFO -   Inserted 440000/1000000
+2026-02-06 20:16:14,347 - INFO - Checkpoint saved: 440000/1000000 vectors
+2026-02-06 21:26:22,581 - INFO -   Inserted 450000/1000000
+2026-02-06 21:26:22,582 - INFO - Checkpoint saved: 450000/1000000 vectors
+2026-02-06 22:36:46,823 - INFO -   Inserted 460000/1000000
+2026-02-06 22:36:46,823 - INFO - Checkpoint saved: 460000/1000000 vectors
+2026-02-06 23:47:10,891 - INFO -   Inserted 470000/1000000
+2026-02-06 23:47:10,892 - INFO - Checkpoint saved: 470000/1000000 vectors
+2026-02-07 00:57:36,194 - INFO -   Inserted 480000/1000000
+2026-02-07 00:57:36,194 - INFO - Checkpoint saved: 480000/1000000 vectors
+2026-02-07 02:07:57,012 - INFO -   Inserted 490000/1000000
+2026-02-07 02:07:57,013 - INFO - Checkpoint saved: 490000/1000000 vectors
+2026-02-07 03:18:34,437 - INFO -   Inserted 500000/1000000
+2026-02-07 03:18:34,437 - INFO - Checkpoint saved: 500000/1000000 vectors
+2026-02-07 04:29:04,985 - INFO -   Inserted 510000/1000000
+2026-02-07 04:29:04,986 - INFO - Checkpoint saved: 510000/1000000 vectors
+2026-02-07 05:39:43,868 - INFO -   Inserted 520000/1000000
+2026-02-07 05:39:43,868 - INFO - Checkpoint saved: 520000/1000000 vectors
+2026-02-07 06:50:25,253 - INFO -   Inserted 530000/1000000
+2026-02-07 06:50:25,254 - INFO - Checkpoint saved: 530000/1000000 vectors
+2026-02-07 08:00:58,095 - INFO -   Inserted 540000/1000000
+2026-02-07 08:00:58,095 - INFO - Checkpoint saved: 540000/1000000 vectors
+2026-02-07 09:11:36,099 - INFO -   Inserted 550000/1000000
+2026-02-07 09:11:36,100 - INFO - Checkpoint saved: 550000/1000000 vectors
+2026-02-07 10:22:06,427 - INFO -   Inserted 560000/1000000
+2026-02-07 10:22:06,428 - INFO - Checkpoint saved: 560000/1000000 vectors
+2026-02-07 11:32:41,384 - INFO -   Inserted 570000/1000000
+2026-02-07 11:32:41,385 - INFO - Checkpoint saved: 570000/1000000 vectors
+2026-02-07 12:43:28,802 - INFO -   Inserted 580000/1000000
+2026-02-07 12:43:28,802 - INFO - Checkpoint saved: 580000/1000000 vectors
+2026-02-07 13:54:12,734 - INFO -   Inserted 590000/1000000
+2026-02-07 13:54:12,734 - INFO - Checkpoint saved: 590000/1000000 vectors
+2026-02-07 15:05:01,888 - INFO -   Inserted 600000/1000000
+2026-02-07 15:05:01,889 - INFO - Checkpoint saved: 600000/1000000 vectors
+2026-02-07 16:16:05,449 - INFO -   Inserted 610000/1000000
+2026-02-07 16:16:05,450 - INFO - Checkpoint saved: 610000/1000000 vectors
+2026-02-07 17:27:19,178 - INFO -   Inserted 620000/1000000
+2026-02-07 17:27:19,178 - INFO - Checkpoint saved: 620000/1000000 vectors
+2026-02-07 18:38:26,347 - INFO -   Inserted 630000/1000000
+2026-02-07 18:38:26,348 - INFO - Checkpoint saved: 630000/1000000 vectors
+2026-02-07 19:49:35,723 - INFO -   Inserted 640000/1000000
+2026-02-07 19:49:35,723 - INFO - Checkpoint saved: 640000/1000000 vectors
+2026-02-07 21:00:51,206 - INFO -   Inserted 650000/1000000
+2026-02-07 21:00:51,206 - INFO - Checkpoint saved: 650000/1000000 vectors
+2026-02-07 22:11:51,544 - INFO -   Inserted 660000/1000000
+2026-02-07 22:11:51,545 - INFO - Checkpoint saved: 660000/1000000 vectors
+2026-02-07 23:23:09,345 - INFO -   Inserted 670000/1000000
+2026-02-07 23:23:09,345 - INFO - Checkpoint saved: 670000/1000000 vectors
+2026-02-08 00:34:36,594 - INFO -   Inserted 680000/1000000
+2026-02-08 00:34:36,594 - INFO - Checkpoint saved: 680000/1000000 vectors
+2026-02-08 01:45:38,533 - INFO -   Inserted 690000/1000000
+2026-02-08 01:45:38,533 - INFO - Checkpoint saved: 690000/1000000 vectors
+2026-02-08 02:56:46,277 - INFO -   Inserted 700000/1000000
+2026-02-08 02:56:46,277 - INFO - Checkpoint saved: 700000/1000000 vectors
+2026-02-08 04:07:58,753 - INFO -   Inserted 710000/1000000
+2026-02-08 04:07:58,754 - INFO - Checkpoint saved: 710000/1000000 vectors
+2026-02-08 05:19:43,608 - INFO -   Inserted 720000/1000000
+2026-02-08 05:19:43,608 - INFO - Checkpoint saved: 720000/1000000 vectors
+2026-02-08 06:31:25,493 - INFO -   Inserted 730000/1000000
+2026-02-08 06:31:25,494 - INFO - Checkpoint saved: 730000/1000000 vectors
+2026-02-08 07:42:55,037 - INFO -   Inserted 740000/1000000
+2026-02-08 07:42:55,037 - INFO - Checkpoint saved: 740000/1000000 vectors
+2026-02-08 08:54:26,083 - INFO -   Inserted 750000/1000000
+2026-02-08 08:54:26,083 - INFO - Checkpoint saved: 750000/1000000 vectors
+2026-02-08 10:06:27,238 - INFO -   Inserted 760000/1000000
+2026-02-08 10:06:27,239 - INFO - Checkpoint saved: 760000/1000000 vectors
+2026-02-08 11:18:07,925 - INFO -   Inserted 770000/1000000
+2026-02-08 11:18:07,925 - INFO - Checkpoint saved: 770000/1000000 vectors
+2026-02-08 12:29:44,650 - INFO -   Inserted 780000/1000000
+2026-02-08 12:29:44,650 - INFO - Checkpoint saved: 780000/1000000 vectors
+2026-02-08 13:41:21,257 - INFO -   Inserted 790000/1000000
+2026-02-08 13:41:21,257 - INFO - Checkpoint saved: 790000/1000000 vectors
+2026-02-08 14:52:44,758 - INFO -   Inserted 800000/1000000
+2026-02-08 14:52:44,758 - INFO - Checkpoint saved: 800000/1000000 vectors
+2026-02-08 16:04:17,150 - INFO -   Inserted 810000/1000000
+2026-02-08 16:04:17,150 - INFO - Checkpoint saved: 810000/1000000 vectors
+2026-02-08 17:15:53,084 - INFO -   Inserted 820000/1000000
+2026-02-08 17:15:53,084 - INFO - Checkpoint saved: 820000/1000000 vectors
+2026-02-08 18:27:29,654 - INFO -   Inserted 830000/1000000
+2026-02-08 18:27:29,654 - INFO - Checkpoint saved: 830000/1000000 vectors
+2026-02-08 19:39:13,424 - INFO -   Inserted 840000/1000000
+2026-02-08 19:39:13,425 - INFO - Checkpoint saved: 840000/1000000 vectors
+2026-02-08 20:50:53,638 - INFO -   Inserted 850000/1000000
+2026-02-08 20:50:53,638 - INFO - Checkpoint saved: 850000/1000000 vectors
+2026-02-08 22:02:41,055 - INFO -   Inserted 860000/1000000
+2026-02-08 22:02:41,056 - INFO - Checkpoint saved: 860000/1000000 vectors
+2026-02-08 23:14:30,039 - INFO -   Inserted 870000/1000000
+2026-02-08 23:14:30,040 - INFO - Checkpoint saved: 870000/1000000 vectors
+2026-02-09 00:26:32,104 - INFO -   Inserted 880000/1000000
+2026-02-09 00:26:32,105 - INFO - Checkpoint saved: 880000/1000000 vectors
+2026-02-09 01:38:27,895 - INFO -   Inserted 890000/1000000
+2026-02-09 01:38:27,896 - INFO - Checkpoint saved: 890000/1000000 vectors
+2026-02-09 02:50:25,585 - INFO -   Inserted 900000/1000000
+2026-02-09 02:50:25,586 - INFO - Checkpoint saved: 900000/1000000 vectors
+2026-02-09 04:02:08,874 - INFO -   Inserted 910000/1000000
+2026-02-09 04:02:08,875 - INFO - Checkpoint saved: 910000/1000000 vectors
+2026-02-09 05:13:45,823 - INFO -   Inserted 920000/1000000
+2026-02-09 05:13:45,823 - INFO - Checkpoint saved: 920000/1000000 vectors
+2026-02-09 06:25:44,977 - INFO -   Inserted 930000/1000000
+2026-02-09 06:25:44,977 - INFO - Checkpoint saved: 930000/1000000 vectors
+2026-02-09 07:37:35,613 - INFO -   Inserted 940000/1000000
+2026-02-09 07:37:35,613 - INFO - Checkpoint saved: 940000/1000000 vectors
+2026-02-09 08:49:32,270 - INFO -   Inserted 950000/1000000
+2026-02-09 08:49:32,270 - INFO - Checkpoint saved: 950000/1000000 vectors
+2026-02-09 10:01:26,112 - INFO -   Inserted 960000/1000000
+2026-02-09 10:01:26,113 - INFO - Checkpoint saved: 960000/1000000 vectors
+2026-02-09 11:13:26,241 - INFO -   Inserted 970000/1000000
+2026-02-09 11:13:26,241 - INFO - Checkpoint saved: 970000/1000000 vectors
+2026-02-09 12:25:12,273 - INFO -   Inserted 980000/1000000
+2026-02-09 12:25:12,274 - INFO - Checkpoint saved: 980000/1000000 vectors
+2026-02-09 13:37:14,311 - INFO -   Inserted 990000/1000000
+2026-02-09 13:37:14,312 - INFO - Checkpoint saved: 990000/1000000 vectors
+2026-02-09 14:49:05,910 - INFO -   Inserted 1000000/1000000
+2026-02-09 14:49:05,910 - INFO - Checkpoint saved: 1000000/1000000 vectors
+2026-02-09 14:49:05,911 - INFO - Insertion complete: 415716.24s (2 vec/s)
+2026-02-09 14:49:05,911 - INFO - Running 100 search queries...
+2026-02-09 14:49:54,171 - INFO - Search latency: p50=481.73ms, p95=489.90ms, p99=501.68ms
+2026-02-09 14:49:54,171 - INFO - Search QPS: 2, Recall@10: 0.464
+2026-02-09 14:49:54,171 - INFO - Running temperature search benchmark...
+2026-02-09 14:49:54,350 - ERROR - Request failed: 500 Server Error: Internal Server Error for url: http://localhost:8000/v1/temperature-search/corpora/806c13c2-01af-4ef3-9094-6bab514d631e/search
+2026-02-09 14:49:54,350 - WARNING - Temperature search benchmark failed: Unknown error: Temperature search failed: Failed to generate embedding: headers: {'cache-control': 'no-cache, no-store, no-transform, must-revalidate, private, max-age=0', 'content-encoding': 'gzip', 'content-type': 'application/json', 'expires': 'Thu, 01 Jan 1970 00:00:00 GMT', 'pragma': 'no-cache', 'vary': 'Origin,Accept-Encoding', 'x-accel-expires': '0', 'date': 'Mon, 09 Feb 2026 14:49:54 GMT', 'x-envoy-upstream-service-time': '6', 'server': 'envoy', 'via': '1.1 google', 'alt-svc': 'h3=":443"; ma=2592000,h3-29=":443"; ma=2592000', 'transfer-encoding': 'chunked'}, status_code: 401, body: {'id': '5ad89c79-79bd-490f-bbae-d47ed9dd367e', 'message': 'invalid api token'}
+2026-02-09 14:49:54,350 - INFO - Getting Index Oracle recommendation...
+2026-02-09 14:49:54,482 - INFO - Index Oracle recommends: hnsw
+2026-02-09 14:49:54,482 - INFO - Analyzing embedding health...
+2026-02-09 15:14:22,398 - ERROR - Request failed: 500 Server Error: Internal Server Error for url: http://localhost:8000/v1/embedding-health/corpora/806c13c2-01af-4ef3-9094-6bab514d631e/analyze
+2026-02-09 15:14:22,398 - WARNING - Embedding health failed: Unknown error: Health analysis failed: 'VectorArena' object has no attribute 'vectors'
+2026-02-09 15:14:22,398 - INFO - Cleaning up...
+2026-02-09 15:15:24,581 - INFO - Checkpoint cleared
+2026-02-09 15:15:24,582 - INFO - Results saved to /tmp/benchmark_cloud_1m.json
+
+============================================================
+BENCHMARK RESULTS
+============================================================
+Dataset:        random
+Vectors:        1,000,000
+Dimension:      1024
+Index Type:     hnsw
+------------------------------------------------------------
+Insert Time:    415716.24s
+Insert Rate:    2 vec/s
+------------------------------------------------------------
+Search p50:     481.73ms
+Search p95:     489.90ms
+Search p99:     501.68ms
+Search QPS:     2
+Recall@10:      0.464
+------------------------------------------------------------
+Novel Features:
+  Index Oracle:     hnsw
+============================================================

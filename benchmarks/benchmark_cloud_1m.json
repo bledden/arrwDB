@@ -1,0 +1,17 @@
+{
+  "dataset": "random",
+  "num_vectors": 1000000,
+  "dimension": 1024,
+  "index_type": "hnsw",
+  "insert_time_sec": 142592.19119811058,
+  "insert_throughput_vec_per_sec": 7.013006754420719,
+  "search_latency_p50_ms": 467.72921085357666,
+  "search_latency_p95_ms": 478.15375328063965,
+  "search_latency_p99_ms": 486.8813967704773,
+  "search_qps": 2.1331520553357923,
+  "recall_at_10": 0.4489999999999999,
+  "temp_search_latency_p50_ms": null,
+  "temp_search_diversity_score": null,
+  "index_recommendation": "hnsw",
+  "embedding_health_score": null
+}
