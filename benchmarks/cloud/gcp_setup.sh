@@ -6,9 +6,9 @@ set -e
 
 # Configuration
 PROJECT_ID="${GCP_PROJECT_ID:-}"
-ZONE="us-central1-a"
-INSTANCE_NAME="arrwdb-benchmark"
-MACHINE_TYPE="c2-standard-16"  # 16 vCPU, 64GB RAM - matches competition hardware
+ZONE="${GCP_ZONE:-us-central1-b}"
+INSTANCE_NAME="arrwdb-benchmark-highmem"
+MACHINE_TYPE="n2-highmem-16"  # 16 vCPU, 128GB RAM - matches competition hardware
 
 if [ -z "$PROJECT_ID" ]; then
     echo "Error: Set GCP_PROJECT_ID environment variable"
@@ -19,7 +19,7 @@ fi
 echo "=== arrwDB GCP Benchmark Setup ==="
 echo "Project: $PROJECT_ID"
 echo "Zone: $ZONE"
-echo "Machine: $MACHINE_TYPE (16 vCPU, 64GB)"
+echo "Machine: $MACHINE_TYPE (16 vCPU, 128GB)"
 echo ""
 
 # Check if gcloud is installed

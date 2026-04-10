@@ -22,7 +22,7 @@ source venv/bin/activate
 
 # Install Python dependencies
 pip install --upgrade pip
-pip install maturin numpy
+pip install maturin numpy h5py
 
 # Install arrwDB dependencies
 if [ -f "requirements.txt" ]; then
@@ -44,7 +44,16 @@ cd ~/arrwDB
 echo ""
 echo "=== Setup Complete ==="
 echo ""
-echo "To run the benchmark:"
-echo "  cd ~/arrwDB"
-echo "  source venv/bin/activate"
+echo "To run benchmarks:"
+echo "  cd ~/arrwDB && source venv/bin/activate"
+echo ""
+echo "  # Standard ANN benchmarks (SIFT, GloVe, Deep)"
+echo "  chmod +x benchmarks/cloud/launch_ann_suite.sh"
+echo "  ./benchmarks/cloud/launch_ann_suite.sh"
+echo ""
+echo "  # Embedding provider benchmarks (NV-Embed-v2, Voyage AI)"
+echo "  chmod +x benchmarks/cloud/launch_embedding_bench.sh"
+echo "  ./benchmarks/cloud/launch_embedding_bench.sh"
+echo ""
+echo "  # Original API-based benchmark"
 echo "  ./benchmarks/cloud/run_cloud_benchmark.sh"
