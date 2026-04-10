@@ -66,17 +66,18 @@ logger = logging.getLogger(__name__)
 
 DATASETS = {
     "sift-128-euclidean": {
-        "url": "http://ann-benchmarks.com/sift-128-euclidean.hdf5",
+        "url": "https://ann-benchmarks.com/sift-128-euclidean.hdf5",
+        "fallback_url": "https://huggingface.co/datasets/hhy3/ann-datasets/resolve/main/sift-128-euclidean.hdf5",
         "distance": "euclidean",
         "normalize": True,  # Normalize so cosine distance preserves ranking
     },
     "glove-200-angular": {
-        "url": "http://ann-benchmarks.com/glove-200-angular.hdf5",
+        "url": "https://ann-benchmarks.com/glove-200-angular.hdf5",
         "distance": "angular",
         "normalize": True,
     },
     "deep-96-angular": {
-        "url": "http://ann-benchmarks.com/deep-image-96-angular.hdf5",
+        "url": "https://ann-benchmarks.com/deep-image-96-angular.hdf5",
         "distance": "angular",
         "normalize": True,
         "max_vectors": 1_000_000,  # Use first 1M of Deep-10M
@@ -180,23 +181,43 @@ def download_dataset(name: str, cache_dir: Path) -> Path:
         logger.info(f"Dataset {name} already cached ({size_mb:.0f} MB): {filepath}")
         return filepath
 
-    logger.info(f"Downloading {name} from {info['url']}...")
-    logger.info("This may take several minutes for large datasets.")
+    # Browser User-Agent to bypass Cloudflare bot detection on cloud VMs
+    opener = urllib.request.build_opener()
+    opener.addheaders = [
+        ("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
+    ]
+    urllib.request.install_opener(opener)
 
-    def progress_hook(count, block_size, total_size):
-        if total_size > 0:
-            pct = count * block_size * 100 / total_size
-            mb_done = count * block_size / (1024 * 1024)
-            mb_total = total_size / (1024 * 1024)
-            if count % 100 == 0:
-                print(f"\r  {pct:.1f}% ({mb_done:.0f}/{mb_total:.0f} MB)", end="", flush=True)
+    urls_to_try = [info["url"]]
+    if "fallback_url" in info:
+        urls_to_try.append(info["fallback_url"])
 
-    urllib.request.urlretrieve(info["url"], filepath, reporthook=progress_hook)
-    print()  # newline after progress
+    for url in urls_to_try:
+        try:
+            logger.info(f"Downloading {name} from {url}...")
+            logger.info("This may take several minutes for large datasets.")
 
-    size_mb = filepath.stat().st_size / (1024 * 1024)
-    logger.info(f"Downloaded {name}: {size_mb:.0f} MB")
-    return filepath
+            def progress_hook(count, block_size, total_size):
+                if total_size > 0:
+                    pct = count * block_size * 100 / total_size
+                    mb_done = count * block_size / (1024 * 1024)
+                    mb_total = total_size / (1024 * 1024)
+                    if count % 100 == 0:
+                        print(f"\r  {pct:.1f}% ({mb_done:.0f}/{mb_total:.0f} MB)", end="", flush=True)
+
+            urllib.request.urlretrieve(url, filepath, reporthook=progress_hook)
+            print()  # newline after progress
+
+            size_mb = filepath.stat().st_size / (1024 * 1024)
+            logger.info(f"Downloaded {name}: {size_mb:.0f} MB")
+            return filepath
+        except urllib.error.HTTPError as e:
+            logger.warning(f"Failed to download from {url}: {e}")
+            if filepath.exists():
+                filepath.unlink()  # Remove partial download
+            continue
+
+    raise RuntimeError(f"Failed to download dataset {name} from all sources")
 
 
 def load_dataset(
