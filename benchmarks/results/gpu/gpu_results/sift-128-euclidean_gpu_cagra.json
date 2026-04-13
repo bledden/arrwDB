@@ -1,0 +1,48 @@
+{
+  "dataset": "sift-128-euclidean",
+  "num_vectors": 1000000,
+  "dimension": 128,
+  "algorithm": "cagra",
+  "graph_degree": 64,
+  "intermediate_graph_degree": 128,
+  "build_time_sec": 26.91889238357544,
+  "build_throughput_vec_per_sec": 37148.63099679948,
+  "gpu_name": "NVIDIA L4",
+  "points": [
+    {
+      "itopk_size": 32,
+      "recall_at_10": 0.9694,
+      "recall_at_1": 0.9766,
+      "search_qps": 3452.6954097132084,
+      "search_latency_p50_ms": 0.2892017364501953
+    },
+    {
+      "itopk_size": 64,
+      "recall_at_10": 0.9874300000000001,
+      "recall_at_1": 0.9828,
+      "search_qps": 3286.913421734499,
+      "search_latency_p50_ms": 0.30303001403808594
+    },
+    {
+      "itopk_size": 128,
+      "recall_at_10": 0.9915,
+      "recall_at_1": 0.9845,
+      "search_qps": 3174.5655951379536,
+      "search_latency_p50_ms": 0.3139972686767578
+    },
+    {
+      "itopk_size": 256,
+      "recall_at_10": 0.9921400000000001,
+      "recall_at_1": 0.9844,
+      "search_qps": 3005.4643320807413,
+      "search_latency_p50_ms": 0.3314018249511719
+    },
+    {
+      "itopk_size": 512,
+      "recall_at_10": 0.9923700000000001,
+      "recall_at_1": 0.9851,
+      "search_qps": 2781.0852435000493,
+      "search_latency_p50_ms": 0.3566741943359375
+    }
+  ]
+}
