@@ -1,0 +1,53 @@
+{
+  "dataset": "glove-200-angular",
+  "num_vectors": 1183514,
+  "dimension": 200,
+  "backend": "rust",
+  "M": 48,
+  "ef_construction": 400,
+  "build_time_sec": 102595.52131390572,
+  "points": [
+    {
+      "ef_search": 10,
+      "recall_at_10": 0.7834899999999999,
+      "search_qps": 228.43620364259624,
+      "search_latency_p50_ms": 4.257321357727051
+    },
+    {
+      "ef_search": 20,
+      "recall_at_10": 0.8518,
+      "search_qps": 130.59860861222631,
+      "search_latency_p50_ms": 7.706642150878906
+    },
+    {
+      "ef_search": 50,
+      "recall_at_10": 0.9160299999999999,
+      "search_qps": 57.870995905879646,
+      "search_latency_p50_ms": 17.51255989074707
+    },
+    {
+      "ef_search": 100,
+      "recall_at_10": 0.9529299999999999,
+      "search_qps": 29.42359066875237,
+      "search_latency_p50_ms": 34.50000286102295
+    },
+    {
+      "ef_search": 200,
+      "recall_at_10": 0.97819,
+      "search_qps": 14.059168216644938,
+      "search_latency_p50_ms": 72.35920429229736
+    },
+    {
+      "ef_search": 400,
+      "recall_at_10": 0.9925599999999999,
+      "search_qps": 7.877599806655566,
+      "search_latency_p50_ms": 130.50580024719238
+    },
+    {
+      "ef_search": 800,
+      "recall_at_10": 0.99859,
+      "search_qps": 4.270712285514252,
+      "search_latency_p50_ms": 243.87121200561523
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+2026-04-13 04:52:44,892 - INFO - Initialized VoyageEmbeddingProvider: model=voyage-4-large, dim=1024
+2026-04-13 04:52:44,892 - INFO - 
+Benchmarking: voyage/voyage-4-large
+2026-04-13 04:52:44,897 - INFO - Loaded cached corpus: 10100 texts
+2026-04-13 04:52:44,898 - INFO - Generating 10000 embeddings with voyage/voyage-4-large (dim=1024, batch=20)...
+2026-04-13 04:53:03,191 - INFO -   Embedded 500/10000 (27 texts/s)
+2026-04-13 04:53:21,843 - INFO -   Embedded 1000/10000 (27 texts/s)
+2026-04-13 04:53:40,766 - INFO -   Embedded 1500/10000 (27 texts/s)
+2026-04-13 04:53:59,111 - INFO -   Embedded 2000/10000 (27 texts/s)
+2026-04-13 04:54:20,541 - INFO -   Embedded 2500/10000 (26 texts/s)
+2026-04-13 04:54:38,744 - INFO -   Embedded 3000/10000 (26 texts/s)
+2026-04-13 04:54:57,283 - INFO -   Embedded 3500/10000 (26 texts/s)
+2026-04-13 04:55:16,506 - INFO -   Embedded 4000/10000 (26 texts/s)
+2026-04-13 04:55:34,537 - INFO -   Embedded 4500/10000 (27 texts/s)
+2026-04-13 04:55:53,138 - INFO -   Embedded 5000/10000 (27 texts/s)
+2026-04-13 04:56:11,270 - INFO -   Embedded 5500/10000 (27 texts/s)
+2026-04-13 04:56:29,340 - INFO -   Embedded 6000/10000 (27 texts/s)
+2026-04-13 04:56:47,465 - INFO -   Embedded 6500/10000 (27 texts/s)
+2026-04-13 04:57:05,869 - INFO -   Embedded 7000/10000 (27 texts/s)
+2026-04-13 04:57:24,249 - INFO -   Embedded 7500/10000 (27 texts/s)
+2026-04-13 04:57:42,686 - INFO -   Embedded 8000/10000 (27 texts/s)
+2026-04-13 04:58:01,730 - INFO -   Embedded 8500/10000 (27 texts/s)
+2026-04-13 04:58:19,894 - INFO -   Embedded 9000/10000 (27 texts/s)
+2026-04-13 04:58:38,038 - INFO -   Embedded 9500/10000 (27 texts/s)
+2026-04-13 04:58:56,383 - INFO -   Embedded 10000/10000 (27 texts/s)
+2026-04-13 04:58:56,383 - INFO - Embedding complete: 371.5s (27 texts/s)
+2026-04-13 04:58:56,383 - INFO - Generating 100 embeddings with voyage/voyage-4-large (dim=1024, batch=20)...
+2026-04-13 04:58:59,519 - INFO -   Embedded 100/100 (32 texts/s)
+2026-04-13 04:58:59,519 - INFO - Embedding complete: 3.1s (32 texts/s)
+2026-04-13 04:58:59,520 - INFO - Computing ground truth...
+2026-04-13 04:58:59,565 - INFO - Building HNSW index (M=48, ef_construction=400)...
+2026-04-13 04:59:27,104 - INFO -   Indexed 1000/10000 (36 vec/s)
+2026-04-13 04:59:57,824 - INFO -   Indexed 2000/10000 (34 vec/s)
+2026-04-13 05:00:34,580 - INFO -   Indexed 3000/10000 (32 vec/s)
+2026-04-13 05:01:13,839 - INFO -   Indexed 4000/10000 (30 vec/s)
+2026-04-13 05:01:51,768 - INFO -   Indexed 5000/10000 (29 vec/s)
+2026-04-13 05:02:22,828 - INFO -   Indexed 6000/10000 (30 vec/s)
+2026-04-13 05:02:50,242 - INFO -   Indexed 7000/10000 (30 vec/s)
+2026-04-13 05:03:16,531 - INFO -   Indexed 8000/10000 (31 vec/s)
+2026-04-13 05:03:40,951 - INFO -   Indexed 9000/10000 (32 vec/s)
+2026-04-13 05:04:13,038 - INFO -   Indexed 10000/10000 (32 vec/s)
+2026-04-13 05:04:13,040 - INFO - Running 100 search queries (ef_search=200)...
+2026-04-13 05:04:13,895 - INFO - Results saved to /tmp/embedding_results/embedding_voyage_10000.json
+
+======================================================================
+  EMBEDDING BENCHMARK — voyage/voyage-4-large
+======================================================================
+  Dimension:        1024
+  Corpus:           10,000 texts
+  Queries:          100
+  Backend:          Rust
+----------------------------------------------------------------------
+  Embedding:
+    Time:           371.5s (27 texts/s)
+  Index Build:
+    Time:           313.5s (32 vec/s)
+  Search:
+    Recall@10:      1.0000
+    Recall@1:       1.0000
+    p50:            6.74ms
+    QPS:            148
+======================================================================

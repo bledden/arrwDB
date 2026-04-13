@@ -1,0 +1,21 @@
+{
+  "provider": "voyage",
+  "model": "voyage-4-large",
+  "dimension": 1024,
+  "corpus_size": 10000,
+  "num_queries": 100,
+  "backend": "rust",
+  "hnsw_M": 48,
+  "hnsw_ef_construction": 400,
+  "hnsw_ef_search": 200,
+  "embedding_time_sec": 371.4848647117615,
+  "embedding_throughput_texts_per_sec": 26.918997111118085,
+  "build_time_sec": 313.47330927848816,
+  "build_throughput_vec_per_sec": 31.900642587455664,
+  "search_latency_p50_ms": 6.743431091308594,
+  "search_latency_p95_ms": 6.994986534118652,
+  "search_latency_p99_ms": 7.145776748657227,
+  "search_qps": 148.1497807937766,
+  "recall_at_10": 1.0,
+  "recall_at_1": 1.0
+}
