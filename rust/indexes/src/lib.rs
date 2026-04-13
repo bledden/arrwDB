@@ -9,6 +9,8 @@ use rayon::prelude::*;
 
 mod distance;
 mod node;
+mod storage;
+mod fast_hnsw;
 mod brute_force;
 mod lsh;
 mod kd_tree;
@@ -896,6 +898,7 @@ impl RustHNSWIndex {
 #[pymodule]
 fn rust_hnsw(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<RustHNSWIndex>()?;
+    m.add_class::<fast_hnsw::RustFastHNSWIndex>()?;
     m.add_class::<RustBruteForceIndex>()?;
     m.add_class::<RustLSHIndex>()?;
     m.add_class::<RustKDTreeIndex>()?;
