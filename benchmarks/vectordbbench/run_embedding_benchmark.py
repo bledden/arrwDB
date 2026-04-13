@@ -163,7 +163,8 @@ def load_text_corpus(cache_dir: Path, target_size: int) -> List[str]:
 def generate_embeddings(
     provider: EmbeddingProvider,
     texts: List[str],
-    batch_size: int = 50,
+    batch_size: int = 20,
+    inter_batch_delay: float = 0.5,
 ) -> Tuple[NDArray[np.float32], float]:
     """Generate embeddings for all texts using the given provider.
 
@@ -173,7 +174,7 @@ def generate_embeddings(
     dim = provider.dimension
     embeddings = np.zeros((n, dim), dtype=np.float32)
 
-    logger.info(f"Generating {n} embeddings with {provider.name}/{provider.model} (dim={dim})...")
+    logger.info(f"Generating {n} embeddings with {provider.name}/{provider.model} (dim={dim}, batch={batch_size})...")
 
     start = time.time()
 
@@ -189,6 +190,10 @@ def generate_embeddings(
             elapsed = time.time() - start
             rate = done / elapsed if elapsed > 0 else 0
             logger.info(f"  Embedded {done}/{n} ({rate:.0f} texts/s)")
+
+        # Rate limit pacing
+        if inter_batch_delay > 0 and (i + batch_size) < n:
+            time.sleep(inter_batch_delay)
 
     embed_time = time.time() - start
     logger.info(f"Embedding complete: {embed_time:.1f}s ({n / embed_time:.0f} texts/s)")

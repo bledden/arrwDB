@@ -85,7 +85,7 @@ class EmbeddingProvider(ABC):
             all_embeddings.extend(chunk_embeddings)
         return all_embeddings
 
-    def _retry_request(self, fn, max_retries: int = 3, base_delay: float = 2.0):
+    def _retry_request(self, fn, max_retries: int = 5, base_delay: float = 2.0):
         """Retry a request with exponential backoff."""
         for attempt in range(max_retries):
             try:
