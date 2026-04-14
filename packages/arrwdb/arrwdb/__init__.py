@@ -22,12 +22,25 @@ For async usage:
     ...     results = await client.search(library_id, "query")
 """
 
-from arrwdb.client import ArrwDBClient, ArrwDBException
+from arrwdb.client import (
+    ArrwDBClient,
+    ArrwDBException,
+    NotFoundError,
+    ValidationError,
+    AuthenticationError,
+    RateLimitError,
+    ServerError,
+)
 from arrwdb.version import __version__
 
 __all__ = [
     "ArrwDBClient",
     "ArrwDBException",
+    "NotFoundError",
+    "ValidationError",
+    "AuthenticationError",
+    "RateLimitError",
+    "ServerError",
     "__version__",
 ]
 

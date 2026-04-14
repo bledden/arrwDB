@@ -24,6 +24,31 @@ class ArrwDBException(Exception):
         self.status_code = status_code
 
 
+class NotFoundError(ArrwDBException):
+    """Resource not found (404)."""
+    pass
+
+
+class ValidationError(ArrwDBException):
+    """Invalid request (400/422)."""
+    pass
+
+
+class AuthenticationError(ArrwDBException):
+    """Authentication failed (401/403)."""
+    pass
+
+
+class RateLimitError(ArrwDBException):
+    """Rate limit exceeded (429)."""
+    pass
+
+
+class ServerError(ArrwDBException):
+    """Server error (5xx)."""
+    pass
+
+
 class ArrwDBClient:
     """
     Python client for the arrwDB API.
@@ -70,6 +95,7 @@ class ArrwDBClient:
         timeout: int = 30,
         verify_ssl: bool = True,
         api_key: Optional[str] = None,
+        max_retries: int = 3,
     ) -> None:
         """
         Initialize the arrwDB client.
@@ -79,13 +105,27 @@ class ArrwDBClient:
             timeout: Request timeout in seconds.
             verify_ssl: Whether to verify SSL certificates.
             api_key: Optional API key for authentication.
+            max_retries: Max retries for transient failures (429, 503, timeouts).
         """
         self.base_url = base_url.rstrip("/")
         self.api_prefix = "/v1"
         self.timeout = timeout
         self.verify_ssl = verify_ssl
         self.api_key = api_key
+        self.max_retries = max_retries
         self._session: Optional[requests.Session] = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def close(self):
+        """Close the underlying HTTP session."""
+        if self._session:
+            self._session.close()
+            self._session = None
 
     @property
     def session(self) -> requests.Session:
@@ -125,25 +165,54 @@ class ArrwDBClient:
         kwargs.setdefault("timeout", self.timeout)
         kwargs.setdefault("verify", self.verify_ssl)
 
-        try:
-            response = self.session.request(method, url, **kwargs)
-            response.raise_for_status()
-            return response
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Request failed: {e}")
-            status_code = None
-            if hasattr(e, "response") and e.response is not None:
-                status_code = e.response.status_code
-                try:
-                    error_data = e.response.json()
-                    raise ArrwDBException(
-                        f"{error_data.get('error', 'Unknown error')}: "
-                        f"{error_data.get('detail', str(e))}",
-                        status_code=status_code,
-                    )
-                except (ValueError, requests.exceptions.JSONDecodeError):
-                    pass
-            raise ArrwDBException(f"Request failed: {e}", status_code=status_code)
+        import time as _time
+
+        last_exc = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                response = self.session.request(method, url, **kwargs)
+                response.raise_for_status()
+                return response
+            except requests.exceptions.RequestException as e:
+                status_code = None
+                if hasattr(e, "response") and e.response is not None:
+                    status_code = e.response.status_code
+
+                # Retry on transient errors
+                retryable = (
+                    isinstance(e, (requests.exceptions.Timeout, requests.exceptions.ConnectionError))
+                    or status_code in (429, 502, 503, 504)
+                )
+                if retryable and attempt < self.max_retries:
+                    delay = 2 ** attempt
+                    logger.warning(f"Retrying in {delay}s (attempt {attempt + 1}): {e}")
+                    _time.sleep(delay)
+                    last_exc = e
+                    continue
+
+                # Map to typed exceptions
+                msg = str(e)
+                if status_code and hasattr(e, "response") and e.response is not None:
+                    try:
+                        error_data = e.response.json()
+                        msg = f"{error_data.get('error', 'Error')}: {error_data.get('detail', str(e))}"
+                    except (ValueError, requests.exceptions.JSONDecodeError):
+                        pass
+
+                if status_code == 404:
+                    raise NotFoundError(msg, status_code=status_code) from e
+                elif status_code in (400, 422):
+                    raise ValidationError(msg, status_code=status_code) from e
+                elif status_code in (401, 403):
+                    raise AuthenticationError(msg, status_code=status_code) from e
+                elif status_code == 429:
+                    raise RateLimitError(msg, status_code=status_code) from e
+                elif status_code and status_code >= 500:
+                    raise ServerError(msg, status_code=status_code) from e
+                else:
+                    raise ArrwDBException(f"Request failed: {e}", status_code=status_code) from e
+
+        raise ArrwDBException(f"Request failed after {self.max_retries} retries: {last_exc}")
 
     # =========================================================================
     # Health & Monitoring
