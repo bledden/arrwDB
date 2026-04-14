@@ -32,11 +32,8 @@ if str(rust_indexes_path) not in sys.path:
 try:
     import rust_hnsw
     RUST_AVAILABLE = True
-    # Prefer FastHNSW (integer-indexed, 10-13x faster) over old String-based HNSW
-    FAST_HNSW_AVAILABLE = hasattr(rust_hnsw, 'RustFastHNSWIndex')
 except ImportError:
     RUST_AVAILABLE = False
-    FAST_HNSW_AVAILABLE = False
     import warnings
     warnings.warn(
         "Rust HNSW module not available. Install with: "
@@ -101,26 +98,14 @@ class RustHNSWIndexWrapper(VectorIndex):
         self._ef_search = ef_search
         self._max_level = max_level
 
-        # Prefer FastHNSW (integer-indexed, 10-13x faster search)
-        if FAST_HNSW_AVAILABLE:
-            self._rust_index = rust_hnsw.RustFastHNSWIndex(
-                dimension=vector_store.dimension,
-                m=M,
-                ef_construction=ef_construction,
-                ef_search=ef_search,
-                max_level=max_level,
-                metric=metric,
-            )
-            self._using_fast = True
-        else:
-            self._rust_index = rust_hnsw.RustHNSWIndex(
-                dimension=vector_store.dimension,
-                m=M,
-                ef_construction=ef_construction,
-                ef_search=ef_search,
-                max_level=max_level,
-            )
-            self._using_fast = False
+        self._rust_index = rust_hnsw.RustFastHNSWIndex(
+            dimension=vector_store.dimension,
+            m=M,
+            ef_construction=ef_construction,
+            ef_search=ef_search,
+            max_level=max_level,
+            metric=metric,
+        )
 
         # Track vector ID to index mapping
         self._vector_id_to_index: Dict[UUID, int] = {}
@@ -207,8 +192,7 @@ class RustHNSWIndexWrapper(VectorIndex):
                 f"store dimension {expected_dim}"
             )
 
-        if filter_ids is not None and self._using_fast:
-            # Filtered search — entirely in Rust
+        if filter_ids is not None:
             filter_strs = [str(uid) for uid in filter_ids]
             results = self._rust_index.search_filtered(
                 query_vector, k, filter_strs, distance_threshold, ef_override
