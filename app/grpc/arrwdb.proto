@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package arrwdb;
+
+// Core vector database operations via gRPC.
+// Lower latency than REST for high-throughput search workloads.
+
+service ArrwDB {
+  // Search for nearest neighbors by vector embedding.
+  rpc Search (SearchRequest) returns (SearchResponse);
+
+  // Search by text query (generates embedding server-side).
+  rpc SearchByText (TextSearchRequest) returns (SearchResponse);
+
+  // Add a document with text (auto-embeds).
+  rpc AddDocument (AddDocumentRequest) returns (AddDocumentResponse);
+
+  // Add a document with pre-computed embeddings.
+  rpc AddDocumentWithEmbeddings (AddDocumentWithEmbeddingsRequest) returns (AddDocumentResponse);
+
+  // Upsert a vector by ID.
+  rpc UpsertVector (UpsertVectorRequest) returns (UpsertVectorResponse);
+
+  // Delete a document.
+  rpc DeleteDocument (DeleteDocumentRequest) returns (DeleteDocumentResponse);
+
+  // Hybrid search (vector + keyword via RRF).
+  rpc HybridSearch (HybridSearchRequest) returns (SearchResponse);
+
+  // Health check.
+  rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message SearchRequest {
+  string library_id = 1;
+  repeated float embedding = 2;
+  int32 k = 3;
+  optional float distance_threshold = 4;
+  optional int32 ef_override = 5;
+  // Optional pre-filter: only return results with these IDs
+  repeated string filter_ids = 6;
+}
+
+message TextSearchRequest {
+  string library_id = 1;
+  string query = 2;
+  int32 k = 3;
+  optional float distance_threshold = 4;
+}
+
+message HybridSearchRequest {
+  string library_id = 1;
+  repeated float embedding = 2;
+  string query_text = 3;  // For BM25 component
+  int32 k = 4;
+  optional float rrf_k = 5;  // RRF constant, default 60
+}
+
+message SearchResponse {
+  repeated SearchResult results = 1;
+  float latency_ms = 2;
+}
+
+message SearchResult {
+  string chunk_id = 1;
+  string document_id = 2;
+  string text = 3;
+  float distance = 4;
+  map<string, string> metadata = 5;
+}
+
+message AddDocumentRequest {
+  string library_id = 1;
+  string title = 2;
+  repeated string texts = 3;
+  map<string, string> metadata = 4;
+}
+
+message AddDocumentWithEmbeddingsRequest {
+  string library_id = 1;
+  string title = 2;
+  repeated TextEmbeddingPair chunks = 3;
+}
+
+message TextEmbeddingPair {
+  string text = 1;
+  repeated float embedding = 2;
+}
+
+message AddDocumentResponse {
+  string document_id = 1;
+  int32 chunk_count = 2;
+}
+
+message UpsertVectorRequest {
+  string library_id = 1;
+  string vector_id = 2;
+  repeated float embedding = 3;
+  optional string text = 4;
+}
+
+message UpsertVectorResponse {
+  bool was_update = 1;
+}
+
+message DeleteDocumentRequest {
+  string document_id = 1;
+}
+
+message DeleteDocumentResponse {
+  bool deleted = 1;
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  string status = 1;
+  float uptime_seconds = 2;
+}
