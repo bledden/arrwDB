@@ -913,6 +913,12 @@ impl FastHNSW {
 
         *self.entry_point.write() = Some(entry);
         *self.entry_level.write() = entry_level;
+
+        // Auto-optimize: build co-located storage for search
+        drop(graph);
+        drop(vectors);
+        drop(alive);
+        self.optimize();
     }
 
     /// Build co-located layer-0 storage for optimized search.
@@ -974,17 +980,66 @@ impl FastHNSW {
             }
         }
 
-        // Search layer 0 — use co-located path if available
+        // Search layer 0
         let colocated = self.colocated.read();
         let mut results = if let Some(ref store) = *colocated {
+            // Co-located path: same algorithm as _search_layer_inner but reads
+            // from ColocatedStore where neighbors + vectors are adjacent in memory.
+            // Prefetching node_ptr brings in both neighbor list AND vector data.
             VISITED_LIST.with(|vl| {
-                let mut visited = vl.borrow_mut();
-                visited.ensure_capacity(graph.len());
-                visited.reset();
-                visited.mark_visited(current);
-                crate::fast_search::search_layer0_colocated(
-                    store, &alive, &mut visited, query, current, ef, self.metric,
-                )
+                let mut vis = vl.borrow_mut();
+                vis.ensure_capacity(store.len());
+                vis.reset();
+                vis.mark_visited(current);
+
+                let entry_dist = (dist_fn)(query, store.get_vector(current));
+                let mut cands = BinaryHeap::new();
+                cands.push(MinCand(Candidate { id: current, dist: entry_dist }));
+                let mut res = BinaryHeap::new();
+                res.push(MaxCand(Candidate { id: current, dist: entry_dist }));
+
+                while let Some(MinCand(cur)) = cands.pop() {
+                    let worst = res.peek().unwrap().0.dist;
+
+                    let neighbors = store.get_neighbors(cur.id);
+                    let n_nb = neighbors.len();
+                    for ni in 0..n_nb {
+                        let nid = unsafe { *neighbors.get_unchecked(ni) } as usize;
+                        if vis.is_visited(nid) || unsafe { !*alive.get_unchecked(nid) } {
+                            continue;
+                        }
+                        vis.mark_visited(nid);
+
+                        // Prefetch next neighbor's CO-LOCATED data (neighbors + vector together)
+                        if ni + 1 < n_nb {
+                            let next = unsafe { *neighbors.get_unchecked(ni + 1) } as usize;
+                            if !vis.is_visited(next) {
+                                let ptr = store.node_ptr(next);
+                                #[cfg(target_arch = "x86_64")]
+                                unsafe {
+                                    #[cfg(target_feature = "sse")]
+                                    {
+                                        std::arch::x86_64::_mm_prefetch(ptr as *const i8, std::arch::x86_64::_MM_HINT_T0);
+                                        std::arch::x86_64::_mm_prefetch(ptr.add(64) as *const i8, std::arch::x86_64::_MM_HINT_T0);
+                                    }
+                                }
+                            }
+                        }
+
+                        let d = (dist_fn)(query, store.get_vector(nid));
+                        if d < worst || res.len() < ef {
+                            cands.push(MinCand(Candidate { id: nid, dist: d }));
+                            res.push(MaxCand(Candidate { id: nid, dist: d }));
+                            if res.len() > ef { res.pop(); }
+                        }
+                    }
+
+                    if let Some(nx) = cands.peek() {
+                        if nx.0.dist > res.peek().unwrap().0.dist && res.len() >= ef { break; }
+                    }
+                }
+
+                res.into_iter().map(|MaxCand(c)| c).collect()
             })
         } else {
             Self::search_layer(&vectors, &graph, &alive, query, current, ef, 0, self.metric)

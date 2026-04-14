@@ -870,6 +870,7 @@ dependencies = [
 name = "rust_hnsw"
 version = "0.1.0"
 dependencies = [
+ "memmap2",
  "numpy",
  "parking_lot",
  "pyo3",
