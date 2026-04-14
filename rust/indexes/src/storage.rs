@@ -134,6 +134,40 @@ impl MmapVectorStorage {
     }
 }
 
+/// Trait for anything that can provide vector data by index.
+/// Both VectorStorage (RAM) and MmapVectorStorage (disk) implement this.
+pub trait VectorAccess: Send + Sync {
+    fn get(&self, idx: usize) -> &[f32];
+    fn len(&self) -> usize;
+    fn dim(&self) -> usize;
+}
+
+impl VectorAccess for VectorStorage {
+    #[inline(always)]
+    fn get(&self, idx: usize) -> &[f32] {
+        self.get(idx)
+    }
+    fn len(&self) -> usize {
+        self.len()
+    }
+    fn dim(&self) -> usize {
+        self.dim()
+    }
+}
+
+impl VectorAccess for MmapVectorStorage {
+    #[inline(always)]
+    fn get(&self, idx: usize) -> &[f32] {
+        self.get(idx)
+    }
+    fn len(&self) -> usize {
+        self.len()
+    }
+    fn dim(&self) -> usize {
+        self.dim()
+    }
+}
+
 /// Graph storage: flat arrays of neighbor lists per layer.
 pub struct GraphStorage {
     /// neighbors[node_id].layers[layer] = Vec<usize> of neighbor indices

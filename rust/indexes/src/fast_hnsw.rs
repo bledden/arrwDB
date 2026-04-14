@@ -406,6 +406,68 @@ impl FastHNSW {
         idx
     }
 
+    /// Batch-add all vectors at once. Much faster than individual add_vector calls
+    /// because: (1) single lock acquisition for all vectors, (2) pre-allocated storage,
+    /// (3) no PyO3 boundary crossing per vector.
+    /// Returns the index of the first added vector.
+    pub fn batch_add_vectors(&self, vectors: &[f32], n: usize) -> usize {
+        assert_eq!(vectors.len(), n * self.dim);
+
+        let first_idx;
+
+        // 1. Pre-allocate and add all vectors + graph nodes in bulk
+        {
+            let mut vecs = self.vectors.write();
+            first_idx = vecs.len();
+            for i in 0..n {
+                let start = i * self.dim;
+                vecs.add(&vectors[start..start + self.dim]);
+            }
+        }
+
+        {
+            let mut graph = self.graph.write();
+            for _ in 0..n {
+                let level = self.random_level();
+                graph.add_node(level);
+            }
+        }
+
+        {
+            let mut alive = self.alive.write();
+            alive.resize(first_idx + n, true);
+        }
+
+        // 2. Set first node as entry point
+        if self.entry_point.read().is_none() {
+            *self.entry_point.write() = Some(first_idx);
+            *self.entry_level.write() = self.graph.read().level(first_idx);
+        }
+
+        // 3. Insert each node into the graph
+        for i in 0..n {
+            let idx = first_idx + i;
+            if idx == first_idx && self.graph.read().len() == n {
+                // First node in empty graph — skip insert_node (it's the entry point)
+                continue;
+            }
+            let level = self.graph.read().level(idx);
+            self.insert_node(idx, level);
+
+            if level > *self.entry_level.read() {
+                *self.entry_point.write() = Some(idx);
+                *self.entry_level.write() = level;
+            }
+
+            // Progress reporting for large batches
+            if (i + 1) % 50000 == 0 {
+                // Can't log from Rust easily, but the caller can check size()
+            }
+        }
+
+        first_idx
+    }
+
     /// Upsert a vector: update in-place if exists, insert if new.
     /// Returns (index, was_update). In-place update preserves the index
     /// and reconnects the node in the graph with fresh connections
@@ -734,6 +796,52 @@ impl RustFastHNSWIndex {
             id_to_idx: RwLock::new(HashMap::new()),
             idx_to_id: RwLock::new(Vec::new()),
         })
+    }
+
+    /// Batch-add vectors from a flat numpy array + list of IDs.
+    /// Much faster than calling add_vector() in a Python loop.
+    fn batch_add_vectors(
+        &self,
+        vector_ids: Vec<String>,
+        vectors_flat: PyReadonlyArray1<f32>,
+    ) -> PyResult<()> {
+        let data = vectors_flat.as_slice()?;
+        let n = vector_ids.len();
+        let dim = self.inner.dimension();
+
+        if data.len() != n * dim {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "Expected {} floats ({}x{}), got {}",
+                n * dim, n, dim, data.len()
+            )));
+        }
+
+        // Check for duplicates
+        {
+            let id_map = self.id_to_idx.read();
+            for vid in &vector_ids {
+                if id_map.contains_key(vid) {
+                    return Err(pyo3::exceptions::PyValueError::new_err(
+                        format!("Vector ID {} already exists", vid)
+                    ));
+                }
+            }
+        }
+
+        let first_idx = self.inner.batch_add_vectors(data, n);
+
+        // Register all ID mappings
+        let mut id_map = self.id_to_idx.write();
+        let mut ids = self.idx_to_id.write();
+        ids.resize(first_idx + n, String::new());
+
+        for (i, vid) in vector_ids.into_iter().enumerate() {
+            let idx = first_idx + i;
+            id_map.insert(vid.clone(), idx);
+            ids[idx] = vid;
+        }
+
+        Ok(())
     }
 
     fn add_vector(&self, vector_id: String, vector: PyReadonlyArray1<f32>) -> PyResult<()> {
