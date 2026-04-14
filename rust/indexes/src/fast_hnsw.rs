@@ -130,6 +130,9 @@ pub struct FastHNSW {
     pub vectors: RwLock<VectorStore>,
     pub graph: RwLock<GraphStorage>,
     entry_point: RwLock<Option<usize>>,
+    /// Co-located layer-0 storage for optimized search.
+    /// Built from vectors + graph after index construction.
+    pub colocated: RwLock<Option<crate::storage::ColocatedStore>>,
     entry_level: RwLock<usize>,
 
     /// Tracks which indices are "alive" (not removed). True = alive.
@@ -159,6 +162,7 @@ impl FastHNSW {
             entry_point: RwLock::new(None),
             entry_level: RwLock::new(0),
             alive: RwLock::new(Vec::new()),
+            colocated: RwLock::new(None),
         }
     }
 
@@ -765,6 +769,34 @@ impl FastHNSW {
         true
     }
 
+    /// Build co-located layer-0 storage for optimized search.
+    /// Call after all vectors are added (or after rebuild).
+    /// This is optional — search works without it, just slower.
+    pub fn optimize(&self) {
+        let vectors = self.vectors.read();
+        let graph = self.graph.read();
+        let alive = self.alive.read();
+        let n = graph.len();
+
+        let mut store = crate::storage::ColocatedStore::new(self.dim, self.m_max0, n);
+
+        for i in 0..n {
+            if i < alive.len() && alive[i] {
+                store.add(vectors.get(i));
+                // Copy layer-0 neighbors
+                let neighbors = graph.get_neighbors(i, 0);
+                let neighbors_u32: Vec<u32> = neighbors.iter().map(|&n| n as u32).collect();
+                store.set_neighbors(i, &neighbors_u32);
+            } else {
+                // Dead node — add placeholder
+                let zeros = vec![0.0f32; self.dim];
+                store.add(&zeros);
+            }
+        }
+
+        *self.colocated.write() = Some(store);
+    }
+
     /// Search for k nearest neighbors.
     pub fn search(&self, query: &[f32], k: usize, ef: usize) -> Vec<(usize, f32)> {
         let ep = match *self.entry_point.read() {
@@ -795,8 +827,21 @@ impl FastHNSW {
             }
         }
 
-        // Search layer 0
-        let mut results = Self::search_layer(&vectors, &graph, &alive, query, current, ef, 0, self.metric);
+        // Search layer 0 — use co-located path if available
+        let colocated = self.colocated.read();
+        let mut results = if let Some(ref store) = *colocated {
+            VISITED_LIST.with(|vl| {
+                let mut visited = vl.borrow_mut();
+                visited.ensure_capacity(graph.len());
+                visited.reset();
+                visited.mark_visited(current);
+                crate::fast_search::search_layer0_colocated(
+                    store, &alive, &mut visited, query, current, ef, self.metric,
+                )
+            })
+        } else {
+            Self::search_layer(&vectors, &graph, &alive, query, current, ef, 0, self.metric)
+        };
         results.sort_by(|a, b| a.dist.partial_cmp(&b.dist).unwrap_or(Ordering::Equal));
         results.truncate(k);
         results.into_iter().map(|c| (c.id, c.dist)).collect()
@@ -957,6 +1002,7 @@ impl FastHNSW {
         *self.entry_point.get_mut() = None;
         *self.entry_level.get_mut() = 0;
         self.alive.get_mut().clear();
+        *self.colocated.get_mut() = None;
     }
 
     pub fn dimension(&self) -> usize {
@@ -1241,6 +1287,18 @@ impl RustFastHNSWIndex {
     fn rebuild(&self) -> PyResult<()> {
         self.inner.rebuild();
         Ok(())
+    }
+
+    /// Build co-located layer-0 storage for optimized search.
+    /// Call after all vectors are added. Search will automatically
+    /// use the optimized path (~1.5x faster).
+    fn optimize(&self) {
+        self.inner.optimize();
+    }
+
+    /// Check if the optimized co-located storage is active.
+    fn is_optimized(&self) -> bool {
+        self.inner.colocated.read().is_some()
     }
 
     /// Save vector data to disk and switch to memory-mapped access.
