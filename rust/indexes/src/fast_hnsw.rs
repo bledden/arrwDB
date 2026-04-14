@@ -192,6 +192,86 @@ impl FastHNSW {
         results.into_iter().map(|MaxCand(c)| c).collect()
     }
 
+    /// Filtered search at a single layer.
+    /// Traverses all neighbors (for graph connectivity) but only adds
+    /// allowed nodes to results. This is the Qdrant-style approach.
+    fn search_layer_filtered(
+        vectors: &VectorStore,
+        graph: &GraphStorage,
+        alive: &[bool],
+        allowed: &[bool],
+        query: &[f32],
+        entry_id: usize,
+        ef: usize,
+        layer: usize,
+        metric: DistanceMetric,
+    ) -> Vec<Candidate> {
+        let n = graph.len();
+        let mut visited = vec![false; n];
+        visited[entry_id] = true;
+
+        let entry_dist = compute_distance(query, vectors.get(entry_id), metric);
+
+        let mut candidates = BinaryHeap::new();
+        candidates.push(MinCand(Candidate { id: entry_id, dist: entry_dist }));
+
+        let mut results = BinaryHeap::new();
+        // Only add entry to results if it passes the filter
+        if entry_id < allowed.len() && allowed[entry_id] {
+            results.push(MaxCand(Candidate { id: entry_id, dist: entry_dist }));
+        }
+
+        while let Some(MinCand(current)) = candidates.pop() {
+            // Use worst filtered result for pruning, but be generous
+            let worst_dist = if results.is_empty() {
+                f32::MAX
+            } else {
+                results.peek().unwrap().0.dist
+            };
+
+            let neighbors = graph.get_neighbors(current.id, layer);
+            for (ni, &nid) in neighbors.iter().enumerate() {
+                if visited[nid] || !alive[nid] {
+                    continue;
+                }
+                visited[nid] = true;
+
+                if ni + 1 < neighbors.len() {
+                    let next_nid = neighbors[ni + 1];
+                    if !visited[next_nid] {
+                        prefetch_vector(vectors.get(next_nid).as_ptr());
+                    }
+                }
+
+                let dist = compute_distance(query, vectors.get(nid), metric);
+
+                // ALWAYS add to candidates (for graph traversal)
+                if dist < worst_dist || results.len() < ef {
+                    candidates.push(MinCand(Candidate { id: nid, dist }));
+                }
+
+                // Only add to results if it passes the filter
+                if nid < allowed.len() && allowed[nid] {
+                    if dist < worst_dist || results.len() < ef {
+                        results.push(MaxCand(Candidate { id: nid, dist }));
+                        if results.len() > ef {
+                            results.pop();
+                        }
+                    }
+                }
+            }
+
+            // Termination: all remaining candidates are worse than worst filtered result
+            if let Some(next) = candidates.peek() {
+                if !results.is_empty() && next.0.dist > results.peek().unwrap().0.dist && results.len() >= ef {
+                    break;
+                }
+            }
+        }
+
+        results.into_iter().map(|MaxCand(c)| c).collect()
+    }
+
     // ---------------------------------------------------------------------
     // select_neighbors_heuristic — Algorithm 4 with diversity + backfill
     // Faithful port of the original select_neighbors_heuristic()
@@ -630,6 +710,45 @@ impl FastHNSW {
         results.into_iter().map(|c| (c.id, c.dist)).collect()
     }
 
+    /// Search with graph-integrated filtering.
+    /// Non-matching nodes are still traversed (for graph connectivity)
+    /// but only matching nodes appear in results.
+    pub fn search_filtered(&self, query: &[f32], k: usize, ef: usize, allowed: &[bool]) -> Vec<(usize, f32)> {
+        let ep = match *self.entry_point.read() {
+            Some(ep) => ep,
+            None => return Vec::new(),
+        };
+
+        let vectors = self.vectors.read();
+        let graph = self.graph.read();
+        let alive = self.alive.read();
+        let entry_level = *self.entry_level.read();
+
+        let mut current = ep;
+        for lc in (1..=entry_level).rev() {
+            let mut changed = true;
+            while changed {
+                changed = false;
+                for &nid in graph.get_neighbors(current, lc) {
+                    if !alive[nid] { continue; }
+                    if compute_distance(query, vectors.get(nid), self.metric)
+                        < compute_distance(query, vectors.get(current), self.metric)
+                    {
+                        current = nid;
+                        changed = true;
+                    }
+                }
+            }
+        }
+
+        let mut results = Self::search_layer_filtered(
+            &vectors, &graph, &alive, allowed, query, current, ef, 0, self.metric,
+        );
+        results.sort_by(|a, b| a.dist.partial_cmp(&b.dist).unwrap_or(Ordering::Equal));
+        results.truncate(k);
+        results.into_iter().map(|c| (c.id, c.dist)).collect()
+    }
+
     /// Batch search with rayon parallelism.
     pub fn batch_search(
         &self,
@@ -967,8 +1086,9 @@ impl RustFastHNSWIndex {
         Ok(result_list)
     }
 
-    /// Pre-filtered search: only return results whose IDs are in filter_ids.
-    /// Oversamples by 2x ef to compensate for filtered-out candidates.
+    /// Pre-filtered search: graph-integrated filtering.
+    /// Non-matching nodes are still traversed (for graph connectivity) but only
+    /// matching nodes appear in results. No oversampling waste.
     #[pyo3(signature = (query_vector, k, filter_ids, distance_threshold=None, ef_override=None))]
     fn search_filtered<'py>(
         &self,
@@ -992,22 +1112,17 @@ impl RustFastHNSWIndex {
             }
         }
 
-        // Oversample to compensate for filtering
-        let oversample_ef = (ef * 2).max(k * 4);
-        let results = self.inner.search(query, oversample_ef, oversample_ef);
+        // Graph-integrated filtering: traverse all nodes, only return matching
+        let results = self.inner.search_filtered(query, k, ef, &allowed);
 
         let idx_to_id = self.idx_to_id.read();
         let result_list = PyList::empty(py);
-        let mut count = 0;
         for (idx, dist) in results {
-            if count >= k { break; }
-            if idx >= allowed.len() || !allowed[idx] { continue; }
             if let Some(threshold) = distance_threshold {
                 if dist > threshold { continue; }
             }
             if idx < idx_to_id.len() && !idx_to_id[idx].is_empty() {
                 result_list.append((idx_to_id[idx].as_str(), dist).into_pyobject(py).unwrap().into_any().unbind())?;
-                count += 1;
             }
         }
         Ok(result_list)

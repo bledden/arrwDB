@@ -16,12 +16,78 @@
 use std::collections::HashMap;
 use parking_lot::RwLock;
 
-/// Simple whitespace tokenizer: lowercase, strip punctuation, split on whitespace.
+/// English stop words (most common, no information value for search).
+const STOP_WORDS: &[&str] = &[
+    "a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "from",
+    "had", "has", "have", "he", "her", "his", "how", "if", "in", "into",
+    "is", "it", "its", "no", "not", "of", "on", "or", "our", "out",
+    "she", "so", "than", "that", "the", "their", "them", "then", "there",
+    "these", "they", "this", "to", "up", "was", "we", "were", "what",
+    "when", "which", "who", "will", "with", "would", "you", "your",
+];
+
+/// Porter stemmer (simplified): strips common English suffixes.
+/// Not a full Porter implementation but handles the most impactful cases.
+fn stem(word: &str) -> String {
+    let w = word;
+    // Step 1: plurals and past tense
+    if w.ends_with("ies") && w.len() > 4 {
+        return format!("{}y", &w[..w.len() - 3]);
+    }
+    if w.ends_with("sses") {
+        return w[..w.len() - 2].to_string();
+    }
+    if w.ends_with("ness") && w.len() > 5 {
+        return w[..w.len() - 4].to_string();
+    }
+    if w.ends_with("ment") && w.len() > 5 {
+        return w[..w.len() - 4].to_string();
+    }
+    if w.ends_with("ing") && w.len() > 5 {
+        return w[..w.len() - 3].to_string();
+    }
+    if w.ends_with("tion") && w.len() > 5 {
+        return w[..w.len() - 4].to_string();
+    }
+    if w.ends_with("able") && w.len() > 5 {
+        return w[..w.len() - 4].to_string();
+    }
+    if w.ends_with("ful") && w.len() > 4 {
+        return w[..w.len() - 3].to_string();
+    }
+    if w.ends_with("ous") && w.len() > 4 {
+        return w[..w.len() - 3].to_string();
+    }
+    if w.ends_with("ive") && w.len() > 4 {
+        return w[..w.len() - 3].to_string();
+    }
+    if w.ends_with("ly") && w.len() > 4 {
+        return w[..w.len() - 2].to_string();
+    }
+    if w.ends_with("ed") && w.len() > 4 {
+        return w[..w.len() - 2].to_string();
+    }
+    if w.ends_with("er") && w.len() > 4 {
+        return w[..w.len() - 2].to_string();
+    }
+    if w.ends_with("es") && w.len() > 3 {
+        return w[..w.len() - 2].to_string();
+    }
+    if w.ends_with('s') && !w.ends_with("ss") && w.len() > 3 {
+        return w[..w.len() - 1].to_string();
+    }
+    w.to_string()
+}
+
+/// Tokenizer with lowercase, punctuation stripping, stop word removal, and stemming.
 fn tokenize(text: &str) -> Vec<String> {
+    let stop_set: std::collections::HashSet<&str> = STOP_WORDS.iter().copied().collect();
+
     text.to_lowercase()
-        .split(|c: char| c.is_whitespace() || c == ',' || c == '.' || c == '!' || c == '?' || c == ';' || c == ':' || c == '"' || c == '\'' || c == '(' || c == ')' || c == '[' || c == ']')
-        .filter(|s| s.len() >= 2)  // Skip single-char tokens
-        .map(|s| s.to_string())
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|s| s.len() >= 2)
+        .filter(|s| !stop_set.contains(s))
+        .map(|s| stem(s))
         .collect()
 }
 
