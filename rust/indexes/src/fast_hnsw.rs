@@ -11,7 +11,7 @@
 /// - rebuild from scratch
 /// - batch_search with rayon
 
-use crate::distance::cosine_distance;
+use crate::distance::{compute_distance, DistanceMetric};
 use crate::storage::{GraphStorage, VectorStorage};
 use parking_lot::RwLock;
 use rand::Rng;
@@ -73,6 +73,7 @@ pub struct FastHNSW {
     ml: f64,
     max_level: usize,
     dim: usize,
+    metric: DistanceMetric,
 
     pub vectors: RwLock<VectorStorage>,
     pub graph: RwLock<GraphStorage>,
@@ -90,6 +91,7 @@ impl FastHNSW {
         ef_construction: usize,
         ef_search: usize,
         max_level: usize,
+        metric: DistanceMetric,
     ) -> Self {
         Self {
             m,
@@ -99,6 +101,7 @@ impl FastHNSW {
             ml: 1.0 / (m as f64).ln(),
             max_level,
             dim,
+            metric,
             vectors: RwLock::new(VectorStorage::new(dim, 1024)),
             graph: RwLock::new(GraphStorage::new(1024)),
             entry_point: RwLock::new(None),
@@ -132,12 +135,13 @@ impl FastHNSW {
         entry_id: usize,
         ef: usize,
         layer: usize,
+        metric: DistanceMetric,
     ) -> Vec<Candidate> {
         let n = graph.len();
         let mut visited = vec![false; n];
         visited[entry_id] = true;
 
-        let entry_dist = cosine_distance(query, vectors.get(entry_id));
+        let entry_dist = compute_distance(query, vectors.get(entry_id), metric);
 
         let mut candidates = BinaryHeap::new();
         candidates.push(MinCand(Candidate { id: entry_id, dist: entry_dist }));
@@ -158,7 +162,7 @@ impl FastHNSW {
                 }
                 visited[nid] = true;
 
-                let dist = cosine_distance(query, vectors.get(nid));
+                let dist = compute_distance(query, vectors.get(nid), metric);
 
                 if dist < worst_dist || results.len() < ef {
                     candidates.push(MinCand(Candidate { id: nid, dist }));
@@ -189,6 +193,7 @@ impl FastHNSW {
         vectors: &VectorStorage,
         mut candidates: Vec<Candidate>,
         m: usize,
+        metric: DistanceMetric,
     ) -> Vec<Candidate> {
         if candidates.len() <= m {
             return candidates;
@@ -210,7 +215,7 @@ impl FastHNSW {
             let cand_vec = vectors.get(cand.id);
             let is_diverse = selected.iter().all(|sel| {
                 let sel_vec = vectors.get(sel.id);
-                let inter_dist = cosine_distance(cand_vec, sel_vec);
+                let inter_dist = compute_distance(cand_vec, sel_vec, metric);
                 cand.dist <= inter_dist
             });
 
@@ -242,6 +247,7 @@ impl FastHNSW {
         node_id: usize,
         layer: usize,
         m_max: usize,
+        metric: DistanceMetric,
     ) {
         let current_neighbors: Vec<usize> = graph.get_neighbors(node_id, layer).to_vec();
         if current_neighbors.len() <= m_max {
@@ -255,12 +261,12 @@ impl FastHNSW {
             .iter()
             .map(|&nid| Candidate {
                 id: nid,
-                dist: cosine_distance(node_vec, vectors.get(nid)),
+                dist: compute_distance(node_vec, vectors.get(nid), metric),
             })
             .collect();
 
         // Use heuristic selection (diversity-aware with backfill)
-        let selected = Self::select_neighbors_heuristic(vectors, neighbor_dists, m_max);
+        let selected = Self::select_neighbors_heuristic(vectors, neighbor_dists, m_max, metric);
         let selected_set: std::collections::HashSet<usize> =
             selected.iter().map(|c| c.id).collect();
 
@@ -308,8 +314,8 @@ impl FastHNSW {
                     changed = false;
                     for &nid in graph.get_neighbors(current, lc) {
                         if !alive[nid] { continue; }
-                        if cosine_distance(query, vectors.get(nid))
-                            < cosine_distance(query, vectors.get(current))
+                        if compute_distance(query, vectors.get(nid), self.metric)
+                            < compute_distance(query, vectors.get(current), self.metric)
                         {
                             current = nid;
                             changed = true;
@@ -324,7 +330,7 @@ impl FastHNSW {
         for lc in (0..=top).rev() {
             let candidates = {
                 let graph = self.graph.read();
-                Self::search_layer(&vectors, &graph, &alive, query, current, self.ef_construction, lc)
+                Self::search_layer(&vectors, &graph, &alive, query, current, self.ef_construction, lc, self.metric)
             };
 
             if let Some(best) = candidates.iter().min_by(|a, b| a.dist.partial_cmp(&b.dist).unwrap()) {
@@ -334,7 +340,7 @@ impl FastHNSW {
             let m_max = self.m_max(lc);
 
             // Heuristic neighbor selection
-            let selected = Self::select_neighbors_heuristic(&vectors, candidates, m_max);
+            let selected = Self::select_neighbors_heuristic(&vectors, candidates, m_max, self.metric);
             let selected_ids: Vec<usize> = selected.iter().map(|c| c.id).collect();
 
             {
@@ -348,7 +354,7 @@ impl FastHNSW {
                     let nbs = graph.get_neighbors_mut(neighbor_id, lc);
                     nbs.push(new_id);
                     if nbs.len() > m_max {
-                        Self::prune_connections(&vectors, &mut graph, neighbor_id, lc, m_max);
+                        Self::prune_connections(&vectors, &mut graph, neighbor_id, lc, m_max, self.metric);
                     }
                 }
             }
@@ -470,8 +476,8 @@ impl FastHNSW {
                 changed = false;
                 for &nid in graph.get_neighbors(current, lc) {
                     if !alive[nid] { continue; }
-                    if cosine_distance(query, vectors.get(nid))
-                        < cosine_distance(query, vectors.get(current))
+                    if compute_distance(query, vectors.get(nid), self.metric)
+                        < compute_distance(query, vectors.get(current), self.metric)
                     {
                         current = nid;
                         changed = true;
@@ -481,7 +487,7 @@ impl FastHNSW {
         }
 
         // Search layer 0
-        let mut results = Self::search_layer(&vectors, &graph, &alive, query, current, ef, 0);
+        let mut results = Self::search_layer(&vectors, &graph, &alive, query, current, ef, 0, self.metric);
         results.sort_by(|a, b| a.dist.partial_cmp(&b.dist).unwrap_or(Ordering::Equal));
         results.truncate(k);
         results.into_iter().map(|c| (c.id, c.dist)).collect()
@@ -503,6 +509,7 @@ impl FastHNSW {
         let graph = self.graph.read();
         let alive = self.alive.read();
         let entry_level = *self.entry_level.read();
+        let metric = self.metric;
 
         queries.par_iter().map(|query| {
             // Navigate upper layers
@@ -513,8 +520,8 @@ impl FastHNSW {
                     changed = false;
                     for &nid in graph.get_neighbors(current, lc) {
                         if !alive[nid] { continue; }
-                        if cosine_distance(query, vectors.get(nid))
-                            < cosine_distance(query, vectors.get(current))
+                        if compute_distance(query, vectors.get(nid), metric)
+                            < compute_distance(query, vectors.get(current), metric)
                         {
                             current = nid;
                             changed = true;
@@ -523,7 +530,7 @@ impl FastHNSW {
                 }
             }
 
-            let mut results = Self::search_layer(&vectors, &graph, &alive, query, current, ef, 0);
+            let mut results = Self::search_layer(&vectors, &graph, &alive, query, current, ef, 0, metric);
             results.sort_by(|a, b| a.dist.partial_cmp(&b.dist).unwrap_or(Ordering::Equal));
             results.truncate(k);
             results.into_iter().map(|c| (c.id, c.dist)).collect()
@@ -638,19 +645,28 @@ pub struct RustFastHNSWIndex {
 #[pymethods]
 impl RustFastHNSWIndex {
     #[new]
-    #[pyo3(signature = (dimension, m=16, ef_construction=200, ef_search=50, max_level=16))]
+    #[pyo3(signature = (dimension, m=16, ef_construction=200, ef_search=50, max_level=16, metric="cosine"))]
     fn new(
         dimension: usize,
         m: usize,
         ef_construction: usize,
         ef_search: usize,
         max_level: usize,
-    ) -> Self {
-        Self {
-            inner: FastHNSW::new(dimension, m, ef_construction, ef_search, max_level),
+        metric: &str,
+    ) -> PyResult<Self> {
+        let dist_metric = match metric {
+            "cosine" => DistanceMetric::Cosine,
+            "l2" | "euclidean" => DistanceMetric::L2,
+            "ip" | "inner_product" | "dot" => DistanceMetric::InnerProduct,
+            _ => return Err(pyo3::exceptions::PyValueError::new_err(
+                format!("Unknown metric '{}'. Use: cosine, l2, inner_product", metric)
+            )),
+        };
+        Ok(Self {
+            inner: FastHNSW::new(dimension, m, ef_construction, ef_search, max_level, dist_metric),
             id_to_idx: RwLock::new(HashMap::new()),
             idx_to_id: RwLock::new(Vec::new()),
-        }
+        })
     }
 
     fn add_vector(&self, vector_id: String, vector: PyReadonlyArray1<f32>) -> PyResult<()> {
@@ -730,6 +746,52 @@ impl RustFastHNSWIndex {
             }
             if idx < idx_to_id.len() && !idx_to_id[idx].is_empty() {
                 result_list.append((idx_to_id[idx].as_str(), dist).to_object(py))?;
+            }
+        }
+        Ok(result_list)
+    }
+
+    /// Pre-filtered search: only return results whose IDs are in filter_ids.
+    /// Oversamples by 2x ef to compensate for filtered-out candidates.
+    #[pyo3(signature = (query_vector, k, filter_ids, distance_threshold=None, ef_override=None))]
+    fn search_filtered<'py>(
+        &self,
+        py: Python<'py>,
+        query_vector: PyReadonlyArray1<f32>,
+        k: usize,
+        filter_ids: Vec<String>,
+        distance_threshold: Option<f32>,
+        ef_override: Option<usize>,
+    ) -> PyResult<&'py PyList> {
+        let query = query_vector.as_slice()?;
+        let ef = ef_override.unwrap_or(self.inner.ef_search);
+
+        // Build a bitset of allowed internal indices
+        let id_to_idx = self.id_to_idx.read();
+        let n = self.inner.total_allocated();
+        let mut allowed = vec![false; n];
+        for fid in &filter_ids {
+            if let Some(&idx) = id_to_idx.get(fid) {
+                allowed[idx] = true;
+            }
+        }
+
+        // Oversample to compensate for filtering
+        let oversample_ef = (ef * 2).max(k * 4);
+        let results = self.inner.search(query, oversample_ef, oversample_ef);
+
+        let idx_to_id = self.idx_to_id.read();
+        let result_list = PyList::empty(py);
+        let mut count = 0;
+        for (idx, dist) in results {
+            if count >= k { break; }
+            if idx >= allowed.len() || !allowed[idx] { continue; }
+            if let Some(threshold) = distance_threshold {
+                if dist > threshold { continue; }
+            }
+            if idx < idx_to_id.len() && !idx_to_id[idx].is_empty() {
+                result_list.append((idx_to_id[idx].as_str(), dist).to_object(py))?;
+                count += 1;
             }
         }
         Ok(result_list)

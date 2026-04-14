@@ -32,8 +32,11 @@ if str(rust_indexes_path) not in sys.path:
 try:
     import rust_hnsw
     RUST_AVAILABLE = True
+    # Prefer FastHNSW (integer-indexed, 10-13x faster) over old String-based HNSW
+    FAST_HNSW_AVAILABLE = hasattr(rust_hnsw, 'RustFastHNSWIndex')
 except ImportError:
     RUST_AVAILABLE = False
+    FAST_HNSW_AVAILABLE = False
     import warnings
     warnings.warn(
         "Rust HNSW module not available. Install with: "
@@ -62,6 +65,7 @@ class RustHNSWIndexWrapper(VectorIndex):
         ef_search: int = 50,
         max_level: int = 16,
         seed: Optional[int] = None,
+        metric: str = "cosine",
     ):
         """
         Initialize the Rust HNSW index wrapper.
@@ -97,14 +101,26 @@ class RustHNSWIndexWrapper(VectorIndex):
         self._ef_search = ef_search
         self._max_level = max_level
 
-        # Initialize Rust HNSW index
-        self._rust_index = rust_hnsw.RustHNSWIndex(
-            dimension=vector_store.dimension,
-            m=M,
-            ef_construction=ef_construction,
-            ef_search=ef_search,
-            max_level=max_level,
-        )
+        # Prefer FastHNSW (integer-indexed, 10-13x faster search)
+        if FAST_HNSW_AVAILABLE:
+            self._rust_index = rust_hnsw.RustFastHNSWIndex(
+                dimension=vector_store.dimension,
+                m=M,
+                ef_construction=ef_construction,
+                ef_search=ef_search,
+                max_level=max_level,
+                metric=metric,
+            )
+            self._using_fast = True
+        else:
+            self._rust_index = rust_hnsw.RustHNSWIndex(
+                dimension=vector_store.dimension,
+                m=M,
+                ef_construction=ef_construction,
+                ef_search=ef_search,
+                max_level=max_level,
+            )
+            self._using_fast = False
 
         # Track vector ID to index mapping
         self._vector_id_to_index: Dict[UUID, int] = {}
@@ -165,6 +181,7 @@ class RustHNSWIndexWrapper(VectorIndex):
         k: int,
         distance_threshold: Optional[float] = None,
         ef_override: Optional[int] = None,
+        filter_ids: Optional[set] = None,
     ) -> List[Tuple[UUID, float]]:
         """
         Search for k nearest neighbors.
@@ -173,14 +190,12 @@ class RustHNSWIndexWrapper(VectorIndex):
             query_vector: The query vector (must be normalized).
             k: Number of nearest neighbors to return.
             distance_threshold: Optional maximum distance threshold.
-            ef_override: Optional ef_search override for this query. If None,
-                uses the index default with adaptive scaling based on index size.
+            ef_override: Optional ef_search override for this query.
+            filter_ids: Optional set of UUIDs. If provided, only return
+                results whose vector_id is in this set (pre-filtering).
 
         Returns:
             List of (vector_id, distance) tuples sorted by distance.
-
-        Raises:
-            ValueError: If query_vector dimension doesn't match or k is invalid.
         """
         if k <= 0:
             raise ValueError(f"k must be positive, got {k}")
@@ -192,10 +207,15 @@ class RustHNSWIndexWrapper(VectorIndex):
                 f"store dimension {expected_dim}"
             )
 
-        # Search in Rust index with optional ef_override
-        results = self._rust_index.search(query_vector, k, distance_threshold, ef_override)
+        if filter_ids is not None and self._using_fast:
+            # Filtered search — entirely in Rust
+            filter_strs = [str(uid) for uid in filter_ids]
+            results = self._rust_index.search_filtered(
+                query_vector, k, filter_strs, distance_threshold, ef_override
+            )
+        else:
+            results = self._rust_index.search(query_vector, k, distance_threshold, ef_override)
 
-        # Convert string IDs back to UUIDs
         return [(UUID(vid_str), dist) for vid_str, dist in results]
 
     def set_ef_search(self, ef_search: int) -> None:

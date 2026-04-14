@@ -1,36 +1,49 @@
-/// Compute cosine distance between two vectors.
-///
-/// Cosine distance = 1 - cosine_similarity = 1 - (dot_product)
-/// Assumes vectors are already normalized (which they should be for embeddings).
-///
-/// This implementation will automatically use SIMD instructions where available
-/// thanks to Rust's auto-vectorization and the explicit use of iterators.
-#[inline]
-pub fn cosine_distance(a: &[f32], b: &[f32]) -> f32 {
-    debug_assert_eq!(a.len(), b.len(), "Vectors must have same length");
-
-    // Compute dot product using SIMD-friendly iterator pattern
-    let dot_product: f32 = a.iter()
-        .zip(b.iter())
-        .map(|(x, y)| x * y)
-        .sum();
-
-    // Return cosine distance
-    1.0 - dot_product
+/// Distance metric selection.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum DistanceMetric {
+    Cosine,
+    L2,
+    InnerProduct,
 }
 
-/// Compute dot product between two vectors (SIMD-optimized).
-///
-/// This is used internally for cosine similarity calculations.
-/// The compiler will auto-vectorize this loop when possible.
+/// Compute distance between two vectors using the specified metric.
+#[inline(always)]
+pub fn compute_distance(a: &[f32], b: &[f32], metric: DistanceMetric) -> f32 {
+    match metric {
+        DistanceMetric::Cosine => cosine_distance(a, b),
+        DistanceMetric::L2 => l2_distance(a, b),
+        DistanceMetric::InnerProduct => inner_product_distance(a, b),
+    }
+}
+
+/// Cosine distance = 1 - dot_product. Assumes normalized vectors.
+#[inline(always)]
+pub fn cosine_distance(a: &[f32], b: &[f32]) -> f32 {
+    debug_assert_eq!(a.len(), b.len(), "Vectors must have same length");
+    let dot: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
+    1.0 - dot
+}
+
+/// Squared L2 (Euclidean) distance. No sqrt for performance — ranking is preserved.
+#[inline(always)]
+pub fn l2_distance(a: &[f32], b: &[f32]) -> f32 {
+    debug_assert_eq!(a.len(), b.len(), "Vectors must have same length");
+    a.iter().zip(b.iter()).map(|(x, y)| (x - y) * (x - y)).sum()
+}
+
+/// Inner product distance = 1 - dot_product. Smaller = more similar.
+#[inline(always)]
+pub fn inner_product_distance(a: &[f32], b: &[f32]) -> f32 {
+    debug_assert_eq!(a.len(), b.len(), "Vectors must have same length");
+    let dot: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
+    1.0 - dot
+}
+
+/// Dot product (raw, no distance conversion).
 #[inline]
 pub fn dot_product(a: &[f32], b: &[f32]) -> f32 {
     debug_assert_eq!(a.len(), b.len(), "Vectors must have same length");
-
-    a.iter()
-        .zip(b.iter())
-        .map(|(x, y)| x * y)
-        .sum()
+    a.iter().zip(b.iter()).map(|(x, y)| x * y).sum()
 }
 
 #[cfg(test)]
