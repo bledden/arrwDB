@@ -14,6 +14,8 @@ mod fast_hnsw;
 mod brute_force;
 mod lsh;
 mod kd_tree;
+#[cfg(feature = "rabitq")]
+mod rabitq_index;
 
 use node::HNSWNode;
 use distance::cosine_distance;
@@ -902,5 +904,7 @@ fn rust_hnsw(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<RustBruteForceIndex>()?;
     m.add_class::<RustLSHIndex>()?;
     m.add_class::<RustKDTreeIndex>()?;
+    #[cfg(feature = "rabitq")]
+    m.add_class::<rabitq_index::quantized::RustRabitqIndex>()?;
     Ok(())
 }
