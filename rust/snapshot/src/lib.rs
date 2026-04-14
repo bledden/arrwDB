@@ -407,7 +407,7 @@ impl RustSnapshotManager {
 }
 
 #[pymodule]
-fn rust_snapshot(_py: Python, m: &PyModule) -> PyResult<()> {
+fn rust_snapshot(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<RustSnapshotManager>()?;
     m.add_class::<Snapshot>()?;
     Ok(())

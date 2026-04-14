@@ -242,10 +242,10 @@ impl RustVectorStore {
         self.inner.write().add_vector(chunk_id, vector_data)
     }
 
-    fn get_vector<'py>(&self, py: Python<'py>, chunk_id: String) -> PyResult<Option<&'py PyArray1<f32>>> {
+    fn get_vector<'py>(&self, py: Python<'py>, chunk_id: String) -> PyResult<Option<Py<PyArray1<f32>>>> {
         let inner = self.inner.read();
         match inner.get_vector(&chunk_id) {
-            Some(vector) => Ok(Some(PyArray1::from_vec(py, vector))),
+            Some(vector) => Ok(Some(PyArray1::from_vec(py, vector).into())),
             None => Ok(None),
         }
     }
@@ -254,10 +254,10 @@ impl RustVectorStore {
         &self,
         py: Python<'py>,
         index: usize,
-    ) -> PyResult<&'py PyArray1<f32>> {
+    ) -> PyResult<Py<PyArray1<f32>>> {
         let inner = self.inner.read();
         let vector = inner.get_vector_by_index(index)?;
-        Ok(PyArray1::from_vec(py, vector))
+        Ok(PyArray1::from_vec(py, vector).into())
     }
 
     fn remove_vector(&self, chunk_id: String) -> PyResult<bool> {
@@ -268,17 +268,16 @@ impl RustVectorStore {
         &self,
         py: Python<'py>,
         indices: Vec<usize>,
-    ) -> PyResult<&'py PyArray2<f32>> {
+    ) -> PyResult<Py<PyArray2<f32>>> {
         let inner = self.inner.read();
         let vectors = inner.get_vectors_by_indices(&indices)?;
 
         if vectors.is_empty() {
-            return Ok(PyArray2::zeros(py, (0, inner.dimension), false));
+            return Ok(PyArray2::zeros(py, (0, inner.dimension), false).into());
         }
 
-        // Convert Vec<Vec<f32>> to Vec<&[f32]> for from_vec2
         let vec_refs: Vec<Vec<f32>> = vectors;
-        Ok(PyArray2::from_vec2(py, &vec_refs)?)
+        Ok(PyArray2::from_vec2(py, &vec_refs)?.into())
     }
 
     fn size(&self) -> PyResult<usize> {
@@ -323,7 +322,7 @@ impl RustVectorStore {
 }
 
 #[pymodule]
-fn rust_vector_store(_py: Python, m: &PyModule) -> PyResult<()> {
+fn rust_vector_store(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<RustVectorStore>()?;
     Ok(())
 }

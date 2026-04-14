@@ -21,7 +21,7 @@ pub use kd_tree::RustKDTreeIndex;
 
 /// Python module initialization.
 #[pymodule]
-fn rust_hnsw(_py: Python, m: &PyModule) -> PyResult<()> {
+fn rust_hnsw(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // FastHNSW is the default — 12.5x faster than legacy
     m.add_class::<fast_hnsw::RustFastHNSWIndex>()?;
 

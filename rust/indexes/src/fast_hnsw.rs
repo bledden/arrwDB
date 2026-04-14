@@ -823,7 +823,7 @@ impl RustFastHNSWIndex {
         k: usize,
         distance_threshold: Option<f32>,
         ef_override: Option<usize>,
-    ) -> PyResult<&'py PyList> {
+    ) -> PyResult<Bound<'py, PyList>> {
         let query = query_vector.as_slice()?;
 
         if query.len() != self.inner.dimension() {
@@ -843,7 +843,7 @@ impl RustFastHNSWIndex {
                 if dist > threshold { continue; }
             }
             if idx < idx_to_id.len() && !idx_to_id[idx].is_empty() {
-                result_list.append((idx_to_id[idx].as_str(), dist).to_object(py))?;
+                result_list.append((idx_to_id[idx].as_str(), dist).into_pyobject(py).unwrap().into_any().unbind())?;
             }
         }
         Ok(result_list)
@@ -860,7 +860,7 @@ impl RustFastHNSWIndex {
         filter_ids: Vec<String>,
         distance_threshold: Option<f32>,
         ef_override: Option<usize>,
-    ) -> PyResult<&'py PyList> {
+    ) -> PyResult<Bound<'py, PyList>> {
         let query = query_vector.as_slice()?;
         let ef = ef_override.unwrap_or(self.inner.ef_search);
 
@@ -888,7 +888,7 @@ impl RustFastHNSWIndex {
                 if dist > threshold { continue; }
             }
             if idx < idx_to_id.len() && !idx_to_id[idx].is_empty() {
-                result_list.append((idx_to_id[idx].as_str(), dist).to_object(py))?;
+                result_list.append((idx_to_id[idx].as_str(), dist).into_pyobject(py).unwrap().into_any().unbind())?;
                 count += 1;
             }
         }
@@ -918,7 +918,7 @@ impl RustFastHNSWIndex {
         Ok(())
     }
 
-    fn get_statistics<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
+    fn get_statistics<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
         let stats = PyDict::new(py);
         let size = self.inner.len();
         let total = self.inner.total_allocated();
@@ -948,10 +948,10 @@ impl RustFastHNSWIndex {
     fn batch_search<'py>(
         &self,
         py: Python<'py>,
-        query_vectors: &'py PyList,
+        query_vectors: &Bound<'py, PyList>,
         k: usize,
         distance_threshold: Option<f32>,
-    ) -> PyResult<&'py PyList> {
+    ) -> PyResult<Bound<'py, PyList>> {
         let mut queries: Vec<Vec<f32>> = Vec::new();
         for item in query_vectors.iter() {
             let arr: PyReadonlyArray1<f32> = item.extract()?;
@@ -972,7 +972,7 @@ impl RustFastHNSWIndex {
                     if dist > threshold { continue; }
                 }
                 if idx < idx_to_id.len() && !idx_to_id[idx].is_empty() {
-                    inner.append((idx_to_id[idx].as_str(), dist).to_object(py))?;
+                    inner.append((idx_to_id[idx].as_str(), dist).into_pyobject(py).unwrap().into_any().unbind())?;
                 }
             }
             outer.append(inner)?;

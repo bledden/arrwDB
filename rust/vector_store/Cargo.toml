@@ -8,8 +8,8 @@ name = "rust_vector_store"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.21", features = ["extension-module", "abi3-py39"] }
-numpy = "0.21"
+pyo3 = { version = "0.23", features = ["extension-module", "abi3-py39"] }
+numpy = "0.23"
 parking_lot = "0.12"
 
 [profile.release]

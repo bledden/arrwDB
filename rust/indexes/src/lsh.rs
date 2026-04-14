@@ -185,7 +185,7 @@ impl RustLSHIndex {
         query_vector: PyReadonlyArray1<f32>,
         k: usize,
         distance_threshold: Option<f32>,
-    ) -> PyResult<&'py PyList> {
+    ) -> PyResult<Bound<'py, PyList>> {
         let query_data = query_vector.as_slice()?.to_vec();
 
         if query_data.len() != self.dimension {
@@ -253,7 +253,7 @@ impl RustLSHIndex {
         // Convert to Python list
         let result = PyList::empty(py);
         for (vid, dist) in distances {
-            let tuple = (vid, dist).to_object(py);
+            let tuple = (vid, dist).into_pyobject(py).unwrap().into_any().unbind();
             result.append(tuple)?;
         }
 
@@ -323,7 +323,7 @@ impl RustLSHIndex {
     }
 
     /// Get index statistics.
-    fn get_statistics<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
+    fn get_statistics<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
         let stats = PyDict::new(py);
 
         stats.set_item("type", "lsh")?;

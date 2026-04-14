@@ -446,7 +446,7 @@ impl RustWriteAheadLog {
 }
 
 #[pymodule]
-fn rust_wal(_py: Python, m: &PyModule) -> PyResult<()> {
+fn rust_wal(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<RustWriteAheadLog>()?;
     m.add_class::<WALEntry>()?;
     m.add_class::<OperationType>()?;
