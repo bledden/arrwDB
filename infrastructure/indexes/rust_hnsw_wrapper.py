@@ -139,6 +139,29 @@ class RustHNSWIndexWrapper(VectorIndex):
         # Track mapping
         self._vector_id_to_index[vector_id] = vector_index
 
+    def upsert_vector(self, vector_id: UUID, vector_index: int) -> bool:
+        """
+        Insert or update a vector. If the ID exists, the vector data
+        is overwritten in-place and the graph connections are rebuilt.
+
+        Args:
+            vector_id: Unique identifier for the vector.
+            vector_index: Index in the VectorStore.
+
+        Returns:
+            True if this was an update, False if it was a new insert.
+        """
+        try:
+            vector = self._vector_store.get_vector_by_index(vector_index)
+        except IndexError as e:
+            raise ValueError(f"Invalid vector_index {vector_index}: {e}") from e
+
+        vector_id_str = str(vector_id)
+        was_update = self._rust_index.upsert_vector(vector_id_str, vector)
+
+        self._vector_id_to_index[vector_id] = vector_index
+        return was_update
+
     def remove_vector(self, vector_id: UUID) -> bool:
         """
         Remove a vector from the index.

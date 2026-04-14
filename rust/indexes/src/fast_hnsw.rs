@@ -406,6 +406,73 @@ impl FastHNSW {
         idx
     }
 
+    /// Upsert a vector: update in-place if exists, insert if new.
+    /// Returns (index, was_update). In-place update preserves the index
+    /// and reconnects the node in the graph with fresh connections
+    /// based on the new vector position.
+    pub fn upsert_vector(&self, idx_if_exists: Option<usize>, vector: &[f32]) -> (usize, bool) {
+        assert_eq!(vector.len(), self.dim, "Vector dimension mismatch");
+
+        match idx_if_exists {
+            Some(idx) => {
+                // Check if actually alive
+                let is_alive = {
+                    let alive = self.alive.read();
+                    idx < alive.len() && alive[idx]
+                };
+
+                if !is_alive {
+                    // Dead slot — treat as fresh insert
+                    return (self.add_vector(vector), false);
+                }
+
+                // --- In-place update ---
+
+                // 1. Overwrite vector data
+                self.vectors.write().set(idx, vector);
+
+                // 2. Disconnect old graph edges (same as remove_vector)
+                {
+                    let graph = self.graph.read();
+                    let level = graph.level(idx);
+                    let mut to_clean: Vec<(usize, usize)> = Vec::new();
+                    for lc in 0..=level {
+                        for &nid in graph.get_neighbors(idx, lc) {
+                            to_clean.push((nid, lc));
+                        }
+                    }
+                    drop(graph);
+
+                    let mut graph = self.graph.write();
+                    for (nid, lc) in to_clean {
+                        let nbs = graph.get_neighbors_mut(nid, lc);
+                        nbs.retain(|&id| id != idx);
+                    }
+                    // Clear this node's neighbor lists
+                    for lc in 0..=graph.level(idx) {
+                        graph.set_neighbors(idx, lc, Vec::new());
+                    }
+                }
+
+                // 3. Re-insert into graph with new connections
+                let level = self.graph.read().level(idx);
+                self.insert_node(idx, level);
+
+                // 4. Update entry point if this node has a higher level
+                if level > *self.entry_level.read() {
+                    *self.entry_point.write() = Some(idx);
+                    *self.entry_level.write() = level;
+                }
+
+                (idx, true)
+            }
+            None => {
+                // New vector — normal insert
+                (self.add_vector(vector), false)
+            }
+        }
+    }
+
     /// Remove a vector by internal index.
     pub fn remove_vector(&self, idx: usize) -> bool {
         {
@@ -715,6 +782,37 @@ impl RustFastHNSWIndex {
         } else {
             false
         }
+    }
+
+    /// Upsert: insert or update a vector. Returns true if it was an update.
+    /// If the ID exists, overwrites the vector data in-place and reconnects
+    /// the node in the graph. If new, performs a normal insert.
+    fn upsert_vector(&self, vector_id: String, vector: PyReadonlyArray1<f32>) -> PyResult<bool> {
+        let data = vector.as_slice()?;
+
+        if data.len() != self.inner.dimension() {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "Vector dimension {} doesn't match index dimension {}",
+                data.len(), self.inner.dimension()
+            )));
+        }
+
+        let existing_idx = self.id_to_idx.read().get(&vector_id).copied();
+
+        let (idx, was_update) = self.inner.upsert_vector(existing_idx, data);
+
+        if !was_update {
+            // New insert — register the mapping
+            self.id_to_idx.write().insert(vector_id.clone(), idx);
+            let mut ids = self.idx_to_id.write();
+            if ids.len() <= idx {
+                ids.resize(idx + 1, String::new());
+            }
+            ids[idx] = vector_id;
+        }
+        // If was_update, mappings are unchanged (same idx, same ID)
+
+        Ok(was_update)
     }
 
     #[pyo3(signature = (query_vector, k, distance_threshold=None, ef_override=None))]
