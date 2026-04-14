@@ -249,11 +249,24 @@ impl FastHNSW {
                 }
                 visited.mark_visited(nid);
 
-                // Prefetch next neighbor's vector (co-located data if available)
+                // 3-prong prefetch (hnswlib technique):
+                // 1. Vector data of next neighbor
+                // 2. Visited array entry for next neighbor
+                // 3. Neighbor list of next neighbor (for when we expand it)
                 if ni + 1 < n_neighbors {
                     let next_nid = unsafe { *neighbors.get_unchecked(ni + 1) };
                     if !visited.is_visited(next_nid) {
+                        // Prefetch vector data (L1)
                         prefetch_vector(vectors.get(next_nid).as_ptr());
+                        // Prefetch visited array entry
+                        #[cfg(target_arch = "x86_64")]
+                        unsafe {
+                            #[cfg(target_feature = "sse")]
+                            {
+                                let vis_ptr = visited.marks.as_ptr().add(next_nid) as *const i8;
+                                std::arch::x86_64::_mm_prefetch(vis_ptr, std::arch::x86_64::_MM_HINT_T0);
+                            }
+                        }
                     }
                 }
 
@@ -961,18 +974,19 @@ impl FastHNSW {
         let entry_level = *self.entry_level.read();
         let dist_fn = self.dist_fn;
 
-        // Navigate upper layers greedily
+        // Navigate upper layers greedily — cache current distance to avoid recomputation
         let mut current = ep;
+        let mut current_dist = (dist_fn)(query, vectors.get(ep));
         for lc in (1..=entry_level).rev() {
             let mut changed = true;
             while changed {
                 changed = false;
                 for &nid in graph.get_neighbors(current, lc) {
-                    if !alive[nid] { continue; }
-                    if (dist_fn)(query, vectors.get(nid))
-                        < (dist_fn)(query, vectors.get(current))
-                    {
+                    if unsafe { !*alive.get_unchecked(nid) } { continue; }
+                    let d = (dist_fn)(query, vectors.get(nid));
+                    if d < current_dist {
                         current = nid;
+                        current_dist = d;
                         changed = true;
                     }
                 }
@@ -980,69 +994,7 @@ impl FastHNSW {
         }
 
         // Search layer 0
-        let colocated = self.colocated.read();
-        let mut results = if let Some(ref store) = *colocated {
-            // Co-located path: same algorithm as _search_layer_inner but reads
-            // from ColocatedStore where neighbors + vectors are adjacent in memory.
-            // Prefetching node_ptr brings in both neighbor list AND vector data.
-            VISITED_LIST.with(|vl| {
-                let mut vis = vl.borrow_mut();
-                vis.ensure_capacity(store.len());
-                vis.reset();
-                vis.mark_visited(current);
-
-                let entry_dist = (dist_fn)(query, store.get_vector(current));
-                let mut cands = BinaryHeap::new();
-                cands.push(MinCand(Candidate { id: current, dist: entry_dist }));
-                let mut res = BinaryHeap::new();
-                res.push(MaxCand(Candidate { id: current, dist: entry_dist }));
-
-                while let Some(MinCand(cur)) = cands.pop() {
-                    let worst = res.peek().unwrap().0.dist;
-
-                    let neighbors = store.get_neighbors(cur.id);
-                    let n_nb = neighbors.len();
-                    for ni in 0..n_nb {
-                        let nid = unsafe { *neighbors.get_unchecked(ni) } as usize;
-                        if vis.is_visited(nid) || unsafe { !*alive.get_unchecked(nid) } {
-                            continue;
-                        }
-                        vis.mark_visited(nid);
-
-                        // Prefetch next neighbor's CO-LOCATED data (neighbors + vector together)
-                        if ni + 1 < n_nb {
-                            let next = unsafe { *neighbors.get_unchecked(ni + 1) } as usize;
-                            if !vis.is_visited(next) {
-                                let ptr = store.node_ptr(next);
-                                #[cfg(target_arch = "x86_64")]
-                                unsafe {
-                                    #[cfg(target_feature = "sse")]
-                                    {
-                                        std::arch::x86_64::_mm_prefetch(ptr as *const i8, std::arch::x86_64::_MM_HINT_T0);
-                                        std::arch::x86_64::_mm_prefetch(ptr.add(64) as *const i8, std::arch::x86_64::_MM_HINT_T0);
-                                    }
-                                }
-                            }
-                        }
-
-                        let d = (dist_fn)(query, store.get_vector(nid));
-                        if d < worst || res.len() < ef {
-                            cands.push(MinCand(Candidate { id: nid, dist: d }));
-                            res.push(MaxCand(Candidate { id: nid, dist: d }));
-                            if res.len() > ef { res.pop(); }
-                        }
-                    }
-
-                    if let Some(nx) = cands.peek() {
-                        if nx.0.dist > res.peek().unwrap().0.dist && res.len() >= ef { break; }
-                    }
-                }
-
-                res.into_iter().map(|MaxCand(c)| c).collect()
-            })
-        } else {
-            Self::search_layer(&vectors, &graph, &alive, query, current, ef, 0, self.metric)
-        };
+        let mut results = Self::search_layer(&vectors, &graph, &alive, query, current, ef, 0, self.metric);
         results.sort_by(|a, b| a.dist.partial_cmp(&b.dist).unwrap_or(Ordering::Equal));
         results.truncate(k);
         results.into_iter().map(|c| (c.id, c.dist)).collect()
@@ -1064,16 +1016,17 @@ impl FastHNSW {
         let dist_fn = self.dist_fn;
 
         let mut current = ep;
+        let mut current_dist = (dist_fn)(query, vectors.get(ep));
         for lc in (1..=entry_level).rev() {
             let mut changed = true;
             while changed {
                 changed = false;
                 for &nid in graph.get_neighbors(current, lc) {
                     if !alive[nid] { continue; }
-                    if (dist_fn)(query, vectors.get(nid))
-                        < (dist_fn)(query, vectors.get(current))
-                    {
+                    let d = (dist_fn)(query, vectors.get(nid));
+                    if d < current_dist {
                         current = nid;
+                        current_dist = d;
                         changed = true;
                     }
                 }
@@ -1109,16 +1062,17 @@ impl FastHNSW {
 
         queries.par_iter().map(|query| {
             let mut current = ep;
+            let mut cur_d = (dist_fn)(query, vectors.get(ep));
             for lc in (1..=entry_level).rev() {
                 let mut changed = true;
                 while changed {
                     changed = false;
                     for &nid in graph.get_neighbors(current, lc) {
                         if !alive[nid] { continue; }
-                        if (dist_fn)(query, vectors.get(nid))
-                            < (dist_fn)(query, vectors.get(current))
-                        {
+                        let d = (dist_fn)(query, vectors.get(nid));
+                        if d < cur_d {
                             current = nid;
+                            cur_d = d;
                             changed = true;
                         }
                     }
