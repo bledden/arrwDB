@@ -515,7 +515,9 @@ impl FastHNSW {
         for lc in (0..=top).rev() {
             let candidates = {
                 let graph = self.graph.read();
-                Self::search_layer(&vectors, &graph, &alive, query, current, self.ef_construction, lc, self.metric)
+                // hnswlib uses max(ef_construction, M) to ensure enough candidates
+                let effective_ef = self.ef_construction.max(self.m_max(lc));
+                Self::search_layer(&vectors, &graph, &alive, query, current, effective_ef, lc, self.metric)
             };
 
             if let Some(best) = candidates.iter().min_by(|a, b| a.dist.partial_cmp(&b.dist).unwrap()) {
@@ -834,7 +836,9 @@ impl FastHNSW {
 
             let top = new_level.min(entry_level);
             for lc in (0..=top).rev() {
-                // Inline search_layer (no locks, direct graph access)
+                // hnswlib uses max(ef_construction, M) for construction search
+                let eff_ef = ef_c.max(self.m_max(lc));
+
                 let candidates = {
                     visited.ensure_capacity(graph.len());
                     visited.reset();
@@ -851,14 +855,14 @@ impl FastHNSW {
                             if visited.is_visited(nid) { continue; }
                             visited.mark_visited(nid);
                             let d = compute_distance(query, vectors.get(nid), metric);
-                            if d < w || res.len() < ef_c {
+                            if d < w || res.len() < eff_ef {
                                 cands.push(MinCand(Candidate { id: nid, dist: d }));
                                 res.push(MaxCand(Candidate { id: nid, dist: d }));
-                                if res.len() > ef_c { res.pop(); }
+                                if res.len() > eff_ef { res.pop(); }
                             }
                         }
                         if let Some(nx) = cands.peek() {
-                            if nx.0.dist > res.peek().unwrap().0.dist && res.len() >= ef_c { break; }
+                            if nx.0.dist > res.peek().unwrap().0.dist && res.len() >= eff_ef { break; }
                         }
                     }
                     let mut v: Vec<Candidate> = res.into_iter().map(|MaxCand(c)| c).collect();
