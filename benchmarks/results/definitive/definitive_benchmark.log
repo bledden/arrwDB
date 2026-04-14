@@ -1,0 +1,64 @@
+2026-04-14 16:21:12,337 - INFO - 
+============================================================
+2026-04-14 16:21:12,338 - INFO - Dataset: sift-128-euclidean
+2026-04-14 16:21:12,338 - INFO - ============================================================
+2026-04-14 16:21:12,489 - INFO - Dataset sift-128-euclidean already cached (501 MB): /home/bledden/.cache/arrwdb_bench/ann/sift-128-euclidean.hdf5
+2026-04-14 16:21:14,577 - INFO - Loaded sift-128-euclidean: 1000000 train, 10000 test, dim=128, gt_k=100
+2026-04-14 16:21:14,577 - INFO - [FastHNSW] Building: 1000000 vectors, dim=128, M=48, ef_construction=400
+2026-04-14 16:21:14,684 - INFO -   [FastHNSW] Using build_bulk (lock-free)
+2026-04-14 17:09:26,724 - INFO - [FastHNSW] Build: 2892.0s (346 vec/s)
+2026-04-14 17:09:27,910 - INFO -   [FastHNSW] ef=10: recall@10=0.8819 QPS=9072 p50=0.11ms
+2026-04-14 17:09:29,653 - INFO -   [FastHNSW] ef=20: recall@10=0.9411 QPS=5952 p50=0.17ms
+2026-04-14 17:09:33,015 - INFO -   [FastHNSW] ef=50: recall@10=0.9787 QPS=3039 p50=0.34ms
+2026-04-14 17:09:38,541 - INFO -   [FastHNSW] ef=100: recall@10=0.9912 QPS=1834 p50=0.57ms
+2026-04-14 17:09:47,871 - INFO -   [FastHNSW] ef=200: recall@10=0.9921 QPS=1081 p50=0.96ms
+2026-04-14 17:10:04,083 - INFO -   [FastHNSW] ef=400: recall@10=0.9922 QPS=620 p50=1.66ms
+2026-04-14 17:10:31,449 - INFO -   [FastHNSW] ef=800: recall@10=0.9922 QPS=367 p50=2.79ms
+2026-04-14 17:10:31,708 - INFO - Saved: /tmp/definitive_results/sift-128-euclidean_fast_vs_old.json
+2026-04-14 17:10:31,708 - INFO - 
+============================================================
+2026-04-14 17:10:31,708 - INFO - Dataset: glove-200-angular
+2026-04-14 17:10:31,708 - INFO - ============================================================
+2026-04-14 17:10:31,708 - INFO - Dataset glove-200-angular already cached (918 MB): /home/bledden/.cache/arrwdb_bench/ann/glove-200-angular.hdf5
+2026-04-14 17:10:35,570 - INFO - Loaded glove-200-angular: 1183514 train, 10000 test, dim=200, gt_k=100
+2026-04-14 17:10:35,571 - INFO - [FastHNSW] Building: 1183514 vectors, dim=200, M=48, ef_construction=400
+2026-04-14 17:10:35,686 - INFO -   [FastHNSW] Using build_bulk (lock-free)
+2026-04-14 20:32:19,507 - INFO - [FastHNSW] Build: 12103.8s (98 vec/s)
+2026-04-14 20:32:21,821 - INFO -   [FastHNSW] ef=10: recall@10=0.6251 QPS=4448 p50=0.21ms
+2026-04-14 20:32:25,297 - INFO -   [FastHNSW] ef=20: recall@10=0.7160 QPS=2935 p50=0.33ms
+2026-04-14 20:32:31,832 - INFO -   [FastHNSW] ef=50: recall@10=0.8189 QPS=1546 p50=0.65ms
+2026-04-14 20:32:43,254 - INFO -   [FastHNSW] ef=100: recall@10=0.8772 QPS=881 p50=1.17ms
+2026-04-14 20:33:03,937 - INFO -   [FastHNSW] ef=200: recall@10=0.9204 QPS=485 p50=2.15ms
+2026-04-14 20:33:42,099 - INFO -   [FastHNSW] ef=400: recall@10=0.9547 QPS=263 p50=3.97ms
+2026-04-14 20:34:52,826 - INFO -   [FastHNSW] ef=800: recall@10=0.9780 QPS=142 p50=7.32ms
+2026-04-14 20:34:53,191 - INFO - Saved: /tmp/definitive_results/glove-200-angular_fast_vs_old.json
+2026-04-14 20:34:53,191 - INFO - 
+============================================================
+2026-04-14 20:34:53,191 - INFO - Dataset: deep-96-angular
+2026-04-14 20:34:53,191 - INFO - ============================================================
+2026-04-14 20:34:53,191 - INFO - Dataset deep-96-angular already cached (3670 MB): /home/bledden/.cache/arrwdb_bench/ann/deep-image-96-angular.hdf5
+2026-04-14 20:35:05,856 - INFO - Subsetting 9990000 -> 1000000 vectors
+2026-04-14 20:35:05,856 - INFO - Recomputing ground truth for 10000 queries (k=100)...
+2026-04-14 20:35:32,546 - INFO -   Ground truth: 1000/10000
+2026-04-14 20:35:59,037 - INFO -   Ground truth: 2000/10000
+2026-04-14 20:36:25,805 - INFO -   Ground truth: 3000/10000
+2026-04-14 20:36:52,259 - INFO -   Ground truth: 4000/10000
+2026-04-14 20:37:18,573 - INFO -   Ground truth: 5000/10000
+2026-04-14 20:37:44,830 - INFO -   Ground truth: 6000/10000
+2026-04-14 20:38:10,863 - INFO -   Ground truth: 7000/10000
+2026-04-14 20:38:37,059 - INFO -   Ground truth: 8000/10000
+2026-04-14 20:39:03,159 - INFO -   Ground truth: 9000/10000
+2026-04-14 20:39:29,088 - INFO -   Ground truth: 10000/10000
+2026-04-14 20:39:29,088 - INFO - Ground truth computed.
+2026-04-14 20:39:29,398 - INFO - Loaded deep-96-angular: 1000000 train, 10000 test, dim=96, gt_k=100
+2026-04-14 20:39:29,400 - INFO - [FastHNSW] Building: 1000000 vectors, dim=96, M=48, ef_construction=400
+2026-04-14 20:39:29,498 - INFO -   [FastHNSW] Using build_bulk (lock-free)
+2026-04-14 21:23:36,690 - INFO - [FastHNSW] Build: 2647.2s (378 vec/s)
+2026-04-14 21:23:37,657 - INFO -   [FastHNSW] ef=10: recall@10=0.8844 QPS=10899 p50=0.09ms
+2026-04-14 21:23:39,117 - INFO -   [FastHNSW] ef=20: recall@10=0.9385 QPS=7122 p50=0.14ms
+2026-04-14 21:23:41,859 - INFO -   [FastHNSW] ef=50: recall@10=0.9803 QPS=3737 p50=0.27ms
+2026-04-14 21:23:46,421 - INFO -   [FastHNSW] ef=100: recall@10=0.9973 QPS=2226 p50=0.45ms
+2026-04-14 21:23:54,151 - INFO -   [FastHNSW] ef=200: recall@10=0.9993 QPS=1306 p50=0.76ms
+2026-04-14 21:24:07,479 - INFO -   [FastHNSW] ef=400: recall@10=0.9998 QPS=755 p50=1.30ms
+2026-04-14 21:24:31,262 - INFO -   [FastHNSW] ef=800: recall@10=1.0000 QPS=422 p50=2.32ms
+2026-04-14 21:24:31,514 - INFO - Saved: /tmp/definitive_results/deep-96-angular_fast_vs_old.json
