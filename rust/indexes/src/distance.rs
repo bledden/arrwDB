@@ -219,18 +219,40 @@ fn l2_distance_scalar(a: &[f32], b: &[f32]) -> f32 {
 // Public API — dispatches to SIMD or scalar
 // ==========================================================================
 
+/// Dot product — selects the fastest available implementation.
+/// On x86_64 with AVX2+FMA, this compiles to a direct call (no runtime check)
+/// when built with target-cpu=native. The is_x86_feature_detected! macro
+/// is optimized by LLVM to a constant when the feature is known at compile time.
 #[inline(always)]
 pub fn dot_product(a: &[f32], b: &[f32]) -> f32 {
     debug_assert_eq!(a.len(), b.len());
 
     #[cfg(target_arch = "x86_64")]
     {
+        // When compiled with -C target-cpu=native on AVX2+FMA hardware,
+        // the compiler knows these features are available and eliminates the check.
         if is_x86_feature_detected!("avx2") && is_x86_feature_detected!("fma") {
             return unsafe { dot_product_avx2_fma(a, b) };
         }
     }
 
     dot_product_scalar(a, b)
+}
+
+/// Function pointer type for distance computation.
+/// Set once at index construction time to eliminate per-call dispatch.
+pub type DistanceFn = fn(&[f32], &[f32]) -> f32;
+
+/// Get the optimal distance function pointer for a metric.
+/// Call once at construction time, then use the pointer directly.
+pub fn get_distance_fn(metric: DistanceMetric) -> DistanceFn {
+    match metric {
+        DistanceMetric::Cosine => cosine_distance,
+        DistanceMetric::L2 => l2_distance,
+        DistanceMetric::InnerProduct => inner_product_distance,
+        DistanceMetric::Manhattan => manhattan_distance,
+        DistanceMetric::Hamming => hamming_distance,
+    }
 }
 
 #[inline(always)]

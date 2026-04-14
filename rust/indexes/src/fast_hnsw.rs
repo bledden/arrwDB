@@ -11,7 +11,7 @@
 /// - rebuild from scratch
 /// - batch_search with rayon
 
-use crate::distance::{compute_distance, prefetch_vector, DistanceMetric};
+use crate::distance::{compute_distance, get_distance_fn, prefetch_vector, DistanceFn, DistanceMetric};
 use crate::storage::{GraphStorage, VectorStorage, VectorStore};
 use parking_lot::RwLock;
 use rand::Rng;
@@ -126,6 +126,9 @@ pub struct FastHNSW {
     max_level: usize,
     dim: usize,
     metric: DistanceMetric,
+    /// Function pointer for distance — eliminates per-call match/dispatch.
+    /// Set once at construction, called millions of times during search.
+    dist_fn: DistanceFn,
 
     pub vectors: RwLock<VectorStore>,
     pub graph: RwLock<GraphStorage>,
@@ -157,6 +160,7 @@ impl FastHNSW {
             max_level,
             dim,
             metric,
+            dist_fn: get_distance_fn(metric),
             vectors: RwLock::new(VectorStore::InMemory(VectorStorage::new(dim, 1024))),
             graph: RwLock::new(GraphStorage::new(1024)),
             entry_point: RwLock::new(None),
@@ -202,7 +206,7 @@ impl FastHNSW {
             visited.ensure_capacity(n);
             visited.reset();
             visited.mark_visited(entry_id);
-            Self::_search_layer_inner(vectors, graph, alive, &mut visited, query, entry_id, ef, layer, metric)
+            Self::_search_layer_inner(vectors, graph, alive, &mut visited, query, entry_id, ef, layer, metric, get_distance_fn(metric))
         })
     }
 
@@ -217,9 +221,10 @@ impl FastHNSW {
         ef: usize,
         layer: usize,
         metric: DistanceMetric,
+        dist_fn: DistanceFn,
     ) -> Vec<Candidate> {
 
-        let entry_dist = compute_distance(query, vectors.get(entry_id), metric);
+        let entry_dist = (dist_fn)(query, vectors.get(entry_id));
 
         let mut candidates = BinaryHeap::new();
         candidates.push(MinCand(Candidate { id: entry_id, dist: entry_dist }));
@@ -234,21 +239,26 @@ impl FastHNSW {
             // matches the original behavior that ensures border candidates
             // have their neighbors checked.
             let neighbors = graph.get_neighbors(current.id, layer);
-            for (ni, &nid) in neighbors.iter().enumerate() {
-                if visited.is_visited(nid) || !alive[nid] {
+            let n_neighbors = neighbors.len();
+            for ni in 0..n_neighbors {
+                let nid = unsafe { *neighbors.get_unchecked(ni) };
+
+                // Fast path: visited check + alive check without bounds checking
+                if visited.is_visited(nid) || unsafe { !*alive.get_unchecked(nid) } {
                     continue;
                 }
                 visited.mark_visited(nid);
 
-                // Prefetch the NEXT neighbor's vector while computing this one
-                if ni + 1 < neighbors.len() {
-                    let next_nid = neighbors[ni + 1];
+                // Prefetch next neighbor's vector (co-located data if available)
+                if ni + 1 < n_neighbors {
+                    let next_nid = unsafe { *neighbors.get_unchecked(ni + 1) };
                     if !visited.is_visited(next_nid) {
                         prefetch_vector(vectors.get(next_nid).as_ptr());
                     }
                 }
 
-                let dist = compute_distance(query, vectors.get(nid), metric);
+                // Direct function pointer call — no match dispatch
+                let dist = (dist_fn)(query, vectors.get(nid));
 
                 if dist < worst_dist || results.len() < ef {
                     candidates.push(MinCand(Candidate { id: nid, dist }));
@@ -307,7 +317,8 @@ impl FastHNSW {
         layer: usize,
         metric: DistanceMetric,
     ) -> Vec<Candidate> {
-        let entry_dist = compute_distance(query, vectors.get(entry_id), metric);
+        let dist_fn = get_distance_fn(metric);
+        let entry_dist = (dist_fn)(query, vectors.get(entry_id));
 
         let mut candidates = BinaryHeap::new();
         candidates.push(MinCand(Candidate { id: entry_id, dist: entry_dist }));
@@ -339,7 +350,7 @@ impl FastHNSW {
                     }
                 }
 
-                let dist = compute_distance(query, vectors.get(nid), metric);
+                let dist = (dist_fn)(query, vectors.get(nid));
 
                 // ALWAYS add to candidates (for graph traversal)
                 if dist < worst_dist || results.len() < ef {
@@ -943,6 +954,7 @@ impl FastHNSW {
         let graph = self.graph.read();
         let alive = self.alive.read();
         let entry_level = *self.entry_level.read();
+        let dist_fn = self.dist_fn;
 
         // Navigate upper layers greedily
         let mut current = ep;
@@ -952,8 +964,8 @@ impl FastHNSW {
                 changed = false;
                 for &nid in graph.get_neighbors(current, lc) {
                     if !alive[nid] { continue; }
-                    if compute_distance(query, vectors.get(nid), self.metric)
-                        < compute_distance(query, vectors.get(current), self.metric)
+                    if (dist_fn)(query, vectors.get(nid))
+                        < (dist_fn)(query, vectors.get(current))
                     {
                         current = nid;
                         changed = true;
@@ -995,6 +1007,7 @@ impl FastHNSW {
         let graph = self.graph.read();
         let alive = self.alive.read();
         let entry_level = *self.entry_level.read();
+        let dist_fn = self.dist_fn;
 
         let mut current = ep;
         for lc in (1..=entry_level).rev() {
@@ -1003,8 +1016,8 @@ impl FastHNSW {
                 changed = false;
                 for &nid in graph.get_neighbors(current, lc) {
                     if !alive[nid] { continue; }
-                    if compute_distance(query, vectors.get(nid), self.metric)
-                        < compute_distance(query, vectors.get(current), self.metric)
+                    if (dist_fn)(query, vectors.get(nid))
+                        < (dist_fn)(query, vectors.get(current))
                     {
                         current = nid;
                         changed = true;
@@ -1038,9 +1051,9 @@ impl FastHNSW {
         let alive = self.alive.read();
         let entry_level = *self.entry_level.read();
         let metric = self.metric;
+        let dist_fn = self.dist_fn;
 
         queries.par_iter().map(|query| {
-            // Navigate upper layers
             let mut current = ep;
             for lc in (1..=entry_level).rev() {
                 let mut changed = true;
@@ -1048,8 +1061,8 @@ impl FastHNSW {
                     changed = false;
                     for &nid in graph.get_neighbors(current, lc) {
                         if !alive[nid] { continue; }
-                        if compute_distance(query, vectors.get(nid), metric)
-                            < compute_distance(query, vectors.get(current), metric)
+                        if (dist_fn)(query, vectors.get(nid))
+                            < (dist_fn)(query, vectors.get(current))
                         {
                             current = nid;
                             changed = true;
