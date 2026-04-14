@@ -115,7 +115,11 @@ def main():
     ef_sweep = [int(x) for x in args.ef_search_sweep.split(",")]
     datasets = list(DATASETS.keys()) if args.dataset == "all" else [args.dataset]
 
-    from rust_hnsw import RustFastHNSWIndex, RustHNSWIndex
+    from rust_hnsw import RustFastHNSWIndex
+    try:
+        from rust_hnsw import RustHNSWIndex
+    except ImportError:
+        RustHNSWIndex = None
 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
@@ -134,8 +138,8 @@ def main():
         )
         all_results.append(fast_result)
 
-        # OldHNSW (skip if --fast-only)
-        if not args.fast_only:
+        # OldHNSW (skip if --fast-only or not available)
+        if not args.fast_only and RustHNSWIndex is not None:
             old_result = benchmark_index(
                 RustHNSWIndex, "OldHNSW", train, test, gt,
                 args.M, args.ef_construction, ef_sweep,
