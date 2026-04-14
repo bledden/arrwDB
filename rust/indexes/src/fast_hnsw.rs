@@ -918,6 +918,14 @@ impl RustFastHNSWIndex {
         Ok(())
     }
 
+    /// Save the vector data to a file for disk-based access.
+    /// The graph structure stays in RAM; vector data can be memory-mapped on reload.
+    fn save_vectors(&self, path: String) -> PyResult<()> {
+        let vectors = self.inner.vectors.read();
+        vectors.save_to_file(std::path::Path::new(&path))
+            .map_err(|e| pyo3::exceptions::PyIOError::new_err(format!("Save failed: {}", e)))
+    }
+
     fn get_statistics<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
         let stats = PyDict::new(py);
         let size = self.inner.len();

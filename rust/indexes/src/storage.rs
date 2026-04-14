@@ -62,6 +62,76 @@ impl VectorStorage {
     pub fn clear(&mut self) {
         self.count = 0;
     }
+
+    /// Save vector data to a file for memory-mapped access.
+    pub fn save_to_file(&self, path: &std::path::Path) -> std::io::Result<()> {
+        use std::io::Write;
+        let mut file = std::fs::File::create(path)?;
+        // Header: dim (8 bytes) + count (8 bytes)
+        file.write_all(&(self.dim as u64).to_le_bytes())?;
+        file.write_all(&(self.count as u64).to_le_bytes())?;
+        // Vector data as raw f32 bytes
+        let byte_slice = unsafe {
+            std::slice::from_raw_parts(
+                self.data.as_ptr() as *const u8,
+                self.count * self.dim * std::mem::size_of::<f32>(),
+            )
+        };
+        file.write_all(byte_slice)?;
+        file.flush()?;
+        Ok(())
+    }
+
+    /// Load from a memory-mapped file. Returns a MmapVectorStorage
+    /// that can be used in place of VectorStorage for read-only search.
+    pub fn load_mmap(path: &std::path::Path) -> std::io::Result<MmapVectorStorage> {
+        MmapVectorStorage::open(path)
+    }
+}
+
+/// Memory-mapped vector storage for disk-based access.
+/// Vectors are read directly from disk via OS page cache — no RAM allocation
+/// needed for the vector data itself. The OS transparently pages data in/out.
+///
+/// Read-only after creation. For writes, use VectorStorage then save_to_file().
+pub struct MmapVectorStorage {
+    mmap: memmap2::Mmap,
+    dim: usize,
+    count: usize,
+}
+
+impl MmapVectorStorage {
+    /// Open a memory-mapped vector file created by VectorStorage::save_to_file().
+    pub fn open(path: &std::path::Path) -> std::io::Result<Self> {
+        let file = std::fs::File::open(path)?;
+        let mmap = unsafe { memmap2::MmapOptions::new().map(&file)? };
+
+        // Read header
+        let dim = u64::from_le_bytes(mmap[0..8].try_into().unwrap()) as usize;
+        let count = u64::from_le_bytes(mmap[8..16].try_into().unwrap()) as usize;
+
+        Ok(Self { mmap, dim, count })
+    }
+
+    /// Get vector by index — zero-copy from mmap. O(1).
+    #[inline(always)]
+    pub fn get(&self, idx: usize) -> &[f32] {
+        let header_size = 16; // 8 bytes dim + 8 bytes count
+        let byte_offset = header_size + idx * self.dim * std::mem::size_of::<f32>();
+        let byte_len = self.dim * std::mem::size_of::<f32>();
+        let bytes = &self.mmap[byte_offset..byte_offset + byte_len];
+        unsafe { std::slice::from_raw_parts(bytes.as_ptr() as *const f32, self.dim) }
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.count
+    }
+
+    #[inline]
+    pub fn dim(&self) -> usize {
+        self.dim
+    }
 }
 
 /// Graph storage: flat arrays of neighbor lists per layer.
