@@ -52,6 +52,10 @@ opentelemetry-instrumentation-requests>=0.42b0
 opentelemetry-exporter-otlp>=1.21.0
 sentry-sdk[fastapi]>=1.38.0
 
+# gRPC
+grpcio>=1.60.0
+grpcio-tools>=1.60.0
+
 # SDK Dependencies
 requests>=2.31.0
 python-dotenv>=1.0.0
