@@ -1,0 +1,36 @@
+2026-04-13 21:22:34,665 - INFO - 
+============================================================
+2026-04-13 21:22:34,665 - INFO - Dataset: sift-128-euclidean
+2026-04-13 21:22:34,665 - INFO - ============================================================
+2026-04-13 21:22:34,684 - INFO - Dataset sift-128-euclidean already cached (501 MB): /home/bledden/.cache/arrwdb_bench/ann/sift-128-euclidean.hdf5
+2026-04-13 21:22:35,292 - INFO - Loaded sift-128-euclidean: 1000000 train, 10000 test, dim=128, gt_k=100
+2026-04-13 21:22:35,292 - INFO - [FastHNSW] Building: 1000000 vectors, dim=128, M=48, ef_construction=400
+2026-04-13 21:26:54,729 - INFO -   [FastHNSW] 50000/1000000 (193 vec/s, ETA 4929s)
+2026-04-13 21:32:21,888 - INFO -   [FastHNSW] 100000/1000000 (170 vec/s, ETA 5279s)
+2026-04-13 21:38:33,541 - INFO -   [FastHNSW] 150000/1000000 (157 vec/s, ETA 5430s)
+2026-04-13 21:45:48,743 - INFO -   [FastHNSW] 200000/1000000 (144 vec/s, ETA 5574s)
+2026-04-13 21:53:03,672 - INFO -   [FastHNSW] 250000/1000000 (137 vec/s, ETA 5485s)
+2026-04-13 22:00:39,398 - INFO -   [FastHNSW] 300000/1000000 (131 vec/s, ETA 5330s)
+2026-04-13 22:08:21,129 - INFO -   [FastHNSW] 350000/1000000 (127 vec/s, ETA 5099s)
+2026-04-13 22:16:33,877 - INFO -   [FastHNSW] 400000/1000000 (124 vec/s, ETA 4858s)
+2026-04-13 22:24:19,293 - INFO -   [FastHNSW] 450000/1000000 (121 vec/s, ETA 4527s)
+2026-04-13 22:32:46,185 - INFO -   [FastHNSW] 500000/1000000 (119 vec/s, ETA 4211s)
+2026-04-13 22:41:27,676 - INFO -   [FastHNSW] 550000/1000000 (116 vec/s, ETA 3872s)
+2026-04-13 22:49:54,903 - INFO -   [FastHNSW] 600000/1000000 (115 vec/s, ETA 3493s)
+2026-04-13 22:57:59,652 - INFO -   [FastHNSW] 650000/1000000 (114 vec/s, ETA 3082s)
+2026-04-13 23:06:29,132 - INFO -   [FastHNSW] 700000/1000000 (112 vec/s, ETA 2672s)
+2026-04-13 23:15:55,353 - INFO -   [FastHNSW] 750000/1000000 (110 vec/s, ETA 2267s)
+2026-04-13 23:24:20,149 - INFO -   [FastHNSW] 800000/1000000 (110 vec/s, ETA 1826s)
+2026-04-13 23:33:08,449 - INFO -   [FastHNSW] 850000/1000000 (109 vec/s, ETA 1382s)
+2026-04-13 23:41:49,966 - INFO -   [FastHNSW] 900000/1000000 (108 vec/s, ETA 928s)
+2026-04-13 23:51:07,374 - INFO -   [FastHNSW] 950000/1000000 (107 vec/s, ETA 469s)
+2026-04-14 00:00:08,725 - INFO -   [FastHNSW] 1000000/1000000 (106 vec/s, ETA 0s)
+2026-04-14 00:00:08,725 - INFO - [FastHNSW] Build: 9453.4s (106 vec/s)
+2026-04-14 00:00:12,537 - INFO -   [FastHNSW] ef=10: recall@10=0.8893 QPS=2678 p50=0.37ms
+2026-04-14 00:00:17,946 - INFO -   [FastHNSW] ef=20: recall@10=0.9462 QPS=1874 p50=0.55ms
+2026-04-14 00:00:27,569 - INFO -   [FastHNSW] ef=50: recall@10=0.9806 QPS=1048 p50=1.00ms
+2026-04-14 00:00:43,082 - INFO -   [FastHNSW] ef=100: recall@10=0.9915 QPS=648 p50=1.62ms
+2026-04-14 00:01:09,213 - INFO -   [FastHNSW] ef=200: recall@10=0.9922 QPS=384 p50=2.71ms
+2026-04-14 00:01:54,036 - INFO -   [FastHNSW] ef=400: recall@10=0.9922 QPS=224 p50=4.61ms
+2026-04-14 00:03:08,132 - INFO -   [FastHNSW] ef=800: recall@10=0.9922 QPS=135 p50=7.59ms
+2026-04-14 00:03:08,862 - INFO - Saved: /tmp/fast_hnsw_results/sift-128-euclidean_fast_vs_old.json
