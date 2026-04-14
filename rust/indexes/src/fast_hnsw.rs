@@ -914,11 +914,10 @@ impl FastHNSW {
         *self.entry_point.write() = Some(entry);
         *self.entry_level.write() = entry_level;
 
-        // Auto-optimize: build co-located storage for search
-        drop(graph);
-        drop(vectors);
-        drop(alive);
-        self.optimize();
+        // Co-located auto-optimize disabled: stride too large at 128d+ for
+        // prefetcher benefit. Separate contiguous VectorStorage with hardware
+        // sequential prefetching outperforms co-located at typical embedding dims.
+        // Co-located would help at dim <= 32 where entire node fits in 1-2 cache lines.
     }
 
     /// Build co-located layer-0 storage for optimized search.
