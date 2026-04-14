@@ -18,6 +18,58 @@ use rand::Rng;
 use rayon::prelude::*;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
+use std::cell::RefCell;
+
+// -------------------------------------------------------------------------
+// Visited list with generation counter (hnswlib technique)
+// O(1) reset by incrementing generation. No allocation per query.
+// Full memset only every 65,535 searches.
+// -------------------------------------------------------------------------
+
+struct VisitedList {
+    generation: u16,
+    marks: Vec<u16>,
+}
+
+impl VisitedList {
+    fn new(capacity: usize) -> Self {
+        Self {
+            generation: 1,
+            marks: vec![0u16; capacity],
+        }
+    }
+
+    fn ensure_capacity(&mut self, capacity: usize) {
+        if self.marks.len() < capacity {
+            self.marks.resize(capacity, 0);
+        }
+    }
+
+    /// O(1) reset — just bump the generation counter.
+    /// Full memset only on u16 overflow (every 65,535 resets).
+    fn reset(&mut self) {
+        self.generation = self.generation.wrapping_add(1);
+        if self.generation == 0 {
+            self.marks.fill(0);
+            self.generation = 1;
+        }
+    }
+
+    #[inline(always)]
+    fn is_visited(&self, id: usize) -> bool {
+        unsafe { *self.marks.get_unchecked(id) == self.generation }
+    }
+
+    #[inline(always)]
+    fn mark_visited(&mut self, id: usize) {
+        unsafe { *self.marks.get_unchecked_mut(id) = self.generation; }
+    }
+}
+
+// Thread-local visited list pool — zero allocation in the search hot path
+thread_local! {
+    static VISITED_LIST: RefCell<VisitedList> = RefCell::new(VisitedList::new(0));
+}
 
 // -------------------------------------------------------------------------
 // Candidate types for BinaryHeap
@@ -138,8 +190,30 @@ impl FastHNSW {
         metric: DistanceMetric,
     ) -> Vec<Candidate> {
         let n = graph.len();
-        let mut visited = vec![false; n];
-        visited[entry_id] = true;
+
+        // Use thread-local visited list with generation counter.
+        // O(1) reset, zero allocation per query.
+        VISITED_LIST.with(|vl| {
+            let mut visited = vl.borrow_mut();
+            visited.ensure_capacity(n);
+            visited.reset();
+            visited.mark_visited(entry_id);
+            Self::_search_layer_inner(vectors, graph, alive, &mut visited, query, entry_id, ef, layer, metric)
+        })
+    }
+
+    /// Inner search loop factored out so the visited list borrow is clear.
+    fn _search_layer_inner(
+        vectors: &VectorStore,
+        graph: &GraphStorage,
+        alive: &[bool],
+        visited: &mut VisitedList,
+        query: &[f32],
+        entry_id: usize,
+        ef: usize,
+        layer: usize,
+        metric: DistanceMetric,
+    ) -> Vec<Candidate> {
 
         let entry_dist = compute_distance(query, vectors.get(entry_id), metric);
 
@@ -157,15 +231,15 @@ impl FastHNSW {
             // have their neighbors checked.
             let neighbors = graph.get_neighbors(current.id, layer);
             for (ni, &nid) in neighbors.iter().enumerate() {
-                if visited[nid] || !alive[nid] {
+                if visited.is_visited(nid) || !alive[nid] {
                     continue;
                 }
-                visited[nid] = true;
+                visited.mark_visited(nid);
 
                 // Prefetch the NEXT neighbor's vector while computing this one
                 if ni + 1 < neighbors.len() {
                     let next_nid = neighbors[ni + 1];
-                    if !visited[next_nid] {
+                    if !visited.is_visited(next_nid) {
                         prefetch_vector(vectors.get(next_nid).as_ptr());
                     }
                 }
@@ -207,16 +281,34 @@ impl FastHNSW {
         metric: DistanceMetric,
     ) -> Vec<Candidate> {
         let n = graph.len();
-        let mut visited = vec![false; n];
-        visited[entry_id] = true;
 
+        VISITED_LIST.with(|vl| {
+            let mut visited = vl.borrow_mut();
+            visited.ensure_capacity(n);
+            visited.reset();
+            visited.mark_visited(entry_id);
+            Self::_search_layer_filtered_inner(vectors, graph, alive, allowed, &mut visited, query, entry_id, ef, layer, metric)
+        })
+    }
+
+    fn _search_layer_filtered_inner(
+        vectors: &VectorStore,
+        graph: &GraphStorage,
+        alive: &[bool],
+        allowed: &[bool],
+        visited: &mut VisitedList,
+        query: &[f32],
+        entry_id: usize,
+        ef: usize,
+        layer: usize,
+        metric: DistanceMetric,
+    ) -> Vec<Candidate> {
         let entry_dist = compute_distance(query, vectors.get(entry_id), metric);
 
         let mut candidates = BinaryHeap::new();
         candidates.push(MinCand(Candidate { id: entry_id, dist: entry_dist }));
 
         let mut results = BinaryHeap::new();
-        // Only add entry to results if it passes the filter
         if entry_id < allowed.len() && allowed[entry_id] {
             results.push(MaxCand(Candidate { id: entry_id, dist: entry_dist }));
         }
@@ -231,14 +323,14 @@ impl FastHNSW {
 
             let neighbors = graph.get_neighbors(current.id, layer);
             for (ni, &nid) in neighbors.iter().enumerate() {
-                if visited[nid] || !alive[nid] {
+                if visited.is_visited(nid) || !alive[nid] {
                     continue;
                 }
-                visited[nid] = true;
+                visited.mark_visited(nid);
 
                 if ni + 1 < neighbors.len() {
                     let next_nid = neighbors[ni + 1];
-                    if !visited[next_nid] {
+                    if !visited.is_visited(next_nid) {
                         prefetch_vector(vectors.get(next_nid).as_ptr());
                     }
                 }
