@@ -3,6 +3,7 @@ use pyo3::prelude::*;
 mod distance;
 mod storage;
 mod fast_hnsw;
+mod bm25;
 mod brute_force;
 mod lsh;
 mod kd_tree;
@@ -29,6 +30,7 @@ fn rust_hnsw(m: &Bound<'_, PyModule>) -> PyResult<()> {
     #[cfg(feature = "legacy_hnsw")]
     m.add_class::<legacy_hnsw::RustHNSWIndex>()?;
 
+    m.add_class::<bm25::RustBM25Index>()?;
     m.add_class::<RustBruteForceIndex>()?;
     m.add_class::<RustLSHIndex>()?;
     m.add_class::<RustKDTreeIndex>()?;
