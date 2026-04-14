@@ -47,12 +47,10 @@ def benchmark_index(IndexClass, name, train, test, ground_truth, M, ef_construct
     build_time = time.time() - build_start
     logger.info(f"[{name}] Build: {build_time:.1f}s ({n/build_time:.0f} vec/s)")
 
-    # Optimize: build co-located storage for faster search
-    if hasattr(idx, 'optimize'):
-        opt_start = time.time()
-        idx.optimize()
-        opt_time = time.time() - opt_start
-        logger.info(f"[{name}] Optimize: {opt_time:.1f}s (co-located storage built)")
+    # Co-located optimize disabled — regressed QPS at 1M scale.
+    # The SIMD-only path is faster until co-location is properly integrated.
+    # if hasattr(idx, 'optimize'):
+    #     idx.optimize()
 
     # Sweep ef_search
     points = []
