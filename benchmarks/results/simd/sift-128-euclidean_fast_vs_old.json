@@ -1,0 +1,62 @@
+[
+  {
+    "implementation": "FastHNSW",
+    "num_vectors": 1000000,
+    "dimension": 128,
+    "M": 48,
+    "ef_construction": 400,
+    "build_time_sec": 3912.419717311859,
+    "build_throughput_vec_per_sec": 255.5962990307898,
+    "points": [
+      {
+        "ef_search": 10,
+        "recall_at_10": 0.8895,
+        "recall_at_1": 0.9487,
+        "search_qps": 5039.35918030443,
+        "search_latency_p50_ms": 0.1976490020751953
+      },
+      {
+        "ef_search": 20,
+        "recall_at_10": 0.94757,
+        "recall_at_1": 0.9849,
+        "search_qps": 3603.8422043948735,
+        "search_latency_p50_ms": 0.2818107604980469
+      },
+      {
+        "ef_search": 50,
+        "recall_at_10": 0.98095,
+        "recall_at_1": 0.9975,
+        "search_qps": 2049.3423792977674,
+        "search_latency_p50_ms": 0.5054473876953125
+      },
+      {
+        "ef_search": 100,
+        "recall_at_10": 0.9917100000000001,
+        "recall_at_1": 0.9995,
+        "search_qps": 1238.7378347646452,
+        "search_latency_p50_ms": 0.8405447006225586
+      },
+      {
+        "ef_search": 200,
+        "recall_at_10": 0.9921700000000001,
+        "recall_at_1": 1.0,
+        "search_qps": 724.6340781072313,
+        "search_latency_p50_ms": 1.4314651489257812
+      },
+      {
+        "ef_search": 400,
+        "recall_at_10": 0.9922700000000001,
+        "recall_at_1": 1.0,
+        "search_qps": 408.20163831736255,
+        "search_latency_p50_ms": 2.52532958984375
+      },
+      {
+        "ef_search": 800,
+        "recall_at_10": 0.9922200000000001,
+        "recall_at_1": 1.0,
+        "search_qps": 245.89153612334806,
+        "search_latency_p50_ms": 4.168033599853516
+      }
+    ]
+  }
+]
