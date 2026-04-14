@@ -26,7 +26,7 @@ use std::cell::RefCell;
 // Full memset only every 65,535 searches.
 // -------------------------------------------------------------------------
 
-struct VisitedList {
+pub struct VisitedList {
     generation: u16,
     marks: Vec<u16>,
 }
@@ -39,7 +39,7 @@ impl VisitedList {
         }
     }
 
-    fn ensure_capacity(&mut self, capacity: usize) {
+    pub fn ensure_capacity(&mut self, capacity: usize) {
         if self.marks.len() < capacity {
             self.marks.resize(capacity, 0);
         }
@@ -47,7 +47,7 @@ impl VisitedList {
 
     /// O(1) reset — just bump the generation counter.
     /// Full memset only on u16 overflow (every 65,535 resets).
-    fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.generation = self.generation.wrapping_add(1);
         if self.generation == 0 {
             self.marks.fill(0);
@@ -56,12 +56,12 @@ impl VisitedList {
     }
 
     #[inline(always)]
-    fn is_visited(&self, id: usize) -> bool {
+    pub fn is_visited(&self, id: usize) -> bool {
         unsafe { *self.marks.get_unchecked(id) == self.generation }
     }
 
     #[inline(always)]
-    fn mark_visited(&mut self, id: usize) {
+    pub fn mark_visited(&mut self, id: usize) {
         unsafe { *self.marks.get_unchecked_mut(id) = self.generation; }
     }
 }
@@ -76,13 +76,13 @@ thread_local! {
 // -------------------------------------------------------------------------
 
 #[derive(Clone)]
-struct Candidate {
-    id: usize,
-    dist: f32,
+pub struct Candidate {
+    pub id: usize,
+    pub dist: f32,
 }
 
 /// Min-heap wrapper (smallest distance = highest priority).
-struct MinCand(Candidate);
+pub struct MinCand(pub Candidate);
 
 impl PartialEq for MinCand {
     fn eq(&self, other: &Self) -> bool { self.0.dist == other.0.dist }
@@ -98,7 +98,7 @@ impl Ord for MinCand {
 }
 
 /// Max-heap wrapper (largest distance = highest priority).
-struct MaxCand(Candidate);
+pub struct MaxCand(pub Candidate);
 
 impl PartialEq for MaxCand {
     fn eq(&self, other: &Self) -> bool { self.0.dist == other.0.dist }

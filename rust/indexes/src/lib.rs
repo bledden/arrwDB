@@ -3,6 +3,7 @@ use pyo3::prelude::*;
 mod distance;
 mod storage;
 mod fast_hnsw;
+mod fast_search;
 mod bm25;
 mod sparse;
 mod multi_vector;

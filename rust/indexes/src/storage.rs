@@ -209,6 +209,185 @@ impl VectorStore {
     }
 }
 
+// -------------------------------------------------------------------------
+// Co-located node storage: neighbors + vector in same cache lines
+// This is the hnswlib technique that gives 1.4-1.6x speedup.
+// -------------------------------------------------------------------------
+
+/// Co-located storage for layer-0: each node's neighbor list and vector data
+/// are adjacent in a single contiguous byte array. Prefetching a neighbor
+/// brings in both its neighbor list AND vector data.
+///
+/// Memory layout per node (at offset `id * stride`):
+///   [neighbor_count: u16][neighbors: u32 * m_max0][vector: f32 * dim]
+///
+/// For M=16 (m_max0=32), dim=128: stride = 2 + 128 + 512 = 642 bytes
+pub struct ColocatedStore {
+    data: Vec<u8>,
+    stride: usize,
+    dim: usize,
+    m_max0: usize,
+    count: usize,
+    /// Offset from node start to neighbor data
+    neighbors_offset: usize,
+    /// Offset from node start to vector data
+    vector_offset: usize,
+}
+
+impl ColocatedStore {
+    pub fn new(dim: usize, m_max0: usize, capacity: usize) -> Self {
+        let neighbors_offset = 2; // u16 count
+        let vector_offset = neighbors_offset + m_max0 * 4; // u32 per neighbor
+        let stride = vector_offset + dim * 4; // f32 per dimension
+        Self {
+            data: vec![0u8; stride * capacity],
+            stride,
+            dim,
+            m_max0,
+            count: 0,
+            neighbors_offset,
+            vector_offset,
+        }
+    }
+
+    /// Add a node with its vector. Returns its index.
+    pub fn add(&mut self, vector: &[f32]) -> usize {
+        debug_assert_eq!(vector.len(), self.dim);
+        let idx = self.count;
+        let needed = (idx + 1) * self.stride;
+        if needed > self.data.len() {
+            let new_cap = (self.data.len() / self.stride * 3 / 2 + 1) * self.stride;
+            self.data.resize(new_cap.max(needed), 0u8);
+        }
+        // Write vector data
+        let vec_start = idx * self.stride + self.vector_offset;
+        let vec_bytes = unsafe {
+            std::slice::from_raw_parts(vector.as_ptr() as *const u8, self.dim * 4)
+        };
+        self.data[vec_start..vec_start + self.dim * 4].copy_from_slice(vec_bytes);
+        // Neighbor count starts at 0
+        self.set_neighbor_count(idx, 0);
+        self.count += 1;
+        idx
+    }
+
+    /// Get vector by index — zero-copy slice from co-located data.
+    #[inline(always)]
+    pub fn get_vector(&self, idx: usize) -> &[f32] {
+        let start = idx * self.stride + self.vector_offset;
+        unsafe {
+            std::slice::from_raw_parts(
+                self.data.as_ptr().add(start) as *const f32,
+                self.dim,
+            )
+        }
+    }
+
+    /// Overwrite vector at index.
+    pub fn set_vector(&mut self, idx: usize, vector: &[f32]) {
+        let start = idx * self.stride + self.vector_offset;
+        let bytes = unsafe {
+            std::slice::from_raw_parts(vector.as_ptr() as *const u8, self.dim * 4)
+        };
+        self.data[start..start + self.dim * 4].copy_from_slice(bytes);
+    }
+
+    /// Get neighbor count for a node.
+    #[inline(always)]
+    pub fn neighbor_count(&self, idx: usize) -> usize {
+        let offset = idx * self.stride;
+        u16::from_le_bytes([self.data[offset], self.data[offset + 1]]) as usize
+    }
+
+    /// Set neighbor count.
+    fn set_neighbor_count(&mut self, idx: usize, count: usize) {
+        let offset = idx * self.stride;
+        let bytes = (count as u16).to_le_bytes();
+        self.data[offset] = bytes[0];
+        self.data[offset + 1] = bytes[1];
+    }
+
+    /// Get layer-0 neighbors as u32 slice.
+    #[inline(always)]
+    pub fn get_neighbors(&self, idx: usize) -> &[u32] {
+        let count = self.neighbor_count(idx);
+        let start = idx * self.stride + self.neighbors_offset;
+        unsafe {
+            std::slice::from_raw_parts(
+                self.data.as_ptr().add(start) as *const u32,
+                count,
+            )
+        }
+    }
+
+    /// Set layer-0 neighbors.
+    pub fn set_neighbors(&mut self, idx: usize, neighbors: &[u32]) {
+        debug_assert!(neighbors.len() <= self.m_max0);
+        self.set_neighbor_count(idx, neighbors.len());
+        let start = idx * self.stride + self.neighbors_offset;
+        let bytes = unsafe {
+            std::slice::from_raw_parts(
+                neighbors.as_ptr() as *const u8,
+                neighbors.len() * 4,
+            )
+        };
+        self.data[start..start + bytes.len()].copy_from_slice(bytes);
+    }
+
+    /// Push a neighbor to a node's list.
+    pub fn push_neighbor(&mut self, idx: usize, neighbor: u32) {
+        let count = self.neighbor_count(idx);
+        debug_assert!(count < self.m_max0);
+        let start = idx * self.stride + self.neighbors_offset + count * 4;
+        let bytes = neighbor.to_le_bytes();
+        self.data[start..start + 4].copy_from_slice(&bytes);
+        self.set_neighbor_count(idx, count + 1);
+    }
+
+    /// Remove a specific neighbor from a node's list.
+    pub fn remove_neighbor(&mut self, idx: usize, neighbor: u32) {
+        let count = self.neighbor_count(idx);
+        let start = idx * self.stride + self.neighbors_offset;
+        let mut new_count = 0;
+        for i in 0..count {
+            let offset = start + i * 4;
+            let nid = u32::from_le_bytes([
+                self.data[offset], self.data[offset + 1],
+                self.data[offset + 2], self.data[offset + 3],
+            ]);
+            if nid != neighbor {
+                if new_count != i {
+                    // Shift left
+                    let dst = start + new_count * 4;
+                    self.data.copy_within(offset..offset + 4, dst);
+                }
+                new_count += 1;
+            }
+        }
+        self.set_neighbor_count(idx, new_count);
+    }
+
+    /// Get raw pointer to a node's data (for prefetching).
+    #[inline(always)]
+    pub fn node_ptr(&self, idx: usize) -> *const u8 {
+        unsafe { self.data.as_ptr().add(idx * self.stride) }
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.count
+    }
+
+    #[inline]
+    pub fn dim(&self) -> usize {
+        self.dim
+    }
+
+    pub fn clear(&mut self) {
+        self.count = 0;
+    }
+}
+
 /// Graph storage: flat arrays of neighbor lists per layer.
 pub struct GraphStorage {
     /// neighbors[node_id].layers[layer] = Vec<usize> of neighbor indices

@@ -179,6 +179,43 @@ pub fn hamming_distance(a: &[f32], b: &[f32]) -> f32 {
     count as f32
 }
 
+/// Batch-4 dot product: compute 4 distances simultaneously.
+/// The query vector is loaded once and broadcast across 4 candidate vectors.
+/// This saves 3 * dim loads compared to 4 individual dot products.
+/// (FAISS technique from distances_autovec-inl.h)
+#[inline(always)]
+pub fn dot_product_batch4(
+    query: &[f32],
+    v0: &[f32], v1: &[f32], v2: &[f32], v3: &[f32],
+) -> (f32, f32, f32, f32) {
+    let n = query.len();
+    let mut s0: f32 = 0.0;
+    let mut s1: f32 = 0.0;
+    let mut s2: f32 = 0.0;
+    let mut s3: f32 = 0.0;
+
+    for i in 0..n {
+        unsafe {
+            let q = *query.get_unchecked(i);
+            s0 += q * *v0.get_unchecked(i);
+            s1 += q * *v1.get_unchecked(i);
+            s2 += q * *v2.get_unchecked(i);
+            s3 += q * *v3.get_unchecked(i);
+        }
+    }
+    (s0, s1, s2, s3)
+}
+
+/// Compute 4 cosine distances simultaneously.
+#[inline(always)]
+pub fn cosine_distance_batch4(
+    query: &[f32],
+    v0: &[f32], v1: &[f32], v2: &[f32], v3: &[f32],
+) -> (f32, f32, f32, f32) {
+    let (d0, d1, d2, d3) = dot_product_batch4(query, v0, v1, v2, v3);
+    (1.0 - d0, 1.0 - d1, 1.0 - d2, 1.0 - d3)
+}
+
 // Also add prefetch hint for the next vector during graph traversal
 // (called before compute_distance to warm the cache)
 #[inline(always)]
