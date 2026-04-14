@@ -35,22 +35,22 @@ def benchmark_index(IndexClass, name, train, test, ground_truth, M, ef_construct
 
     idx = IndexClass(dimension=dim, m=M, ef_construction=ef_construction, ef_search=50)
 
-    # Build
+    # Build — use build_bulk if available (lock-free, much faster)
+    ids = [f"v{i}" for i in range(n)]
     build_start = time.time()
-    for i in range(n):
-        idx.add_vector(f"v{i}", train[i])
-        if (i + 1) % (n // 20) == 0:
-            elapsed = time.time() - build_start
-            rate = (i + 1) / elapsed
-            logger.info(f"  [{name}] {i+1}/{n} ({rate:.0f} vec/s, ETA {(n-i-1)/rate:.0f}s)")
+    if hasattr(idx, 'build_bulk'):
+        logger.info(f"  [{name}] Using build_bulk (lock-free)")
+        idx.build_bulk(ids, train.ravel())
+    else:
+        for i in range(n):
+            idx.add_vector(f"v{i}", train[i])
+            if (i + 1) % (n // 20) == 0:
+                elapsed = time.time() - build_start
+                rate = (i + 1) / elapsed
+                logger.info(f"  [{name}] {i+1}/{n} ({rate:.0f} vec/s, ETA {(n-i-1)/rate:.0f}s)")
 
     build_time = time.time() - build_start
     logger.info(f"[{name}] Build: {build_time:.1f}s ({n/build_time:.0f} vec/s)")
-
-    # Co-located optimize disabled — regressed QPS at 1M scale.
-    # The SIMD-only path is faster until co-location is properly integrated.
-    # if hasattr(idx, 'optimize'):
-    #     idx.optimize()
 
     # Sweep ef_search
     points = []
