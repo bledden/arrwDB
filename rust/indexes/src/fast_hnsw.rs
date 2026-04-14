@@ -11,8 +11,8 @@
 /// - rebuild from scratch
 /// - batch_search with rayon
 
-use crate::distance::{compute_distance, DistanceMetric};
-use crate::storage::{GraphStorage, VectorStorage};
+use crate::distance::{compute_distance, prefetch_vector, DistanceMetric};
+use crate::storage::{GraphStorage, VectorStorage, VectorStore};
 use parking_lot::RwLock;
 use rand::Rng;
 use rayon::prelude::*;
@@ -75,7 +75,7 @@ pub struct FastHNSW {
     dim: usize,
     metric: DistanceMetric,
 
-    pub vectors: RwLock<VectorStorage>,
+    pub vectors: RwLock<VectorStore>,
     pub graph: RwLock<GraphStorage>,
     entry_point: RwLock<Option<usize>>,
     entry_level: RwLock<usize>,
@@ -102,7 +102,7 @@ impl FastHNSW {
             max_level,
             dim,
             metric,
-            vectors: RwLock::new(VectorStorage::new(dim, 1024)),
+            vectors: RwLock::new(VectorStore::InMemory(VectorStorage::new(dim, 1024))),
             graph: RwLock::new(GraphStorage::new(1024)),
             entry_point: RwLock::new(None),
             entry_level: RwLock::new(0),
@@ -128,7 +128,7 @@ impl FastHNSW {
 
     /// Search at a single layer. Takes direct references (no lock acquisition).
     fn search_layer(
-        vectors: &VectorStorage,
+        vectors: &VectorStore,
         graph: &GraphStorage,
         alive: &[bool],
         query: &[f32],
@@ -156,11 +156,19 @@ impl FastHNSW {
             // matches the original behavior that ensures border candidates
             // have their neighbors checked.
             let neighbors = graph.get_neighbors(current.id, layer);
-            for &nid in neighbors {
+            for (ni, &nid) in neighbors.iter().enumerate() {
                 if visited[nid] || !alive[nid] {
                     continue;
                 }
                 visited[nid] = true;
+
+                // Prefetch the NEXT neighbor's vector while computing this one
+                if ni + 1 < neighbors.len() {
+                    let next_nid = neighbors[ni + 1];
+                    if !visited[next_nid] {
+                        prefetch_vector(vectors.get(next_nid).as_ptr());
+                    }
+                }
 
                 let dist = compute_distance(query, vectors.get(nid), metric);
 
@@ -190,7 +198,7 @@ impl FastHNSW {
     // ---------------------------------------------------------------------
 
     fn select_neighbors_heuristic(
-        vectors: &VectorStorage,
+        vectors: &VectorStore,
         mut candidates: Vec<Candidate>,
         m: usize,
         metric: DistanceMetric,
@@ -242,7 +250,7 @@ impl FastHNSW {
     // ---------------------------------------------------------------------
 
     fn prune_connections(
-        vectors: &VectorStorage,
+        vectors: &VectorStore,
         graph: &mut GraphStorage,
         node_id: usize,
         layer: usize,
@@ -685,7 +693,7 @@ impl FastHNSW {
 
         // Reset everything
         *self.graph.write() = GraphStorage::new(live_vecs.len());
-        let mut new_vecs = VectorStorage::new(dim, live_vecs.len().max(1));
+        let mut new_vecs = VectorStore::InMemory(VectorStorage::new(dim, live_vecs.len().max(1)));
         let mut new_alive = Vec::new();
 
         *self.entry_point.write() = None;
@@ -733,7 +741,7 @@ impl FastHNSW {
     }
 
     pub fn clear(&mut self) {
-        *self.vectors.get_mut() = VectorStorage::new(self.dim, 1024);
+        *self.vectors.get_mut() = VectorStore::InMemory(VectorStorage::new(self.dim, 1024));
         *self.graph.get_mut() = GraphStorage::new(1024);
         *self.entry_point.get_mut() = None;
         *self.entry_level.get_mut() = 0;
@@ -787,8 +795,10 @@ impl RustFastHNSWIndex {
             "cosine" => DistanceMetric::Cosine,
             "l2" | "euclidean" => DistanceMetric::L2,
             "ip" | "inner_product" | "dot" => DistanceMetric::InnerProduct,
+            "manhattan" | "l1" => DistanceMetric::Manhattan,
+            "hamming" => DistanceMetric::Hamming,
             _ => return Err(pyo3::exceptions::PyValueError::new_err(
-                format!("Unknown metric '{}'. Use: cosine, l2, inner_product", metric)
+                format!("Unknown metric '{}'. Use: cosine, l2, inner_product, manhattan, hamming", metric)
             )),
         };
         Ok(Self {
@@ -1026,12 +1036,29 @@ impl RustFastHNSWIndex {
         Ok(())
     }
 
-    /// Save the vector data to a file for disk-based access.
-    /// The graph structure stays in RAM; vector data can be memory-mapped on reload.
-    fn save_vectors(&self, path: String) -> PyResult<()> {
-        let vectors = self.inner.vectors.read();
-        vectors.save_to_file(std::path::Path::new(&path))
-            .map_err(|e| pyo3::exceptions::PyIOError::new_err(format!("Save failed: {}", e)))
+    /// Save vector data to disk and switch to memory-mapped access.
+    /// After this call, vectors are read from disk via OS page cache.
+    /// The graph stays in RAM. Writes (add_vector) are disabled.
+    fn persist_to_disk(&self, path: String) -> PyResult<()> {
+        let mut vectors = self.inner.vectors.write();
+        let store = std::mem::replace(
+            &mut *vectors,
+            VectorStore::InMemory(VectorStorage::new(self.inner.dim, 0)),
+        );
+        match store.persist_and_mmap(std::path::Path::new(&path)) {
+            Ok(mmap_store) => {
+                *vectors = mmap_store;
+                Ok(())
+            }
+            Err(e) => Err(pyo3::exceptions::PyIOError::new_err(
+                format!("Persist failed: {}", e)
+            )),
+        }
+    }
+
+    /// Check if the index is using disk-backed storage.
+    fn is_disk_backed(&self) -> bool {
+        matches!(&*self.inner.vectors.read(), VectorStore::Mmap(_))
     }
 
     fn get_statistics<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {

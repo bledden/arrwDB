@@ -134,37 +134,78 @@ impl MmapVectorStorage {
     }
 }
 
-/// Trait for anything that can provide vector data by index.
-/// Both VectorStorage (RAM) and MmapVectorStorage (disk) implement this.
-pub trait VectorAccess: Send + Sync {
-    fn get(&self, idx: usize) -> &[f32];
-    fn len(&self) -> usize;
-    fn dim(&self) -> usize;
+/// Enum storage: either in-memory or memory-mapped from disk.
+/// No trait object indirection — the match is branch-predicted after first call.
+pub enum VectorStore {
+    InMemory(VectorStorage),
+    Mmap(MmapVectorStorage),
 }
 
-impl VectorAccess for VectorStorage {
+impl VectorStore {
     #[inline(always)]
-    fn get(&self, idx: usize) -> &[f32] {
-        self.get(idx)
+    pub fn get(&self, idx: usize) -> &[f32] {
+        match self {
+            VectorStore::InMemory(s) => s.get(idx),
+            VectorStore::Mmap(s) => s.get(idx),
+        }
     }
-    fn len(&self) -> usize {
-        self.len()
-    }
-    fn dim(&self) -> usize {
-        self.dim()
-    }
-}
 
-impl VectorAccess for MmapVectorStorage {
-    #[inline(always)]
-    fn get(&self, idx: usize) -> &[f32] {
-        self.get(idx)
+    #[inline]
+    pub fn len(&self) -> usize {
+        match self {
+            VectorStore::InMemory(s) => s.len(),
+            VectorStore::Mmap(s) => s.len(),
+        }
     }
-    fn len(&self) -> usize {
-        self.len()
+
+    #[inline]
+    pub fn dim(&self) -> usize {
+        match self {
+            VectorStore::InMemory(s) => s.dim(),
+            VectorStore::Mmap(s) => s.dim(),
+        }
     }
-    fn dim(&self) -> usize {
-        self.dim()
+
+    /// Add a vector (only works for in-memory mode).
+    pub fn add(&mut self, vector: &[f32]) -> usize {
+        match self {
+            VectorStore::InMemory(s) => s.add(vector),
+            VectorStore::Mmap(_) => panic!("Cannot add vectors to mmap storage (read-only)"),
+        }
+    }
+
+    /// Overwrite a vector (only works for in-memory mode).
+    pub fn set(&mut self, idx: usize, vector: &[f32]) {
+        match self {
+            VectorStore::InMemory(s) => s.set(idx, vector),
+            VectorStore::Mmap(_) => panic!("Cannot set vectors in mmap storage (read-only)"),
+        }
+    }
+
+    pub fn save_to_file(&self, path: &std::path::Path) -> std::io::Result<()> {
+        match self {
+            VectorStore::InMemory(s) => s.save_to_file(path),
+            VectorStore::Mmap(_) => Ok(()), // Already on disk
+        }
+    }
+
+    /// Convert from in-memory to disk-backed mmap.
+    pub fn persist_and_mmap(self, path: &std::path::Path) -> std::io::Result<Self> {
+        match &self {
+            VectorStore::InMemory(s) => {
+                s.save_to_file(path)?;
+                let mmap = MmapVectorStorage::open(path)?;
+                Ok(VectorStore::Mmap(mmap))
+            }
+            VectorStore::Mmap(_) => Ok(self), // Already mmap
+        }
+    }
+
+    pub fn clear(&mut self) {
+        match self {
+            VectorStore::InMemory(s) => s.clear(),
+            VectorStore::Mmap(_) => panic!("Cannot clear mmap storage"),
+        }
     }
 }
 
