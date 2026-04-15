@@ -6,13 +6,13 @@ Vector database with a Rust core, Python API, and GPU acceleration.
 
 Tested on standard ANN datasets (SIFT-1M, GloVe-1.2M, Deep-1M) used by ann-benchmarks.com.
 
-### CPU Search (FastHNSW, Rust)
+### CPU Search (FastHNSW, Rust, AVX2/FMA)
 
 | Dataset | Recall@10 | QPS | Build Time | Hardware |
 |---------|-----------|-----|------------|----------|
-| SIFT-1M (128d) | 0.992 | 648 | 2.6 hrs | n2-highmem-16 |
-| Deep-1M (96d) | 1.000 | 356 | 2.5 hrs | n2-highmem-16 |
-| GloVe-1.2M (200d) | 0.999 | 4 | 28.5 hrs | n2-highmem-16 |
+| SIFT-1M (128d) | 0.991 | 1,834 | 48 min | n2-highmem-16 |
+| Deep-1M (96d) | 0.997 | 2,226 | 44 min | n2-highmem-16 |
+| GloVe-1.2M (200d) | 0.920 | 485 | 3.4 hrs | n2-highmem-16 |
 | Voyage 4-large (1024d, 10K) | 1.000 | 148 | 5 min | n2-highmem-16 |
 
 ### GPU Search (CAGRA, NVIDIA L4)
@@ -27,15 +27,14 @@ Tested on standard ANN datasets (SIFT-1M, GloVe-1.2M, Deep-1M) used by ann-bench
 
 | System | QPS at 0.99 recall (SIFT-1M) | Notes |
 |--------|------------------------------|-------|
-| hnswlib (C++) | 2,755 | Reference HNSW |
-| arrwDB RaBitQ | 2,977 | 3.4x memory compression |
+| hnswlib (C++) | 2,755 | Reference HNSW, explicit SIMD |
 | arrwDB GPU CAGRA | 3,175 | NVIDIA L4 |
-| ScaNN (Google) | 2,743 | |
-| FAISS-HNSW | 1,787 | |
-| Weaviate | 913 | |
-| **arrwDB FastHNSW** | **648** | Pure Rust, CPU only |
-| Qdrant | 572 | |
-| pgvector | 19 | |
+| ScaNN (Google) | 2,743 | Quantized LUT |
+| **arrwDB CPU** | **1,834** | **Rust, AVX2/FMA intrinsics** |
+| FAISS-HNSW | 1,787 | C++, batch-4 |
+| Weaviate | 913 | Go |
+| Qdrant | 572 | Rust |
+| pgvector | 19 | PostgreSQL |
 
 ## Architecture
 
