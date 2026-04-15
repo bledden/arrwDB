@@ -422,14 +422,8 @@ impl FastHNSW {
             }
         }
 
-        // Backfill from discarded to guarantee m neighbors
-        for cand in discarded {
-            if selected.len() >= m {
-                break;
-            }
-            selected.push(cand);
-        }
-
+        // No backfill — matches hnswlib. Fewer-than-M neighbors is fine;
+        // it preserves diversity (long-range shortcuts) over density.
         selected
     }
 
