@@ -27,13 +27,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-def benchmark_index(IndexClass, name, train, test, ground_truth, M, ef_construction, ef_sweep):
+def benchmark_index(IndexClass, name, train, test, ground_truth, M, ef_construction, ef_sweep, metric="cosine"):
     """Run a full benchmark for one index implementation."""
     n, dim = train.shape
 
-    logger.info(f"[{name}] Building: {n} vectors, dim={dim}, M={M}, ef_construction={ef_construction}")
+    logger.info(f"[{name}] Building: {n} vectors, dim={dim}, M={M}, ef_construction={ef_construction}, metric={metric}")
 
-    idx = IndexClass(dimension=dim, m=M, ef_construction=ef_construction, ef_search=50)
+    idx = IndexClass(dimension=dim, m=M, ef_construction=ef_construction, ef_search=50, metric=metric)
 
     # Build — use build_bulk if available (lock-free, much faster)
     ids = [f"v{i}" for i in range(n)]
@@ -134,12 +134,13 @@ def main():
         logger.info(f"{'='*60}")
 
         train, test, gt = load_dataset(ds_name, cache_dir)
+        metric = DATASETS[ds_name].get("metric", "cosine")
         all_results = []
 
         # FastHNSW
         fast_result = benchmark_index(
             RustFastHNSWIndex, "FastHNSW", train, test, gt,
-            args.M, args.ef_construction, ef_sweep,
+            args.M, args.ef_construction, ef_sweep, metric=metric,
         )
         all_results.append(fast_result)
 
@@ -147,7 +148,7 @@ def main():
         if not args.fast_only and RustHNSWIndex is not None:
             old_result = benchmark_index(
                 RustHNSWIndex, "OldHNSW", train, test, gt,
-                args.M, args.ef_construction, ef_sweep,
+                args.M, args.ef_construction, ef_sweep, metric=metric,
             )
             all_results.append(old_result)
 

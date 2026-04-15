@@ -537,8 +537,8 @@ impl FastHNSW {
 
             let m_max = self.m_max(lc);
 
-            // Heuristic neighbor selection
-            let selected = Self::select_neighbors_heuristic(&vectors, candidates, m_max, self.metric);
+            // Select M neighbors for new node (not m_max) — matches hnswlib
+            let selected = Self::select_neighbors_heuristic(&vectors, candidates, self.m, self.metric);
             let selected_ids: Vec<usize> = selected.iter().map(|c| c.id).collect();
 
             {
@@ -886,7 +886,9 @@ impl FastHNSW {
                 }
 
                 let mm = self.m_max(lc);
-                let sel = Self::select_neighbors_heuristic(&vectors, candidates, mm, metric);
+                // Select M neighbors for new node (not m_max) — matches hnswlib.
+                // m_max is only the overflow cap for reverse connections.
+                let sel = Self::select_neighbors_heuristic(&vectors, candidates, self.m, metric);
                 let sel_ids: Vec<usize> = sel.iter().map(|c| c.id).collect();
 
                 graph.set_neighbors(i, lc, sel_ids.clone());

@@ -69,7 +69,8 @@ DATASETS = {
         "url": "https://ann-benchmarks.com/sift-128-euclidean.hdf5",
         "fallback_url": "https://huggingface.co/datasets/hhy3/ann-datasets/resolve/main/sift-128-euclidean.hdf5",
         "distance": "euclidean",
-        "normalize": True,  # Normalize so cosine distance preserves ranking
+        "normalize": False,  # SIFT ground truth is L2 on raw vectors — don't normalize
+        "metric": "l2",
     },
     "glove-200-angular": {
         "url": "https://ann-benchmarks.com/glove-200-angular.hdf5",
