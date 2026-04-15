@@ -249,7 +249,7 @@ impl FastHNSW {
                 }
                 visited.mark_visited(nid);
 
-                // Prefetch next neighbor's vector data
+                // Prefetch next neighbor's vector (co-located data if available)
                 if ni + 1 < n_neighbors {
                     let next_nid = unsafe { *neighbors.get_unchecked(ni + 1) };
                     if !visited.is_visited(next_nid) {
@@ -913,11 +913,6 @@ impl FastHNSW {
 
         *self.entry_point.write() = Some(entry);
         *self.entry_level.write() = entry_level;
-
-        // Co-located auto-optimize disabled: stride too large at 128d+ for
-        // prefetcher benefit. Separate contiguous VectorStorage with hardware
-        // sequential prefetching outperforms co-located at typical embedding dims.
-        // Co-located would help at dim <= 32 where entire node fits in 1-2 cache lines.
     }
 
     /// Build co-located layer-0 storage for optimized search.
@@ -961,27 +956,39 @@ impl FastHNSW {
         let entry_level = *self.entry_level.read();
         let dist_fn = self.dist_fn;
 
-        // Navigate upper layers greedily — cache current distance to avoid recomputation
+        // Navigate upper layers greedily
         let mut current = ep;
-        let mut current_dist = (dist_fn)(query, vectors.get(ep));
         for lc in (1..=entry_level).rev() {
             let mut changed = true;
             while changed {
                 changed = false;
                 for &nid in graph.get_neighbors(current, lc) {
-                    if unsafe { !*alive.get_unchecked(nid) } { continue; }
-                    let d = (dist_fn)(query, vectors.get(nid));
-                    if d < current_dist {
+                    if !alive[nid] { continue; }
+                    if (dist_fn)(query, vectors.get(nid))
+                        < (dist_fn)(query, vectors.get(current))
+                    {
                         current = nid;
-                        current_dist = d;
                         changed = true;
                     }
                 }
             }
         }
 
-        // Search layer 0
-        let mut results = Self::search_layer(&vectors, &graph, &alive, query, current, ef, 0, self.metric);
+        // Search layer 0 — use co-located path if available
+        let colocated = self.colocated.read();
+        let mut results = if let Some(ref store) = *colocated {
+            VISITED_LIST.with(|vl| {
+                let mut visited = vl.borrow_mut();
+                visited.ensure_capacity(graph.len());
+                visited.reset();
+                visited.mark_visited(current);
+                crate::fast_search::search_layer0_colocated(
+                    store, &alive, &mut visited, query, current, ef, self.metric,
+                )
+            })
+        } else {
+            Self::search_layer(&vectors, &graph, &alive, query, current, ef, 0, self.metric)
+        };
         results.sort_by(|a, b| a.dist.partial_cmp(&b.dist).unwrap_or(Ordering::Equal));
         results.truncate(k);
         results.into_iter().map(|c| (c.id, c.dist)).collect()
@@ -1003,17 +1010,16 @@ impl FastHNSW {
         let dist_fn = self.dist_fn;
 
         let mut current = ep;
-        let mut current_dist = (dist_fn)(query, vectors.get(ep));
         for lc in (1..=entry_level).rev() {
             let mut changed = true;
             while changed {
                 changed = false;
                 for &nid in graph.get_neighbors(current, lc) {
                     if !alive[nid] { continue; }
-                    let d = (dist_fn)(query, vectors.get(nid));
-                    if d < current_dist {
+                    if (dist_fn)(query, vectors.get(nid))
+                        < (dist_fn)(query, vectors.get(current))
+                    {
                         current = nid;
-                        current_dist = d;
                         changed = true;
                     }
                 }
@@ -1049,17 +1055,16 @@ impl FastHNSW {
 
         queries.par_iter().map(|query| {
             let mut current = ep;
-            let mut cur_d = (dist_fn)(query, vectors.get(ep));
             for lc in (1..=entry_level).rev() {
                 let mut changed = true;
                 while changed {
                     changed = false;
                     for &nid in graph.get_neighbors(current, lc) {
                         if !alive[nid] { continue; }
-                        let d = (dist_fn)(query, vectors.get(nid));
-                        if d < cur_d {
+                        if (dist_fn)(query, vectors.get(nid))
+                            < (dist_fn)(query, vectors.get(current))
+                        {
                             current = nid;
-                            cur_d = d;
                             changed = true;
                         }
                     }
