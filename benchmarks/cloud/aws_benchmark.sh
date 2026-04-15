@@ -19,7 +19,19 @@ set -e
 REGION="${AWS_REGION:-us-east-1}"
 INSTANCE_TYPE="r6i.16xlarge"
 KEY_NAME="${AWS_KEY_NAME:-}"
-AMI="ami-0c7217cdde317cfec"  # Ubuntu 22.04 LTS us-east-1
+# Find latest Ubuntu 22.04 AMI for the target region
+AMI=$(aws ec2 describe-images \
+    --region "$REGION" \
+    --owners 099720109477 \
+    --filters "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*" \
+    --query 'sort_by(Images, &CreationDate)[-1].ImageId' \
+    --output text 2>/dev/null)
+
+if [ -z "$AMI" ] || [ "$AMI" = "None" ]; then
+    echo "Error: Could not find Ubuntu 22.04 AMI in $REGION"
+    exit 1
+fi
+echo "AMI: $AMI"
 
 if [ -z "$KEY_NAME" ]; then
     echo "Error: Set AWS_KEY_NAME environment variable"
