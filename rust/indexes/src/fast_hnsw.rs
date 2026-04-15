@@ -249,24 +249,11 @@ impl FastHNSW {
                 }
                 visited.mark_visited(nid);
 
-                // 3-prong prefetch (hnswlib technique):
-                // 1. Vector data of next neighbor
-                // 2. Visited array entry for next neighbor
-                // 3. Neighbor list of next neighbor (for when we expand it)
+                // Prefetch next neighbor's vector data
                 if ni + 1 < n_neighbors {
                     let next_nid = unsafe { *neighbors.get_unchecked(ni + 1) };
                     if !visited.is_visited(next_nid) {
-                        // Prefetch vector data (L1)
                         prefetch_vector(vectors.get(next_nid).as_ptr());
-                        // Prefetch visited array entry
-                        #[cfg(target_arch = "x86_64")]
-                        unsafe {
-                            #[cfg(target_feature = "sse")]
-                            {
-                                let vis_ptr = visited.marks.as_ptr().add(next_nid) as *const i8;
-                                std::arch::x86_64::_mm_prefetch(vis_ptr, std::arch::x86_64::_MM_HINT_T0);
-                            }
-                        }
                     }
                 }
 
