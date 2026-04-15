@@ -17,7 +17,7 @@
 set -e
 
 REGION="${AWS_REGION:-us-east-1}"
-INSTANCE_TYPE="r6i.16xlarge"
+INSTANCE_TYPE="${AWS_INSTANCE_TYPE:-r6i.8xlarge}"
 KEY_NAME="${AWS_KEY_NAME:-}"
 # Find latest Ubuntu 22.04 AMI for the target region
 AMI=$(aws ec2 describe-images \
