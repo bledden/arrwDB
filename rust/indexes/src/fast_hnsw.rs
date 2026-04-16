@@ -244,6 +244,14 @@ impl FastHNSW {
             let n_neighbors = neighbors.len();
             let mut worst_dist = results.peek().unwrap().0.dist;
 
+            // Prefetch first few neighbors' vectors ahead of the loop
+            for pi in 0..n_neighbors.min(3) {
+                let pid = unsafe { *neighbors.get_unchecked(pi) };
+                if !visited.is_visited(pid) {
+                    prefetch_vector(vectors.get(pid).as_ptr());
+                }
+            }
+
             for ni in 0..n_neighbors {
                 let nid = unsafe { *neighbors.get_unchecked(ni) };
 
@@ -252,8 +260,9 @@ impl FastHNSW {
                 }
                 visited.mark_visited(nid);
 
-                if ni + 1 < n_neighbors {
-                    let next_nid = unsafe { *neighbors.get_unchecked(ni + 1) };
+                // Prefetch 3 ahead to hide memory latency
+                if ni + 3 < n_neighbors {
+                    let next_nid = unsafe { *neighbors.get_unchecked(ni + 3) };
                     if !visited.is_visited(next_nid) {
                         prefetch_vector(vectors.get(next_nid).as_ptr());
                     }
@@ -945,18 +954,19 @@ impl FastHNSW {
         let entry_level = *self.entry_level.read();
         let dist_fn = self.dist_fn;
 
-        // Navigate upper layers greedily
+        // Navigate upper layers greedily — cache current distance
         let mut current = ep;
+        let mut cur_dist = (dist_fn)(query, vectors.get(ep));
         for lc in (1..=entry_level).rev() {
             let mut changed = true;
             while changed {
                 changed = false;
                 for &nid in graph.get_neighbors(current, lc) {
                     if !alive[nid] { continue; }
-                    if (dist_fn)(query, vectors.get(nid))
-                        < (dist_fn)(query, vectors.get(current))
-                    {
+                    let d = (dist_fn)(query, vectors.get(nid));
+                    if d < cur_dist {
                         current = nid;
+                        cur_dist = d;
                         changed = true;
                     }
                 }

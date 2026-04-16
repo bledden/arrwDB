@@ -191,6 +191,87 @@ unsafe fn l2_distance_avx2_fma(a: &[f32], b: &[f32]) -> f32 {
     total
 }
 
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx512f")]
+unsafe fn l2_distance_avx512(a: &[f32], b: &[f32]) -> f32 {
+    use std::arch::x86_64::*;
+
+    let n = a.len();
+    let a_ptr = a.as_ptr();
+    let b_ptr = b.as_ptr();
+
+    // 4 x 512-bit accumulators — 64 floats per iteration
+    let mut acc0 = _mm512_setzero_ps();
+    let mut acc1 = _mm512_setzero_ps();
+    let mut acc2 = _mm512_setzero_ps();
+    let mut acc3 = _mm512_setzero_ps();
+
+    let chunks = n / 64;
+    let mut i = 0usize;
+
+    for _ in 0..chunks {
+        let a0 = _mm512_loadu_ps(a_ptr.add(i));
+        let b0 = _mm512_loadu_ps(b_ptr.add(i));
+        let d0 = _mm512_sub_ps(a0, b0);
+        acc0 = _mm512_fmadd_ps(d0, d0, acc0);
+
+        let a1 = _mm512_loadu_ps(a_ptr.add(i + 16));
+        let b1 = _mm512_loadu_ps(b_ptr.add(i + 16));
+        let d1 = _mm512_sub_ps(a1, b1);
+        acc1 = _mm512_fmadd_ps(d1, d1, acc1);
+
+        let a2 = _mm512_loadu_ps(a_ptr.add(i + 32));
+        let b2 = _mm512_loadu_ps(b_ptr.add(i + 32));
+        let d2 = _mm512_sub_ps(a2, b2);
+        acc2 = _mm512_fmadd_ps(d2, d2, acc2);
+
+        let a3 = _mm512_loadu_ps(a_ptr.add(i + 48));
+        let b3 = _mm512_loadu_ps(b_ptr.add(i + 48));
+        let d3 = _mm512_sub_ps(a3, b3);
+        acc3 = _mm512_fmadd_ps(d3, d3, acc3);
+
+        i += 64;
+    }
+
+    // Handle remaining 16-float chunks
+    if i + 32 <= n {
+        let a0 = _mm512_loadu_ps(a_ptr.add(i));
+        let b0 = _mm512_loadu_ps(b_ptr.add(i));
+        let d0 = _mm512_sub_ps(a0, b0);
+        acc0 = _mm512_fmadd_ps(d0, d0, acc0);
+
+        let a1 = _mm512_loadu_ps(a_ptr.add(i + 16));
+        let b1 = _mm512_loadu_ps(b_ptr.add(i + 16));
+        let d1 = _mm512_sub_ps(a1, b1);
+        acc1 = _mm512_fmadd_ps(d1, d1, acc1);
+
+        i += 32;
+    }
+
+    if i + 16 <= n {
+        let a0 = _mm512_loadu_ps(a_ptr.add(i));
+        let b0 = _mm512_loadu_ps(b_ptr.add(i));
+        let d0 = _mm512_sub_ps(a0, b0);
+        acc2 = _mm512_fmadd_ps(d0, d0, acc2);
+        i += 16;
+    }
+
+    acc0 = _mm512_add_ps(acc0, acc1);
+    acc2 = _mm512_add_ps(acc2, acc3);
+    acc0 = _mm512_add_ps(acc0, acc2);
+
+    let mut total = _mm512_reduce_add_ps(acc0);
+
+    // Scalar tail
+    while i < n {
+        let d = *a.get_unchecked(i) - *b.get_unchecked(i);
+        total += d * d;
+        i += 1;
+    }
+
+    total
+}
+
 // ==========================================================================
 // Scalar fallback (ARM NEON will auto-vectorize these)
 // ==========================================================================
@@ -309,6 +390,9 @@ pub fn l2_distance(a: &[f32], b: &[f32]) -> f32 {
 
     #[cfg(target_arch = "x86_64")]
     {
+        if is_x86_feature_detected!("avx512f") {
+            return unsafe { l2_distance_avx512(a, b) };
+        }
         if is_x86_feature_detected!("avx2") && is_x86_feature_detected!("fma") {
             return unsafe { l2_distance_avx2_fma(a, b) };
         }
