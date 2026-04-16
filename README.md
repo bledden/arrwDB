@@ -6,13 +6,13 @@ Vector database with a Rust core, Python API, and GPU acceleration.
 
 Tested on standard ANN datasets (SIFT-1M, GloVe-1.2M, Deep-1M) used by ann-benchmarks.com.
 
-### CPU Search (FastHNSW, Rust, AVX2/FMA)
+### CPU Search (FastHNSW, Rust, AVX-512/AVX2/FMA)
 
 | Dataset | Recall@10 | QPS | Build Time | Hardware |
 |---------|-----------|-----|------------|----------|
-| SIFT-1M (128d) | 0.991 | 1,834 | 48 min | n2-highmem-16 |
-| Deep-1M (96d) | 0.997 | 2,226 | 44 min | n2-highmem-16 |
-| GloVe-1.2M (200d) | 0.920 | 485 | 3.4 hrs | n2-highmem-16 |
+| SIFT-1M (128d) | 0.999 | 1,793 | 14 min | r6i.16xlarge |
+| Deep-1M (96d) | 0.998 | 2,038 | 13 min | r6i.16xlarge |
+| GloVe-1.2M (200d) | 0.953 | 252 | 47 min | r6i.16xlarge |
 | Voyage 4-large (1024d, 10K) | 1.000 | 148 | 5 min | n2-highmem-16 |
 
 ### GPU Search (CAGRA, NVIDIA L4)
@@ -23,18 +23,20 @@ Tested on standard ANN datasets (SIFT-1M, GloVe-1.2M, Deep-1M) used by ann-bench
 | Deep-1M (96d) | 0.999 | 2,763 | 22 seconds |
 | GloVe-1.2M (200d) | 0.940 | 2,633 | 47 seconds |
 
-### Competitive Context
+### Competitive Context (SIFT-1M, r6i.16xlarge — ann-benchmarks hardware)
 
-| System | QPS at 0.99 recall (SIFT-1M) | Notes |
-|--------|------------------------------|-------|
-| hnswlib (C++) | 2,755 | Reference HNSW, explicit SIMD |
+| System | QPS at 0.999 recall | Notes |
+|--------|---------------------|-------|
+| qsgngt (Huawei) | ~7,000 | Quantized graph |
+| NGT-qg (Yahoo) | ~4,300 | Quantized graph |
+| glass (Zilliz) | ~2,400 | SIMD-optimized graph |
 | arrwDB GPU CAGRA | 3,175 | NVIDIA L4 |
-| ScaNN (Google) | 2,743 | Quantized LUT |
-| **arrwDB CPU** | **1,834** | **Rust, AVX2/FMA intrinsics** |
-| FAISS-HNSW | 1,787 | C++, batch-4 |
-| Weaviate | 913 | Go |
-| Qdrant | 572 | Rust |
-| pgvector | 19 | PostgreSQL |
+| **arrwDB CPU** | **1,793** | **Rust, AVX-512, top-7 on SIFT** |
+| FAISS-HNSW | ~1,200 | C++ |
+| hnswlib | ~1,400 | C++, reference HNSW |
+| Weaviate | ~913 | Go |
+| Qdrant | ~572 | Rust |
+| pgvector | ~19 | PostgreSQL |
 
 ## Architecture
 

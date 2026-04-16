@@ -10,12 +10,12 @@ arrwdb:
     arrwdb-M16:
       arg-groups:
         - {"M": 16, "efConstruction": 200}
-      query-args: [[10, 20, 50, 100, 200, 400, 800]]
+      query-args: [[10, 20, 50, 100, 150, 200, 400, 800]]
     arrwdb-M32:
       arg-groups:
         - {"M": 32, "efConstruction": 400}
-      query-args: [[10, 20, 50, 100, 200, 400, 800]]
+      query-args: [[10, 20, 50, 100, 150, 200, 400, 800]]
     arrwdb-M48:
       arg-groups:
         - {"M": 48, "efConstruction": 400}
-      query-args: [[10, 20, 50, 100, 200, 400, 800]]
+      query-args: [[10, 20, 50, 100, 150, 200, 400, 800]]

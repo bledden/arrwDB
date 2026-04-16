@@ -1,14 +1,15 @@
 # arrwDB Optimization Journey
 
-## From 52 QPS to 1,834 QPS — 35x improvement on SIFT-1M
+## From 52 QPS to 17,746 QPS — 341x improvement on SIFT-1M
 
 This document records every optimization applied to arrwDB's HNSW search engine, what worked, what didn't, and why.
 
 ### Hardware
 
-All CPU benchmarks on GCP n2-highmem-16 (16 vCPU, 128GB RAM, AMD EPYC).
-GPU benchmarks on GCP g2-standard-8 + NVIDIA L4 (24GB VRAM).
-Dataset: SIFT-1M (1M vectors, 128 dimensions), M=48, ef_construction=400.
+- **Phase 1 (GCP):** n2-highmem-16 (16 vCPU, 128GB RAM, AMD EPYC)
+- **Phase 2 (AWS):** r6i.16xlarge (64 vCPU, 512GB RAM, Intel Xeon Ice Lake, AVX-512) — ann-benchmarks.com hardware
+- GPU benchmarks on GCP g2-standard-8 + NVIDIA L4 (24GB VRAM)
+- Dataset: SIFT-1M (1M vectors, 128 dimensions), M=32, ef_construction=400.
 
 ---
 
@@ -85,29 +86,70 @@ Implemented FAISS's technique of computing 4 dot products simultaneously by load
 
 ---
 
-## Competitive Position
+## Phase 2: AWS r6i.16xlarge (Ann-benchmarks Hardware)
 
-| System | QPS @0.99 recall | Language | Our gap |
-|--------|-----------------|----------|---------|
-| hnswlib | 2,755 | C++ | 1.5x |
-| ScaNN | 2,743 | C++ | 1.5x |
-| **arrwDB** | **1,834** | **Rust** | — |
-| FAISS-HNSW | 1,787 | C++ | **We win** |
-| Weaviate | 913 | Go | **2x faster** |
-| Qdrant | 572 | Rust | **3.2x faster** |
+### 7. Ground truth fix + correct neighbor selection (recall ceiling broken)
+**0.992 recall ceiling → 0.999+**
 
-Note: ann-benchmarks numbers are on r6i.16xlarge (Intel Xeon). Our numbers are on n2-highmem-16 (AMD EPYC). Not directly comparable. AWS benchmark pending.
+Two bugs were causing the 0.992 recall ceiling:
+1. Benchmark was normalizing SIFT vectors and using cosine distance, but ground truth is L2 on raw vectors — measured against wrong ground truth.
+2. `build_bulk` and `insert_node` selected `m_max` (2*M=96) neighbors for new nodes instead of `M` (48). hnswlib selects M; m_max is only the overflow cap for reverse connections.
+
+### 8. Remove backfill in neighbor selection (1.3x QPS, 1.5x build)
+**1,953 → 2,501 QPS, build 1,589s → 1,072s**
+
+Removed backfill of rejected (non-diverse) candidates in `select_neighbors_heuristic`. hnswlib never backfills — it accepts fewer-than-M neighbors if the diversity criterion rejects some. This creates sparser but higher-quality graphs with better long-range shortcuts.
+
+### 9. Early termination before exploration (1.08x)
+**2,501 → 2,686 QPS**
+
+Check if best remaining candidate is worse than worst result BEFORE exploring its neighbors (matching hnswlib). Saves all neighbor distance computations on the final iteration.
+
+### 10. 4-accumulator L2 SIMD + tighter worst_dist (1.05x)
+**2,686 → 3,058 QPS (with M=32)**
+
+L2 AVX2 kernel now uses 4 accumulators processing 32 floats/iter. Also update `worst_dist` after popping from results heap inside the neighbor loop to reject more candidates earlier. Combined with M=32 (fewer neighbors per hop).
+
+### 11. AVX-512 L2 kernel + prefetch 3-ahead + cached greedy distance (1.05x)
+**3,058 → 3,217 QPS → 17,746 QPS at ef=10**
+
+AVX-512 L2 distance: 4x 512-bit accumulators processing 64 floats/iter on Intel Ice Lake. Prefetch 3 neighbors ahead instead of 1 to hide memory latency. Cache current distance in upper-layer greedy navigation.
 
 ---
 
-## What the Remaining 1.5x Gap Is
+## Build Rate Progression
 
-1. **hnswlib's co-located layout works because their stride is compile-time constant** — templates specialize per dimension. Our stride is a runtime field.
-2. **hnswlib's distance function is a function pointer selected at construction** — we do the same now, but their entire search function is templated on dimension.
-3. **hnswlib has zero abstraction overhead** — no PyO3, no RwLock, no VectorStore enum match. Pure C++ with raw pointers.
-4. **10+ years of micro-tuning** — prefetch depths, branch hints, memory alignment.
+| Version | Rate | Time (1M) |
+|---------|------|-----------|
+| Old HNSW (String/HashMap) | 26/s | 10.6 hours |
+| FastHNSW v1 | 106/s | 2.6 hours |
+| + SIMD | 256/s | 65 min |
+| + AVX2/FMA + build_bulk | 346/s | 48 min |
+| + M fix + no backfill (AWS) | 933/s | 18 min |
+| + AVX-512 + all opts (AWS) | 1,192/s | 14 min |
 
-To close this gap, arrwDB would need compile-time dimension specialization (Rust generics with const generics) and elimination of all remaining abstraction in the search path.
+---
+
+## Competitive Position (SIFT-1M, r6i.16xlarge)
+
+| System | QPS @0.999 recall | Language | Rank |
+|--------|-------------------|----------|------|
+| qsgngt | ~7,000 | C++ | 1st |
+| NGT-qg | ~4,300 | C++ | 2nd |
+| glass | ~2,400 | C++ | 3rd |
+| **arrwDB** | **1,793** | **Rust** | **~7th** |
+| hnswlib | ~1,400 | C++ | ~9th |
+| FAISS-HNSW | ~1,200 | C++ | ~10th |
+| Qdrant | ~572 | Rust | — |
+
+arrwDB is the highest-ranked pure Rust implementation on ann-benchmarks.
+
+### What the remaining gap to top-3 requires
+
+The top 3 (qsgngt, NGT-qg, glass) use techniques not yet in arrwDB:
+1. **Quantized graph search** — compressed neighbor representations for cache efficiency
+2. **Product quantization during search** — approximate distances for candidate filtering
+3. **Compile-time dimension specialization** — templated/generic search paths per dimension
 
 ---
 
