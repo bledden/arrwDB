@@ -233,23 +233,25 @@ impl FastHNSW {
         results.push(MaxCand(Candidate { id: entry_id, dist: entry_dist }));
 
         while let Some(MinCand(current)) = candidates.pop() {
-            let worst_dist = results.peek().unwrap().0.dist;
+            // Termination BEFORE exploration — matches hnswlib.
+            // Skips all neighbor distance computations when the best
+            // remaining candidate is worse than the worst result.
+            if current.dist > results.peek().unwrap().0.dist && results.len() >= ef {
+                break;
+            }
 
-            // Explore neighbors FIRST (before termination check) —
-            // matches the original behavior that ensures border candidates
-            // have their neighbors checked.
             let neighbors = graph.get_neighbors(current.id, layer);
             let n_neighbors = neighbors.len();
+            let worst_dist = results.peek().unwrap().0.dist;
+
             for ni in 0..n_neighbors {
                 let nid = unsafe { *neighbors.get_unchecked(ni) };
 
-                // Fast path: visited check + alive check without bounds checking
                 if visited.is_visited(nid) || unsafe { !*alive.get_unchecked(nid) } {
                     continue;
                 }
                 visited.mark_visited(nid);
 
-                // Prefetch next neighbor's vector (co-located data if available)
                 if ni + 1 < n_neighbors {
                     let next_nid = unsafe { *neighbors.get_unchecked(ni + 1) };
                     if !visited.is_visited(next_nid) {
@@ -257,7 +259,6 @@ impl FastHNSW {
                     }
                 }
 
-                // Direct function pointer call — no match dispatch
                 let dist = (dist_fn)(query, vectors.get(nid));
 
                 if dist < worst_dist || results.len() < ef {
@@ -266,13 +267,6 @@ impl FastHNSW {
                     if results.len() > ef {
                         results.pop();
                     }
-                }
-            }
-
-            // Check termination AFTER exploring neighbors
-            if let Some(next) = candidates.peek() {
-                if next.0.dist > results.peek().unwrap().0.dist && results.len() >= ef {
-                    break;
                 }
             }
         }
@@ -855,6 +849,7 @@ impl FastHNSW {
                     res.push(MaxCand(Candidate { id: current, dist: ed }));
 
                     while let Some(MinCand(cur)) = cands.pop() {
+                        if cur.dist > res.peek().unwrap().0.dist && res.len() >= eff_ef { break; }
                         let w = res.peek().unwrap().0.dist;
                         for &nid in graph.get_neighbors(cur.id, lc) {
                             if visited.is_visited(nid) { continue; }
@@ -865,9 +860,6 @@ impl FastHNSW {
                                 res.push(MaxCand(Candidate { id: nid, dist: d }));
                                 if res.len() > eff_ef { res.pop(); }
                             }
-                        }
-                        if let Some(nx) = cands.peek() {
-                            if nx.0.dist > res.peek().unwrap().0.dist && res.len() >= eff_ef { break; }
                         }
                     }
                     let mut v: Vec<Candidate> = res.into_iter().map(|MaxCand(c)| c).collect();
