@@ -23,6 +23,23 @@ Tested on standard ANN datasets (SIFT-1M, GloVe-1.2M, Deep-1M) used by ann-bench
 | Deep-1M (96d) | 0.999 | 2,763 | 22 seconds |
 | GloVe-1.2M (200d) | 0.940 | 2,633 | 47 seconds |
 
+### vs pgvector (SIFT-1M, r6i.16xlarge)
+
+If you're using pgvector for vector search today, here's what changes:
+
+| Metric | pgvector (0.7+) | arrwDB | Difference |
+|--------|----------------|--------|------------|
+| QPS at 0.99 recall | ~19 | 3,217 | **169x faster** |
+| QPS at 0.95 recall | ~35 | 5,735 | **164x faster** |
+| p50 latency at 0.99 | ~50ms | 0.32ms | **156x lower** |
+| Build time (1M vectors) | ~minutes | 14 min | Comparable |
+| Filtered search | SQL WHERE (post-filter) | Bitset (graph-integrated) | No recall loss |
+| Hybrid search | Separate FTS + vector | BM25 + vector in one API | Single query |
+| GPU acceleration | No | CAGRA (3,175 QPS) | N/A |
+| Runs inside Postgres | Yes | No (standalone service) | Trade-off |
+
+arrwDB is not a Postgres extension — it's a standalone vector search service. Use it alongside your existing database (Supabase, RDS, etc.) when pgvector becomes the bottleneck.
+
 ### Competitive Context (SIFT-1M, r6i.16xlarge — ann-benchmarks hardware)
 
 | System | QPS at 0.999 recall | Notes |
@@ -32,8 +49,8 @@ Tested on standard ANN datasets (SIFT-1M, GloVe-1.2M, Deep-1M) used by ann-bench
 | glass (Zilliz) | ~2,400 | SIMD-optimized graph |
 | arrwDB GPU CAGRA | 3,175 | NVIDIA L4 |
 | **arrwDB CPU** | **1,793** | **Rust, AVX-512, top-7 on SIFT** |
-| FAISS-HNSW | ~1,200 | C++ |
 | hnswlib | ~1,400 | C++, reference HNSW |
+| FAISS-HNSW | ~1,200 | C++ |
 | Weaviate | ~913 | Go |
 | Qdrant | ~572 | Rust |
 | pgvector | ~19 | PostgreSQL |
