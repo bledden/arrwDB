@@ -242,7 +242,7 @@ impl FastHNSW {
 
             let neighbors = graph.get_neighbors(current.id, layer);
             let n_neighbors = neighbors.len();
-            let worst_dist = results.peek().unwrap().0.dist;
+            let mut worst_dist = results.peek().unwrap().0.dist;
 
             for ni in 0..n_neighbors {
                 let nid = unsafe { *neighbors.get_unchecked(ni) };
@@ -266,6 +266,7 @@ impl FastHNSW {
                     results.push(MaxCand(Candidate { id: nid, dist }));
                     if results.len() > ef {
                         results.pop();
+                        worst_dist = results.peek().unwrap().0.dist;
                     }
                 }
             }

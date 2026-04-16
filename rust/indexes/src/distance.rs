@@ -112,10 +112,13 @@ unsafe fn l2_distance_avx2_fma(a: &[f32], b: &[f32]) -> f32 {
     let a_ptr = a.as_ptr();
     let b_ptr = b.as_ptr();
 
+    // 4 accumulators processing 32 floats/iter — better ILP hiding FMA latency
     let mut acc0 = _mm256_setzero_ps();
     let mut acc1 = _mm256_setzero_ps();
+    let mut acc2 = _mm256_setzero_ps();
+    let mut acc3 = _mm256_setzero_ps();
 
-    let chunks = n / 16;
+    let chunks = n / 32;
     let mut i = 0usize;
 
     for _ in 0..chunks {
@@ -129,10 +132,45 @@ unsafe fn l2_distance_avx2_fma(a: &[f32], b: &[f32]) -> f32 {
         let d1 = _mm256_sub_ps(a1, b1);
         acc1 = _mm256_fmadd_ps(d1, d1, acc1);
 
+        let a2 = _mm256_loadu_ps(a_ptr.add(i + 16));
+        let b2 = _mm256_loadu_ps(b_ptr.add(i + 16));
+        let d2 = _mm256_sub_ps(a2, b2);
+        acc2 = _mm256_fmadd_ps(d2, d2, acc2);
+
+        let a3 = _mm256_loadu_ps(a_ptr.add(i + 24));
+        let b3 = _mm256_loadu_ps(b_ptr.add(i + 24));
+        let d3 = _mm256_sub_ps(a3, b3);
+        acc3 = _mm256_fmadd_ps(d3, d3, acc3);
+
+        i += 32;
+    }
+
+    // Handle remaining 16-float chunk (e.g. 128d = 4*32 = 128, no remainder)
+    if i + 16 <= n {
+        let a0 = _mm256_loadu_ps(a_ptr.add(i));
+        let b0 = _mm256_loadu_ps(b_ptr.add(i));
+        let d0 = _mm256_sub_ps(a0, b0);
+        acc0 = _mm256_fmadd_ps(d0, d0, acc0);
+
+        let a1 = _mm256_loadu_ps(a_ptr.add(i + 8));
+        let b1 = _mm256_loadu_ps(b_ptr.add(i + 8));
+        let d1 = _mm256_sub_ps(a1, b1);
+        acc1 = _mm256_fmadd_ps(d1, d1, acc1);
+
         i += 16;
     }
 
+    if i + 8 <= n {
+        let a0 = _mm256_loadu_ps(a_ptr.add(i));
+        let b0 = _mm256_loadu_ps(b_ptr.add(i));
+        let d0 = _mm256_sub_ps(a0, b0);
+        acc2 = _mm256_fmadd_ps(d0, d0, acc2);
+        i += 8;
+    }
+
     acc0 = _mm256_add_ps(acc0, acc1);
+    acc2 = _mm256_add_ps(acc2, acc3);
+    acc0 = _mm256_add_ps(acc0, acc2);
 
     // Horizontal sum
     let hi = _mm256_extractf128_ps(acc0, 1);
