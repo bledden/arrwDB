@@ -16,11 +16,16 @@ pub enum DistanceMetric {
     Hamming,
 }
 
+/// Compute a distance for ranking purposes.
+///
+/// For `DistanceMetric::L2` this returns the *squared* Euclidean distance
+/// — consistent with `get_distance_fn`. Apply `sqrt` at API boundaries
+/// if you need the true metric value.
 #[inline(always)]
 pub fn compute_distance(a: &[f32], b: &[f32], metric: DistanceMetric) -> f32 {
     match metric {
         DistanceMetric::Cosine => cosine_distance(a, b),
-        DistanceMetric::L2 => l2_distance(a, b),
+        DistanceMetric::L2 => l2_distance_squared(a, b),
         DistanceMetric::InnerProduct => inner_product_distance(a, b),
         DistanceMetric::Manhattan => manhattan_distance(a, b),
         DistanceMetric::Hamming => hamming_distance(a, b),
@@ -364,16 +369,32 @@ pub type DistanceFn = fn(&[f32], &[f32]) -> f32;
 
 /// Get the optimal distance function pointer for a metric.
 /// Call once at construction time, then use the pointer directly.
+///
+/// Note for `DistanceMetric::L2`: this returns the *squared* Euclidean
+/// distance for performance (ranking-preserving monotonic transform).
+/// Apply `sqrt` at API boundaries if callers need the true distance.
 pub fn get_distance_fn(metric: DistanceMetric) -> DistanceFn {
     match metric {
         DistanceMetric::Cosine => cosine_distance,
-        DistanceMetric::L2 => l2_distance,
+        DistanceMetric::L2 => l2_distance_squared,
         DistanceMetric::InnerProduct => inner_product_distance,
         DistanceMetric::Manhattan => manhattan_distance,
         DistanceMetric::Hamming => hamming_distance,
     }
 }
 
+/// Cosine distance: `1 - dot(a, b)`.
+///
+/// **Inputs MUST be L2-normalized.** This function does not normalize
+/// on the fly — it computes `1 - a·b` directly for speed. If `a` or `b`
+/// is not unit-length, the returned value is not cosine distance and
+/// will not rank correctly.
+///
+/// This matches the convention used by hnswlib, FAISS, and most ANN
+/// libraries: callers normalize once at insert/query time, not per
+/// distance computation. The index will validate inputs once at the
+/// `add_vector` / `search` boundary when `metric = Cosine` — see
+/// [`is_unit_length`] — and return an error if they are not normalized.
 #[inline(always)]
 pub fn cosine_distance(a: &[f32], b: &[f32]) -> f32 {
     1.0 - dot_product(a, b)
@@ -384,8 +405,24 @@ pub fn inner_product_distance(a: &[f32], b: &[f32]) -> f32 {
     1.0 - dot_product(a, b)
 }
 
+/// Returns true if `v` is approximately L2-normalized (‖v‖² within 1% of 1.0).
+///
+/// Used by the index to validate cosine-metric inputs at the public API
+/// boundary without paying the cost inside the search hot loop.
+pub fn is_unit_length(v: &[f32]) -> bool {
+    let sq: f32 = v.iter().map(|x| x * x).sum();
+    (sq - 1.0).abs() < 0.01
+}
+
+/// Squared Euclidean distance: sum((a[i] - b[i])^2).
+///
+/// This is what `get_distance_fn(DistanceMetric::L2)` returns during the
+/// search hot path: `sqrt()` is a monotonic transform so ranking is
+/// preserved without the extra cost. hnswlib and FAISS follow the same
+/// convention internally. Call `l2_distance` if you need the true
+/// Euclidean distance instead.
 #[inline(always)]
-pub fn l2_distance(a: &[f32], b: &[f32]) -> f32 {
+pub fn l2_distance_squared(a: &[f32], b: &[f32]) -> f32 {
     debug_assert_eq!(a.len(), b.len());
 
     #[cfg(target_arch = "x86_64")]
@@ -399,6 +436,17 @@ pub fn l2_distance(a: &[f32], b: &[f32]) -> f32 {
     }
 
     l2_distance_scalar(a, b)
+}
+
+/// True Euclidean (L2) distance: sqrt(sum((a[i] - b[i])^2)).
+///
+/// Use this when you need the actual distance value in the vector
+/// space — e.g. user-facing APIs. For ranking / heap comparisons the
+/// squared variant (`l2_distance_squared`) is faster and gives the
+/// same result order.
+#[inline(always)]
+pub fn l2_distance(a: &[f32], b: &[f32]) -> f32 {
+    l2_distance_squared(a, b).sqrt()
 }
 
 #[inline(always)]
@@ -520,7 +568,16 @@ mod tests {
     fn test_l2_distance() {
         let a = vec![1.0, 0.0, 0.0];
         let b = vec![0.0, 1.0, 0.0];
-        assert!((l2_distance(&a, &b) - 2.0).abs() < 1e-6);
+        // True Euclidean distance = sqrt((1-0)^2 + (0-1)^2 + 0^2) = sqrt(2)
+        assert!((l2_distance(&a, &b) - (2.0_f32).sqrt()).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_l2_distance_squared() {
+        let a = vec![1.0, 0.0, 0.0];
+        let b = vec![0.0, 1.0, 0.0];
+        // Squared distance = 2.0 (used in the search hot path)
+        assert!((l2_distance_squared(&a, &b) - 2.0).abs() < 1e-6);
     }
 
     #[test]

@@ -11,7 +11,7 @@
 /// - rebuild from scratch
 /// - batch_search with rayon
 
-use crate::distance::{compute_distance, get_distance_fn, prefetch_vector, DistanceFn, DistanceMetric};
+use crate::distance::{compute_distance, get_distance_fn, is_unit_length, prefetch_vector, DistanceFn, DistanceMetric};
 use crate::storage::{GraphStorage, VectorStorage, VectorStore};
 use parking_lot::RwLock;
 use rand::Rng;
@@ -562,8 +562,25 @@ impl FastHNSW {
     // ---------------------------------------------------------------------
 
     /// Add a vector. Returns its internal index.
+    /// Validate that a vector is L2-normalized when using the cosine
+    /// metric. Cosine distance is computed as `1 - a·b`, which only
+    /// equals true cosine distance when both vectors are unit-length.
+    /// Validating once at the API boundary is cheap; doing it inside
+    /// the search hot loop would be prohibitive.
+    #[inline]
+    fn validate_cosine_input(&self, vector: &[f32], context: &str) {
+        if self.metric == DistanceMetric::Cosine && !is_unit_length(vector) {
+            panic!(
+                "{context}: cosine metric requires L2-normalized vectors \
+                 (‖v‖ ≈ 1.0). Normalize inputs before calling: \
+                 v /= max(‖v‖, 1e-10)."
+            );
+        }
+    }
+
     pub fn add_vector(&self, vector: &[f32]) -> usize {
         assert_eq!(vector.len(), self.dim, "Vector dimension mismatch");
+        self.validate_cosine_input(vector, "add_vector");
 
         let level = self.random_level();
 
@@ -572,27 +589,40 @@ impl FastHNSW {
             vecs.add(vector)
         };
 
-        {
-            let mut graph = self.graph.write();
-            graph.add_node(level);
-        }
-
+        // Grow `alive` BEFORE publishing the node in the graph. Concurrent
+        // searchers use `alive.get_unchecked(nid)` on nids reached through
+        // graph neighbor lists — if `alive` were grown after the graph, a
+        // reader could observe a neighbor id with no corresponding alive
+        // slot, causing an out-of-bounds read. Initial value is `false`
+        // until insert_node finishes wiring the node into the graph.
         {
             let mut alive = self.alive.write();
             if alive.len() <= idx {
                 alive.resize(idx + 1, false);
             }
-            alive[idx] = true;
+        }
+
+        {
+            let mut graph = self.graph.write();
+            graph.add_node(level);
         }
 
         let is_first = self.entry_point.read().is_none();
         if is_first {
+            // First node: no neighbors to wire; mark alive and set entry.
+            self.alive.write()[idx] = true;
             *self.entry_point.write() = Some(idx);
             *self.entry_level.write() = level;
             return idx;
         }
 
         self.insert_node(idx, level);
+
+        // Publish as alive only after the node is fully wired into the
+        // graph. Until this point concurrent searchers will see the node
+        // via reverse edges but skip it (alive[idx] == false), which is
+        // the correct behavior — the node isn't fully inserted yet.
+        self.alive.write()[idx] = true;
 
         if level > *self.entry_level.read() {
             *self.entry_point.write() = Some(idx);
@@ -609,6 +639,12 @@ impl FastHNSW {
     pub fn batch_add_vectors(&self, vectors: &[f32], n: usize) -> usize {
         assert_eq!(vectors.len(), n * self.dim);
 
+        if self.metric == DistanceMetric::Cosine && n > 0 {
+            // Spot-check the first vector — full validation would be
+            // O(n*dim) and is not worth the cost for a batch call.
+            self.validate_cosine_input(&vectors[..self.dim], "batch_add_vectors");
+        }
+
         let first_idx;
 
         // 1. Pre-allocate and add all vectors + graph nodes in bulk
@@ -621,6 +657,15 @@ impl FastHNSW {
             }
         }
 
+        // Grow `alive` to cover all new indices BEFORE the graph is
+        // extended, so any concurrent reader reaching these nids via
+        // neighbor lists sees a valid slot. Initial value is `false` —
+        // nodes are published as alive only after insert_node wires them.
+        {
+            let mut alive = self.alive.write();
+            alive.resize(first_idx + n, false);
+        }
+
         {
             let mut graph = self.graph.write();
             for _ in 0..n {
@@ -629,15 +674,12 @@ impl FastHNSW {
             }
         }
 
-        {
-            let mut alive = self.alive.write();
-            alive.resize(first_idx + n, true);
-        }
-
         // 2. Set first node as entry point
         if self.entry_point.read().is_none() {
             *self.entry_point.write() = Some(first_idx);
             *self.entry_level.write() = self.graph.read().level(first_idx);
+            // Entry point has no neighbors to wire — mark alive immediately.
+            self.alive.write()[first_idx] = true;
         }
 
         // 3. Insert each node into the graph
@@ -649,6 +691,9 @@ impl FastHNSW {
             }
             let level = self.graph.read().level(idx);
             self.insert_node(idx, level);
+
+            // Publish after wiring.
+            self.alive.write()[idx] = true;
 
             if level > *self.entry_level.read() {
                 *self.entry_point.write() = Some(idx);
@@ -786,6 +831,10 @@ impl FastHNSW {
     /// but avoids per-node lock acquire/release.
     pub fn build_bulk(&self, vectors_flat: &[f32], n: usize) {
         assert_eq!(vectors_flat.len(), n * self.dim);
+
+        if self.metric == DistanceMetric::Cosine && n > 0 {
+            self.validate_cosine_input(&vectors_flat[..self.dim], "build_bulk");
+        }
 
         {
             let mut vecs = self.vectors.write();
@@ -943,6 +992,7 @@ impl FastHNSW {
 
     /// Search for k nearest neighbors.
     pub fn search(&self, query: &[f32], k: usize, ef: usize) -> Vec<(usize, f32)> {
+        self.validate_cosine_input(query, "search");
         let ep = match *self.entry_point.read() {
             Some(ep) => ep,
             None => return Vec::new(),
@@ -990,13 +1040,33 @@ impl FastHNSW {
         };
         results.sort_by(|a, b| a.dist.partial_cmp(&b.dist).unwrap_or(Ordering::Equal));
         results.truncate(k);
-        results.into_iter().map(|c| (c.id, c.dist)).collect()
+        // For L2 we rank on squared distance (faster, monotonic); convert
+        // to true Euclidean distance at the API boundary for the caller.
+        let metric = self.metric;
+        results
+            .into_iter()
+            .map(|c| (c.id, Self::public_distance(c.dist, metric)))
+            .collect()
+    }
+
+    /// Convert an internal ranking-distance to the user-facing metric value.
+    ///
+    /// The ranking path uses squared Euclidean for `DistanceMetric::L2`
+    /// to save a sqrt per comparison. Public APIs undo that transform so
+    /// callers see true distances.
+    #[inline(always)]
+    fn public_distance(d: f32, metric: DistanceMetric) -> f32 {
+        match metric {
+            DistanceMetric::L2 => d.sqrt(),
+            _ => d,
+        }
     }
 
     /// Search with graph-integrated filtering.
     /// Non-matching nodes are still traversed (for graph connectivity)
     /// but only matching nodes appear in results.
     pub fn search_filtered(&self, query: &[f32], k: usize, ef: usize, allowed: &[bool]) -> Vec<(usize, f32)> {
+        self.validate_cosine_input(query, "search_filtered");
         let ep = match *self.entry_point.read() {
             Some(ep) => ep,
             None => return Vec::new(),
@@ -1030,7 +1100,11 @@ impl FastHNSW {
         );
         results.sort_by(|a, b| a.dist.partial_cmp(&b.dist).unwrap_or(Ordering::Equal));
         results.truncate(k);
-        results.into_iter().map(|c| (c.id, c.dist)).collect()
+        let metric = self.metric;
+        results
+            .into_iter()
+            .map(|c| (c.id, Self::public_distance(c.dist, metric)))
+            .collect()
     }
 
     /// Batch search with rayon parallelism.
@@ -1040,6 +1114,9 @@ impl FastHNSW {
         k: usize,
         ef: usize,
     ) -> Vec<Vec<(usize, f32)>> {
+        if self.metric == DistanceMetric::Cosine && !queries.is_empty() {
+            self.validate_cosine_input(queries[0], "batch_search");
+        }
         let ep = match *self.entry_point.read() {
             Some(ep) => ep,
             None => return queries.iter().map(|_| Vec::new()).collect(),
@@ -1073,7 +1150,10 @@ impl FastHNSW {
             let mut results = Self::search_layer(&vectors, &graph, &alive, query, current, ef, 0, metric);
             results.sort_by(|a, b| a.dist.partial_cmp(&b.dist).unwrap_or(Ordering::Equal));
             results.truncate(k);
-            results.into_iter().map(|c| (c.id, c.dist)).collect()
+            results
+                .into_iter()
+                .map(|c| (c.id, Self::public_distance(c.dist, metric)))
+                .collect()
         }).collect()
     }
 
