@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_PASSWORD: example
+      POSTGRES_DB: ragdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  arrwdb:
+    image: bledden/arrwdb:latest
+    ports:
+      - "8000:8000"
+    environment:
+      ARRWDB_EMBEDDING_PROVIDER: ${ARRWDB_EMBEDDING_PROVIDER:-voyage}
+      VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    depends_on:
+      - postgres

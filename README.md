@@ -82,6 +82,36 @@ CAGRA index (NVIDIA cuVS)
 | **BM25** | Keyword search, hybrid retrieval | CPU only |
 | Brute Force | Small datasets, exact results | CPU only |
 
+## Integrations
+
+arrwDB is meant to sit next to your existing stack, not replace it. Drop-in
+adapters are shipped in the Python SDK:
+
+| Integration | Install | Use case |
+|------------|---------|----------|
+| **LangChain** | `pip install "arrwdb[langchain]"` | Swap for `PGVector` / `Pinecone` / `Qdrant` in any LangChain chain. |
+| **LlamaIndex** | `pip install "arrwdb[llamaindex]"` | `VectorStoreIndex` backend. |
+| **Postgres / pgvector sync** | `pip install "arrwdb[postgres]"` | One-shot or incremental `sync_from_postgres()` helper. |
+
+```python
+# LangChain
+from arrwdb.integrations.langchain import ArrwDBVectorStore
+store = ArrwDBVectorStore.from_texts(texts, embedding, base_url="http://localhost:8000")
+
+# Postgres / pgvector → arrwDB
+from arrwdb.integrations.postgres import sync_from_postgres
+sync_from_postgres(
+    pg_url="postgresql://user:pass@host/db",
+    table="documents", id_column="id",
+    text_column="content", embedding_column="embedding",
+    library_name="docs",
+)
+```
+
+Working examples: [`examples/pgvector-migration`](examples/pgvector-migration) (docker-compose stack with pgvector + arrwDB side-by-side) and [`examples/langchain-rag`](examples/langchain-rag).
+
+The recommended production pattern is **Postgres as source of truth, arrwDB as a hot-path sidecar** — app writes go to Postgres, vector queries go to arrwDB. A cron or CDC job keeps arrwDB in sync.
+
 ## Quick Start
 
 ### Install
