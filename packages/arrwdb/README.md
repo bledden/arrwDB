@@ -31,7 +31,39 @@ pip install arrwdb
 
 # With async support
 pip install arrwdb[async]
+
+# Framework integrations (pick what you need)
+pip install arrwdb[langchain]     # LangChain VectorStore adapter
+pip install arrwdb[llamaindex]    # LlamaIndex VectorStore adapter
+pip install arrwdb[postgres]      # pgvector / Postgres sync helpers
+pip install arrwdb[all-integrations]
 ```
+
+## Integrations
+
+Drop-in adapters so arrwDB plugs into existing AI stacks without migration:
+
+```python
+# LangChain — replace PGVector / Pinecone / Qdrant in one line
+from arrwdb.integrations.langchain import ArrwDBVectorStore
+store = ArrwDBVectorStore.from_texts(texts, embedding,
+                                     base_url="http://localhost:8000")
+
+# LlamaIndex
+from arrwdb.integrations.llama_index import ArrwDBVectorStore
+vector_store = ArrwDBVectorStore(base_url="http://localhost:8000")
+
+# Pull a pgvector table into arrwDB (one-shot or incremental)
+from arrwdb.integrations.postgres import sync_from_postgres
+sync_from_postgres(
+    pg_url="postgresql://user:pass@host/db",
+    table="documents", id_column="id",
+    text_column="content", embedding_column="embedding",
+    library_name="docs",
+)
+```
+
+See [examples/pgvector-migration](https://github.com/bledden/arrwDB/tree/main/examples/pgvector-migration) for a working docker-compose stack that runs pgvector and arrwDB side-by-side.
 
 ## Quick Start
 
