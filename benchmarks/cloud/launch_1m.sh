@@ -9,8 +9,8 @@ source venv/bin/activate
 pkill -f run_api.py 2>/dev/null || true
 sleep 2
 
-# Set Cohere key from .env if not already set
-export COHERE_API_KEY="${COHERE_API_KEY:-***REMOVED***}"
+# Cohere key must come from the environment (or be loaded from .env by the server)
+export COHERE_API_KEY="${COHERE_API_KEY:?COHERE_API_KEY must be set in the environment}"
 
 # Start server in background
 echo "Starting arrwDB server..."
